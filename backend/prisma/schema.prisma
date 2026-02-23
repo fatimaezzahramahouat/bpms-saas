@@ -35,7 +35,10 @@ model OrgInfo {
 
   logo           String?       
   domaine        String?       
+ address   String?
+  city      String?
 
+  website   String?
   organisationId String        @unique
   organisation   Organisation  @relation(fields: [organisationId], references: [id])
 
