@@ -21,7 +21,7 @@ export function Home() {
         <div className="flex items-center gap-2">
           <span>Nexflow Agentic - Smarter AI for Faster Digital Design | </span>
           <button className="flex items-center gap-1 hover:text-portal-light transition-colors">
-            Learn More 
+            Learn More
             <div className="w-4 h-4 bg-[#ff4b91] rounded-full flex items-center justify-center text-[10px]">
               <ChevronRight className="w-3 h-3" />
             </div>
@@ -47,7 +47,7 @@ export function Home() {
               {[
                 'Platform', 'Solutions', 'Partners', 'Researchers', 'Resources', 'Company'
               ].map((item) => (
-                <button 
+                <button
                   key={item}
                   onClick={() => item === 'Platform' && setShowSubMenu(!showSubMenu)}
                   className="flex items-center gap-1.5 text-[15px] font-semibold text-white/90 hover:text-white transition-colors group"
@@ -61,7 +61,7 @@ export function Home() {
 
           {/* Right: Action Button */}
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => navigate('/register-org')}
               className="bg-[#4b4dff] hover:bg-[#3b3de0] text-white pl-6 pr-2 py-2 rounded-full text-[15px] font-bold flex items-center gap-3 transition-all active:scale-95 group"
             >
@@ -77,21 +77,21 @@ export function Home() {
       {/* 3.5 SUB-MENU BAR */}
       <AnimatePresence>
         {showSubMenu && (
-          <motion.div 
+          <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             className="bg-[#0a0a0a] border-b border-white/5 shadow-2xl overflow-hidden z-40"
           >
             <div className="max-w-7xl mx-auto flex justify-center gap-8 py-4">
-              <Link 
+              <Link
                 to="/login"
                 className="text-xs font-bold uppercase tracking-widest px-6 py-2 rounded-full transition-all text-white hover:bg-h1-blue/20 hover:text-h1-blue"
               >
                 S'identifier
               </Link>
               <div className="w-px h-6 bg-white/10 self-center" />
-              <Link 
+              <Link
                 to="/register-org"
                 className="text-xs font-bold uppercase tracking-widest px-6 py-2 rounded-full transition-all text-white hover:bg-h1-blue/20 hover:text-h1-blue"
               >
@@ -104,15 +104,17 @@ export function Home() {
 
       {/* 4. HERO BANNER */}
       <div className="relative h-[500px] w-full overflow-hidden">
-        <img 
-          src="https://picsum.photos/seed/nexflow-tech/1920/1080?blur=2" 
-          alt="Hero Background" 
+        <video
+          src="/assets/PixVerse_V5.6_Image_Text_360P_create_A_cinemat.mp4"
           className="absolute inset-0 w-full h-full object-cover brightness-[0.4]"
-          referrerPolicy="no-referrer"
+          autoPlay
+          loop
+          muted
+          playsInline
         />
         <div className="absolute inset-0 flex items-center justify-center px-4">
           <div className="max-w-5xl w-full text-center">
-            <motion.h1 
+            <motion.h1
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -120,13 +122,13 @@ export function Home() {
             >
               L'AUTOMATISATION : LE MEILLEUR MOYEN DE <span className="text-h1-blue">SÉCURISER</span> ET DE <span className="text-h1-blue">VALORISER</span> VOS PROCESSUS
             </motion.h1>
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.4 }}
               className="flex justify-center gap-4"
             >
-              <button 
+              <button
                 onClick={() => navigate('/register-org')}
                 className="bg-h1-blue hover:brightness-110 text-white px-8 py-4 rounded-md font-bold uppercase tracking-widest transition-all shadow-xl flex items-center gap-2"
               >
