@@ -10,11 +10,12 @@ export function StandaloneLogo() {
   return (
     <div className="py-10 flex flex-col items-center relative z-10">
       <Link to="/" className="flex flex-col items-center">
-        <div className="w-24 h-24 bg-portal-navy p-2.5 shadow-lg flex items-center justify-center rounded-lg mb-4">
-          <div className="border-2 border-white w-full h-full flex flex-col items-center justify-center text-white font-serif italic">
-            <span className="text-xl font-bold leading-none uppercase tracking-tighter">Nex</span>
-            <span className="text-[8px] font-bold tracking-[0.4em] uppercase mt-1">flow</span>
-          </div>
+        <div className="w-28 h-28 flex items-center justify-center rounded-lg mb-4">
+          <img
+            src="/assets/nexflow.png"
+            alt="Nexflow Logo"
+            className="w-full h-auto object-contain"
+          />
         </div>
         <div className="text-center">
           <h2 className="text-gov-orange text-sm font-bold tracking-[0.15em] uppercase leading-tight">

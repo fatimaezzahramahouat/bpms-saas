@@ -39,8 +39,8 @@ export function Home() {
         <div className="max-w-[1440px] mx-auto px-6 h-[72px] flex items-center justify-between">
           {/* Left: Logo & Nav */}
           <div className="flex items-center gap-10">
-            <Link to="/" className="text-[26px] font-bold tracking-tight lowercase flex items-center">
-              nex<span className="text-white/40 font-medium">flow</span>
+            <Link to="/" className="flex items-center">
+              <img src="/assets/nexflow.png" alt="Nexflow Logo" className="h-10 w-auto" />
             </Link>
 
             <nav className="hidden lg:flex items-center gap-7">
