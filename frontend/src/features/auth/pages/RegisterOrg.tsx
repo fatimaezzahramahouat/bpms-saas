@@ -1,7 +1,7 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { Building2, User, Users, Phone, Mail, Check, Lock } from 'lucide-react';
-
+import { useNavigate } from 'react-router-dom';
 import { GlowBackground, PortalLogo } from '@shared/components';
 
 /**
@@ -11,6 +11,7 @@ import { GlowBackground, PortalLogo } from '@shared/components';
  * This page is part of the auth feature module.
  */
 export function RegisterOrg() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     orgName: '',
     responsibleName: '',
@@ -19,16 +20,48 @@ export function RegisterOrg() {
     email: '',
     password: ''
   });
-
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('Registration Data:', formData);
-    alert('Demande validée.');
+    setLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/register-organisation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organisationName: formData.orgName,
+          adminName: formData.responsibleName,
+          phone_org: formData.phone,
+          nb_employers: formData.employeeCount,
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        localStorage.setItem('token', result.data.token);
+        localStorage.setItem('user', JSON.stringify(result.data.user));
+        alert('Inscription validée !');
+        navigate('/dashboard');
+      } else {
+        const error = await response.json();
+        const errorMessage = error.error ||
+          (error.errors ? Object.values(error.errors).flat().join(', ') : 'Erreur lors de l\'inscription');
+        alert(errorMessage);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur réseau');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
