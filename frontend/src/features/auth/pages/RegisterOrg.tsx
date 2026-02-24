@@ -2,7 +2,7 @@ import { useState, ChangeEvent, FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { Building2, User, Users, Phone, Mail, Check, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { GlowBackground, PortalLogo } from '@shared/components';
+import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
 
 /**
  * Register Organization Page Component
@@ -65,7 +65,10 @@ export function RegisterOrg() {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-start pt-6 bg-h1-black font-sans relative overflow-hidden px-[4cm]">
+    <div className="h-screen w-full flex flex-col items-center justify-start pt-6 bg-white dark:bg-h1-black font-sans relative overflow-hidden px-[4cm] transition-colors duration-300">
+      <div className="absolute top-6 right-8 z-50">
+        <ThemeSwitcher />
+      </div>
       <GlowBackground />
 
       <div className="flex flex-col items-center w-full max-w-5xl relative z-10">
@@ -76,7 +79,7 @@ export function RegisterOrg() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 flex flex-col items-center"
         >
-          <h1 className="text-h1-blue text-xl font-black uppercase tracking-[0.2em] border-b-2 border-h1-blue pb-1 text-center">
+          <h1 className="text-h1-blue text-xl font-black uppercase tracking-[0.2em] border-b-2 border-h1-blue pb-1 text-center dark:text-h1-blue">
             CRÉATION DE L'ESPACE ORGANISATION
           </h1>
         </motion.div>

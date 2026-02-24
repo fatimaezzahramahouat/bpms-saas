@@ -12,9 +12,14 @@ export function PortalLogo() {
       <Link to="/" className="flex flex-col items-center">
         <div className="w-32 h-32 flex items-center justify-center rounded-lg">
           <img
+            src="/assets/nexflow1.png"
+            alt="Nexflow Logo"
+            className="w-full h-auto object-contain dark:hidden"
+          />
+          <img
             src="/assets/nexflow.png"
             alt="Nexflow Logo"
-            className="w-full h-auto object-contain"
+            className="w-full h-auto object-contain hidden dark:block"
           />
         </div>
       </Link>

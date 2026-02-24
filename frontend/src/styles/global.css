@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@config "../../tailwind.config.js";
+
 
 @theme {
   --color-h1-blue: #4b4dff;
@@ -6,7 +8,7 @@
   --color-h1-black: #000000;
   --color-h1-dark: #1e1e1e;
   --color-h1-slate: #94a3b8;
-  
+
   /* Mapping for existing components */
   --color-gov-orange: var(--color-h1-blue);
   --color-gov-green: var(--color-h1-pink);
@@ -17,18 +19,53 @@
 }
 
 @layer base {
+  :root {
+    --bg-main: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --card-bg: #f9fafb;
+    --input-bg: #f3f4f6;
+  }
+
+  .dark {
+    --bg-main: #000000;
+    --text-primary: #ffffff;
+    --text-secondary: #94a3b8;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --card-bg: #0a0a0a;
+    --input-bg: rgba(255, 255, 255, 0.05);
+  }
+
   body {
-    @apply bg-h1-black text-white font-sans min-h-screen;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    @apply font-sans min-h-screen transition-colors duration-300;
+  }
+
+  /* Ensure text colors are responsive to dark mode by default when using variables */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span {
+    @apply transition-colors duration-300;
   }
 }
 
 .bg-dots {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-image: radial-gradient(var(--text-secondary) 1px, transparent 1px);
   background-size: 24px 24px;
+  opacity: 0.1;
 }
 
 .gov-card {
-  @apply bg-[#0a0a0a] shadow-2xl rounded-xl border border-white/5 relative z-10;
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  @apply shadow-2xl rounded-xl border relative z-10;
 }
 
 .gov-label-box-compact {
@@ -36,11 +73,15 @@
 }
 
 .gov-input-compact {
-  @apply bg-white/5 border border-white/10 h-12 px-4 w-full focus:bg-white/10 focus:border-h1-blue/50 outline-none text-white text-sm transition-all;
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  @apply border h-12 px-4 w-full focus:bg-white/10 focus:border-h1-blue/50 outline-none text-sm transition-all;
 }
 
 .gov-row-compact {
-  @apply flex overflow-hidden rounded-md border border-white/10 mb-4;
+  border-color: var(--border-color);
+  @apply flex overflow-hidden rounded-md border mb-4;
 }
 
 .gov-button-compact {
@@ -48,13 +89,27 @@
 }
 
 @keyframes float-tl-br {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(100px, 100px); }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(100px, 100px);
+  }
 }
 
 @keyframes float-br-tl {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(-100px, -100px); }
+
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+
+  50% {
+    transform: translate(-100px, -100px);
+  }
 }
 
 .animate-float-tl-br {
@@ -62,5 +117,5 @@
 }
 
 .glass-header {
-  @apply bg-black/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50;
+  @apply bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-black/5 dark:border-white/5 sticky top-0 z-50;
 }
