@@ -9,8 +9,8 @@ const registerSchema = z.object({
   organisationName: z.string().min(1, "Organisation name is required"),
   adminName: z.string().min(1, "Admin name is required"),
   phone_org: z.string().min(1, "Phone is required"),
-  nb_employers: z.enum(["1-10", "11-20", "20-50"], {
-    error: "nb_employers must be '1-10', '11-20', or '20-50'",
+  nb_employers: z.enum(["1-10", "11-50", "51-200", "200+"], {
+    error: "nb_employers must be '1-10', '11-50', '51-200', or '200+'",
   }),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -45,11 +45,7 @@ export const authController = {
 
       res.status(201).json({
         message: "Organisation registered successfully",
-        data: {
-          organisationId: result.organisation.id,
-          userId: result.user.id,
-          adminId: result.admin.id,
-        },
+        data: result,
       });
     } catch (error: any) {
       if (error.code === "P2002") {

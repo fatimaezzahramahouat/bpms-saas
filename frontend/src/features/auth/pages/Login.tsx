@@ -18,20 +18,38 @@ export function Login() {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
-  const handleLoginSubmit = (e: FormEvent) => {
+  const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log('Login Data:', loginData);
-    alert('Tentative de connexion...');
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        localStorage.setItem('token', result.data.token);
+        localStorage.setItem('user', JSON.stringify(result.data.user));
+        navigate('/dashboard');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Connexion échouée');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur réseau');
+    }
   };
 
   return (
     <div className="h-screen w-full flex flex-col items-center justify-start pt-6 bg-h1-black font-sans relative overflow-hidden px-[4cm]">
       <GlowBackground />
-      
+
       <div className="flex flex-col items-center w-full max-w-2xl relative z-10">
         <PortalLogo />
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-6 flex flex-col items-center"
@@ -41,7 +59,7 @@ export function Login() {
           </h1>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           className="gov-card w-full p-6"
@@ -52,8 +70,8 @@ export function Login() {
                 <Mail className="w-5 h-5 mr-4" />
                 Identifiant
               </div>
-              <input 
-                type="email" 
+              <input
+                type="email"
                 name="email"
                 placeholder="VOTRE EMAIL"
                 className="gov-input-compact"
@@ -68,8 +86,8 @@ export function Login() {
                 <User className="w-5 h-5 mr-4" />
                 Mot de passe
               </div>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 name="password"
                 placeholder="••••••••"
                 className="gov-input-compact"
@@ -84,7 +102,7 @@ export function Login() {
                 <Check className="w-6 h-6" />
                 IDENTIFICATION
               </button>
-              
+
               <button type="button" className="text-h1-blue text-xs font-bold uppercase tracking-widest hover:text-white transition-all">
                 Mot de passe oublié ? Récupérer mon accès
               </button>

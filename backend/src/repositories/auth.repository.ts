@@ -75,4 +75,13 @@ export const authRepository = {
       },
     });
   },
+
+  async findOrganisationById(id: string) {
+    return prisma.organisation.findUnique({
+      where: { id },
+      include: {
+        orgInfo: true
+      }
+    });
+  },
 };

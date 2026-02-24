@@ -30,8 +30,9 @@ interface LoginInput {
 function mapNbEmployers(value: string): number {
   const mapping: Record<string, number> = {
     "1-10": 10,
-    "11-20": 20,
-    "20-50": 50,
+    "11-50": 50,
+    "51-200": 200,
+    "200+": 500,
   };
   return mapping[value] ?? 0;
 }
@@ -61,7 +62,27 @@ export const authService = {
       lastName,
     });
 
-    return result;
+    const token = jwt.sign(
+      {
+        userId: result.user.id,
+        email: result.user.email,
+        organisationId: result.organisation.id,
+        isAdmin: true, // Organization admin by default
+      },
+      JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    return {
+      token,
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        organisationId: result.organisation.id
+      }
+    };
   },
 
   async completeOrganisationInfo(organisationId: string, input: CompleteOrgInfoInput) {
@@ -102,5 +123,9 @@ export const authService = {
     );
 
     return { token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
+  },
+
+  async getOrganisationProfile(organisationId: string) {
+    return authRepository.findOrganisationById(organisationId);
   },
 };
