@@ -6,58 +6,91 @@ import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
 
 export function DashboardLayout() {
-    const [hasOrgInfo, setHasOrgInfo] = useState(true);
-    const [showOnboarding, setShowOnboarding] = useState(false);
-    const [orgData, setOrgData] = useState<any>(null);
-    const [userName, setUserName] = useState('Utilisateur');
-    const [userRole, setUserRole] = useState('Utilisateur');
-    const [isAdmin, setIsAdmin] = useState(false);
-    const navigate = useNavigate();
-
     const getRoleLabel = (user: any) => {
-        if (user.isAdmin || user.admin) return "Administrateur";
-        if (user.isRH || user.rh) return "Responsable RH";
-        if (user.isManager || user.manager) return "Manager";
-        if (user.isEmployee || user.employee) return "Employé";
+        if (!user) return "";
+        if (user.admin) return "Administrateur";
+        if (user.rh) return "Responsable RH";
+        if (user.manager) return "Manager";
+        if (user.employee) return "Employé";
         return "Utilisateur";
     };
+
+    const [userData, setUserData] = useState<any>(() => {
+        const saved = localStorage.getItem('user');
+        return saved ? JSON.parse(saved) : null;
+    });
+
+    const [orgData, setOrgData] = useState<any>(() => {
+        if (userData?.organisation) return userData.organisation;
+        const saved = localStorage.getItem('user');
+        if (saved) {
+            const user = JSON.parse(saved);
+            return user.organisation || null;
+        }
+        return null;
+    });
+
+    const [userName, setUserName] = useState(() => {
+        if (userData) return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+        return '';
+    });
+
+    const [userRole, setUserRole] = useState(() => {
+        if (userData) return getRoleLabel(userData);
+        return '';
+    });
+
+    const [isAdmin, setIsAdmin] = useState(() => {
+        return !!userData?.admin;
+    });
+
+    const [hasOrgInfo, setHasOrgInfo] = useState(true); // Default to true to prevent flicker blur
+    const [showOnboarding, setShowOnboarding] = useState(false); // Default to false to prevent flicker modal
+    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+    const navigate = useNavigate();
 
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
 
-            const response = await fetch('http://localhost:5000/api/organisation/profile', {
+            // Fetch full user profile with relations
+            const response = await fetch('http://localhost:5000/api/auth/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (response.ok) {
                 const result = await response.json();
-                const profile = result.data;
-                setOrgData(profile);
+                const user = result.data;
 
-                if (profile.orgInfo) {
+                // Persist latest data
+                localStorage.setItem('user', JSON.stringify(user));
+
+                setUserData(user);
+                setOrgData(user.organisation);
+                setUserName(`${user.firstName} ${user.lastName}`);
+                setUserRole(getRoleLabel(user));
+                setIsAdmin(!!user.admin);
+
+                if (user.organisation?.orgInfo) {
                     setHasOrgInfo(true);
                     setShowOnboarding(false);
                     localStorage.setItem('onboarding_done', 'true');
-                    localStorage.setItem('org_logo', profile.orgInfo.logo);
+                    localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
                 } else {
                     setHasOrgInfo(false);
                     setShowOnboarding(true);
+                    localStorage.setItem('onboarding_done', 'false');
                 }
             }
         } catch (err) {
             console.error('Failed to fetch profile:', err);
+        } finally {
+            setIsLoadingProfile(false);
         }
     };
 
     useEffect(() => {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        if (userData.firstName && userData.lastName) {
-            setUserName(`${userData.firstName} ${userData.lastName}`);
-        }
-        setIsAdmin(!!(userData.isAdmin || userData.admin));
-        setUserRole(getRoleLabel(userData));
         fetchProfile();
     }, []);
 
@@ -65,7 +98,10 @@ export function DashboardLayout() {
         setHasOrgInfo(true);
         setShowOnboarding(false);
         localStorage.setItem('onboarding_done', 'true');
-        localStorage.setItem('org_logo', newData.logo);
+        if (newData.logo) {
+            localStorage.setItem('org_logo', newData.logo);
+        }
+        // Refresh profile to sync all states
         fetchProfile();
     };
 
@@ -74,11 +110,37 @@ export function DashboardLayout() {
         navigate('/login');
     };
 
+    if (isLoadingProfile && !userData) {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center bg-white dark:bg-h1-black transition-colors duration-300">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center gap-6"
+                >
+                    <div className="relative">
+                        <div className="w-16 h-16 border-4 border-h1-blue/20 border-t-h1-blue rounded-full animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-8 h-8 bg-h1-blue/10 rounded-full animate-pulse" />
+                        </div>
+                    </div>
+                    <div className="flex flex-col items-center">
+                        <img src="/assets/nexflow1.png" alt="NexFlow" className="h-6 dark:hidden opacity-50" />
+                        <img src="/assets/nexflow.png" alt="NexFlow" className="h-6 hidden dark:block opacity-50" />
+                        <p className="text-[10px] uppercase tracking-[0.3em] font-black text-h1-blue mt-4 animate-pulse">
+                            Synchronisation en cours...
+                        </p>
+                    </div>
+                </motion.div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-white dark:bg-h1-black font-sans text-gray-900 dark:text-white flex transition-colors duration-300">
             {/* Sidebar */}
             <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex flex-col h-screen sticky top-0 z-20 transition-colors duration-300">
-                <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 h-20 flex items-center">
+                <div className="p-6 border-b border-zinc-800 h-20 flex items-center">
                     {/* App Logo */}
                     <img src="/assets/nexflow1.png" alt="NexFlow" className="h-8 shrink-0 dark:hidden" />
                     <img src="/assets/nexflow.png" alt="NexFlow" className="h-8 shrink-0 hidden dark:block" />
@@ -184,21 +246,34 @@ export function DashboardLayout() {
                         </button>
                         <div className="h-10 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
                         <div className="flex items-center gap-3 border-l border-zinc-200 dark:border-zinc-800 pl-6 ml-2">
-                            <div className="text-right">
-                                <p className="text-sm font-bold truncate max-w-[200px] text-gray-900 dark:text-white">{userName}</p>
-                                <p className={`text-[10px] uppercase tracking-[0.2em] font-black ${userRole === 'Administrateur' ? 'text-blue-500' : 'text-h1-blue'}`}>
-                                    {userRole}
-                                </p>
+                            <div className="text-right min-w-[100px]">
+                                {userName ? (
+                                    <>
+                                        <p className="text-sm font-bold truncate max-w-[200px] text-gray-900 dark:text-white">{userName}</p>
+                                        <p className={`text-[10px] uppercase tracking-[0.2em] font-black ${userRole === 'Administrateur' ? 'text-blue-500' : 'text-h1-blue'}`}>
+                                            {userRole}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <div className="h-4 w-24 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                                        <div className="h-2 w-16 bg-zinc-200 dark:bg-zinc-800 rounded animate-pulse" />
+                                    </div>
+                                )}
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-h1-blue/10 border border-h1-blue/20 flex items-center justify-center text-h1-blue font-black text-xs">
-                                {userName.charAt(0).toUpperCase()}
+                            <div className="w-10 h-10 rounded-full bg-h1-blue/10 border border-h1-blue/20 flex items-center justify-center text-h1-blue font-black text-xs overflow-hidden">
+                                {userName ? (
+                                    userName.charAt(0).toUpperCase()
+                                ) : (
+                                    <div className="w-full h-full bg-zinc-200 dark:bg-zinc-800 animate-pulse" />
+                                )}
                             </div>
                         </div>
                     </div>
                 </header>
 
                 {/* Dynamic Content */}
-                <Outlet context={{ orgData, isAdmin }} />
+                <Outlet context={{ orgData, isAdmin, userData }} />
             </main>
 
             {/* Onboarding Modal */}

@@ -2,6 +2,7 @@ import { Response } from "express";
 import { z } from "zod";
 import { userManagementService } from "../services/userManagement.service";
 import { AuthRequest } from "../middleware/auth.middleware";
+import prisma from "../lib/prisma";
 
 const createUserSchema = z.object({
     firstName: z.string().min(1, "First name is required"),
@@ -37,13 +38,16 @@ export const userManagementController = {
     async createUser(req: AuthRequest, res: Response): Promise<void> {
         try {
             const organisationId = req.user?.organisationId;
-            if (!organisationId) {
+            const userId = req.user?.userId;
+
+            if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
-            // Check if current user is admin
-            if (!req.user?.isAdmin) {
+            // Real-time Admin check (Heritage Pattern)
+            const admin = await prisma.admin.findUnique({ where: { userId } });
+            if (!admin) {
                 res.status(403).json({ error: "Forbidden: Admin access required" });
                 return;
             }
@@ -73,12 +77,16 @@ export const userManagementController = {
         try {
             const id = req.params.id as string;
             const organisationId = req.user?.organisationId;
-            if (!organisationId) {
+            const userId = req.user?.userId;
+
+            if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
-            if (!req.user?.isAdmin) {
+            // Real-time Admin check (Heritage Pattern)
+            const admin = await prisma.admin.findUnique({ where: { userId } });
+            if (!admin) {
                 res.status(403).json({ error: "Forbidden: Admin access required" });
                 return;
             }
@@ -116,12 +124,16 @@ export const userManagementController = {
         try {
             const id = req.params.id as string;
             const organisationId = req.user?.organisationId;
-            if (!organisationId) {
+            const userId = req.user?.userId;
+
+            if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
-            if (!req.user?.isAdmin) {
+            // Real-time Admin check (Heritage Pattern)
+            const admin = await prisma.admin.findUnique({ where: { userId } });
+            if (!admin) {
                 res.status(403).json({ error: "Forbidden: Admin access required" });
                 return;
             }
