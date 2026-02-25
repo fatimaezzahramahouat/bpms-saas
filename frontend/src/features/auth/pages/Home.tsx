@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Building2, Users, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { Footer, ThemeSwitcher } from '@shared/components';
-import { Navbar } from '../../../components/Navbar';
 
 /**
  * Home Page Component
@@ -17,26 +16,7 @@ export function Home() {
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-white dark:bg-h1-black text-gray-900 dark:text-white font-sans transition-colors duration-300">
-      {/* 1. HACKERONE TOP ANNOUNCEMENT BAR */}
-      <div className="bg-zinc-100 dark:bg-[#1e1e1e] text-gray-600 dark:text-white py-2.5 px-6 md:px-12 flex justify-between items-center text-[13px] font-medium border-b border-gray-200 dark:border-white/5 transition-colors">
-        <div className="flex items-center gap-2">
-          <span>Nexflow Agentic - Smarter AI for Faster Digital Design | </span>
-          <button className="flex items-center gap-1 hover:text-h1-blue transition-colors">
-            Learn More
-            <div className="w-4 h-4 bg-h1-pink rounded-full flex items-center justify-center text-[10px] text-white">
-              <ChevronRight className="w-3 h-3" />
-            </div>
-          </button>
-        </div>
-        <div className="hidden md:flex items-center gap-8 text-zinc-500 dark:text-slate-300">
-          <Link to="/login" className="hover:text-h1-blue dark:hover:text-white transition-colors">Login</Link>
-          <button className="hover:text-h1-blue dark:hover:text-white transition-colors">Leaderboard</button>
-          <button className="hover:text-h1-blue dark:hover:text-white transition-colors text-right">Contacted by a designer?</button>
-          <Navbar />
-        </div>
-      </div>
-
-      {/* 2. HACKERONE MAIN HEADER */}
+      {/* HACKERONE MAIN HEADER */}
       <header className="bg-white/90 dark:bg-black text-gray-900 dark:text-white sticky top-0 z-50 border-b border-gray-200 dark:border-white/5 backdrop-blur-md transition-colors">
         <div className="max-w-[1440px] mx-auto px-6 h-[72px] flex items-center justify-between">
           {/* Left: Logo & Nav */}
@@ -47,29 +27,55 @@ export function Home() {
             </Link>
 
             <nav className="hidden lg:flex items-center gap-7">
-              {[
-                'Espace Organisation', 'Solutions', 'Partners', 'Researchers', 'Resources', 'Company'
-              ].map((item) => (
-                <button
-                  key={item}
-                  onClick={() => item === 'Espace Organisation' && setShowSubMenu(!showSubMenu)}
-                  className="flex items-center gap-1.5 text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors group"
-                >
-                  {item}
-                  <ChevronDown className="w-4 h-4 text-zinc-400 dark:text-white/40 group-hover:text-h1-blue dark:group-hover:text-white transition-colors" />
-                </button>
-              ))}
+              <button
+                onClick={() => setShowSubMenu(!showSubMenu)}
+                className="flex items-center gap-1.5 text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors group"
+              >
+                Espace d'Organisation
+                <ChevronDown className="w-4 h-4 text-zinc-400 dark:text-white/40 group-hover:text-h1-blue dark:group-hover:text-white transition-colors" />
+              </button>
+              <Link
+                to="/features"
+                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
+              >
+                Fonctionnalités
+              </Link>
+              <Link
+                to="/pricing"
+                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
+              >
+                	
+              Tarifs
+              </Link>
+              <Link
+                to="/our-team"
+                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
+              >
+                Notre Équipe
+              </Link>
+              <Link
+                to="/recrutement"
+                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
+              >
+                Recrutement
+              </Link>
             </nav>
           </div>
 
-          {/* Right: Action Button */}
+          {/* Right: Action Buttons */}
           <div className="flex items-center gap-4">
             <ThemeSwitcher />
+            <Link
+              to="/login"
+              className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
+            >
+              Connexion
+            </Link>
             <button
               onClick={() => navigate('/register-org')}
               className="bg-[#4b4dff] hover:bg-[#3b3de0] text-white pl-6 pr-2 py-2 rounded-full text-[15px] font-bold flex items-center gap-3 transition-all active:scale-95 group"
             >
-              Get Started
+              Commencer
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#4b4dff] group-hover:scale-110 transition-transform">
                 <ChevronRight className="w-5 h-5 stroke-[3]" />
               </div>
@@ -106,8 +112,8 @@ export function Home() {
         )}
       </AnimatePresence>
 
-      {/* 4. HERO BANNER */}
-      <div className="relative h-[500px] w-full overflow-hidden">
+      {/* HERO BANNER */}
+      <div className="relative h-screen w-full overflow-hidden">
         <video
           src="/assets/PixVerse_V5.6_Image_Text_360P_create_A_cinemat.mp4"
           className="absolute inset-0 w-full h-full object-cover brightness-[0.4]"
