@@ -32,7 +32,7 @@ export function AppRouter() {
       <Route path="/users" element={<UsersManagement />} />
 
       {/* Recruitment Route */}
-      <Route path="/recruitment" element={<RecruitmentPage />} />
+      <Route path="/recrutement" element={<RecruitmentPage />} />
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />
