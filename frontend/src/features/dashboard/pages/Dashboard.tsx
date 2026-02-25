@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Users, FileText, Settings, LogOut, Bell, Search } from 'lucide-react';
 import { OnboardingModal } from '../components/OnboardingModal';
@@ -8,7 +8,17 @@ export function Dashboard() {
     const [hasOrgInfo, setHasOrgInfo] = useState(true);
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [orgData, setOrgData] = useState<any>(null);
-    const [userName, setUserName] = useState('Admin');
+    const [userName, setUserName] = useState('Utilisateur');
+    const [userRole, setUserRole] = useState('Utilisateur');
+    const [isAdmin, setIsAdmin] = useState(false);
+
+    const getRoleLabel = (user: any) => {
+        if (user.isAdmin || user.admin) return "Administrateur";
+        if (user.isRH || user.rh) return "Responsable RH";
+        if (user.isManager || user.manager) return "Manager";
+        if (user.isEmployee || user.employee) return "Employé";
+        return "Utilisateur";
+    };
 
     const fetchProfile = async () => {
         try {
@@ -44,6 +54,8 @@ export function Dashboard() {
         if (userData.firstName && userData.lastName) {
             setUserName(`${userData.firstName} ${userData.lastName}`);
         }
+        setIsAdmin(!!(userData.isAdmin || userData.admin));
+        setUserRole(getRoleLabel(userData));
         fetchProfile();
     }, []);
 
@@ -64,64 +76,48 @@ export function Dashboard() {
         <div className="min-h-screen bg-white dark:bg-h1-black font-sans text-gray-900 dark:text-white flex transition-colors duration-300">
             {/* Sidebar */}
             <aside className="w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 flex flex-col h-screen sticky top-0 z-20 transition-colors duration-300">
-                <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 h-20 flex items-center gap-4">
+                <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 h-20 flex items-center">
                     {/* App Logo */}
                     <img src="/assets/nexflow1.png" alt="NexFlow" className="h-8 shrink-0 dark:hidden" />
                     <img src="/assets/nexflow.png" alt="NexFlow" className="h-8 shrink-0 hidden dark:block" />
 
                     {/* Vertical Divider */}
-                    <div className="w-[1px] bg-zinc-700 h-8 shrink-0" />
+                    <div className="w-[1px] bg-zinc-700 h-8 shrink-0 mx-2" />
 
                     {/* Organisation Section */}
                     <AnimatePresence mode="wait">
-                        {!hasOrgInfo ? (
-                            <motion.div
-                                key="default-branding"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex items-center gap-3 overflow-hidden"
-                            >
-                                <div className="w-9 h-9 bg-h1-blue rounded-lg flex items-center justify-center font-black shrink-0 text-sm text-white">N</div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="font-bold text-xs text-gray-900 dark:text-white truncate">NexFlow</span>
-                                    <span className="text-zinc-400 dark:text-zinc-500 text-[9px] uppercase font-bold">Système</span>
+                        <motion.div
+                            key="custom-branding"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-3 overflow-hidden"
+                        >
+                            {orgData?.orgInfo?.logo ? (
+                                <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden shrink-0">
+                                    <img src={orgData.orgInfo.logo} alt="Logo" className="w-full h-full object-cover" />
                                 </div>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="custom-branding"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex items-center gap-3 overflow-hidden"
-                            >
-                                {orgData?.orgInfo?.logo ? (
-                                    <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden shrink-0">
-                                        <img src={orgData.orgInfo.logo} alt="Logo" className="w-full h-full object-cover" />
-                                    </div>
-                                ) : (
-                                    <div className="w-9 h-9 bg-h1-blue rounded-lg flex items-center justify-center font-black shrink-0 text-sm">
-                                        {orgData?.name?.charAt(0).toUpperCase() || 'O'}
-                                    </div>
-                                )}
-                                <div className="flex flex-col min-w-0">
-                                    <span className="font-bold text-xs text-gray-900 dark:text-white truncate uppercase">{orgData?.name || 'Organisation'}</span>
-                                    <span className="text-zinc-400 dark:text-zinc-500 text-[9px] uppercase font-bold tracking-tight">Administrateur</span>
+                            ) : (
+                                <div className="w-9 h-9 bg-h1-blue rounded-lg flex items-center justify-center font-black shrink-0 text-sm text-white">
+                                    {orgData?.name?.charAt(0).toUpperCase() || 'O'}
                                 </div>
-                            </motion.div>
-                        )}
+                            )}
+                        </motion.div>
                     </AnimatePresence>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2 mt-4">
                     {[
-                        { icon: LayoutDashboard, label: 'Tableau de bord', active: true },
-                        { icon: Users, label: 'Équipe' },
-                        { icon: FileText, label: 'Documents' },
-                        { icon: Settings, label: 'Paramètres' },
+                        { icon: LayoutDashboard, label: 'Tableau de bord', active: true, href: '/dashboard' },
+                        ...(isAdmin ? [{ icon: Users, label: 'Equipe', href: '/users' }] : []),
+                        { icon: FileText, label: 'Documents', href: '#' },
+                        { icon: Settings, label: 'Paramètres', href: '#' },
                     ].map((item) => (
-                        <button key={item.label} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${item.active ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white'}`}>
+                        <button
+                            key={item.label}
+                            onClick={() => item.href !== '#' && (window.location.href = item.href)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${item.active ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white'}`}
+                        >
                             <item.icon className="w-5 h-5" />
                             {item.label}
                         </button>
@@ -159,10 +155,15 @@ export function Dashboard() {
                             <span className="absolute top-2 right-2 w-2 h-2 bg-h1-blue rounded-full"></span>
                         </button>
                         <div className="h-10 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 border-l border-zinc-200 dark:border-zinc-800 pl-6 ml-2">
                             <div className="text-right">
                                 <p className="text-sm font-bold truncate max-w-[200px] text-gray-900 dark:text-white">{userName}</p>
-                                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-bold">Administrateur</p>
+                                <p className={`text-[10px] uppercase tracking-[0.2em] font-black ${userRole === 'Administrateur' ? 'text-blue-500' : 'text-h1-blue'}`}>
+                                    {userRole}
+                                </p>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-h1-blue/10 border border-h1-blue/20 flex items-center justify-center text-h1-blue font-black text-xs">
+                                {userName.charAt(0).toUpperCase()}
                             </div>
                         </div>
                     </div>

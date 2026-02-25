@@ -3,6 +3,7 @@ import { Home } from '../features/auth/pages/Home';
 import { Login } from '../features/auth/pages/Login';
 import { RegisterOrg } from '../features/auth/pages/RegisterOrg';
 import { Dashboard } from '../features/dashboard/pages/Dashboard';
+import { UsersManagement } from '../features/management/pages/UsersManagement';
 
 /**
  * Application Router
@@ -27,6 +28,7 @@ export function AppRouter() {
 
       {/* Dashboard Routes - Protected */}
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/users" element={<UsersManagement />} />
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />
