@@ -8,7 +8,7 @@ import { Link } from 'react-router-dom';
 export function Navbar() {
   return (
     <Link 
-      to="/recruitment"
+      to="/recrutement"
       className="bg-h1-blue hover:bg-h1-blue/90 text-white px-4 py-2 rounded-md font-medium transition-colors"
     >
       Recrutement
