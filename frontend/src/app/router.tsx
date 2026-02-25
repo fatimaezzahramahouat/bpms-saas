@@ -4,6 +4,8 @@ import { Login } from '../features/auth/pages/Login';
 import { RegisterOrg } from '../features/auth/pages/RegisterOrg';
 import { DashboardLayout } from '../features/dashboard/layouts/DashboardLayout';
 import { DashboardHome } from '../features/dashboard/pages/DashboardHome';
+import { Dashboard } from '../features/dashboard/pages/Dashboard';
+import { RecruitmentPage } from '../pages/RecruitmentPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 
 /**
@@ -32,6 +34,9 @@ export function AppRouter() {
         <Route index element={<DashboardHome />} />
         <Route path="equipe" element={<UsersManagement />} />
       </Route>
+
+      {/* Recruitment Route */}
+      <Route path="/recruitment" element={<RecruitmentPage />} />
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />

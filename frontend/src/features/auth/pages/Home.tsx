@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Building2, Users, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { Footer, ThemeSwitcher } from '@shared/components';
+import { Navbar } from '../../../components/Navbar';
 
 /**
  * Home Page Component
@@ -31,6 +32,7 @@ export function Home() {
           <Link to="/login" className="hover:text-h1-blue dark:hover:text-white transition-colors">Login</Link>
           <button className="hover:text-h1-blue dark:hover:text-white transition-colors">Leaderboard</button>
           <button className="hover:text-h1-blue dark:hover:text-white transition-colors text-right">Contacted by a designer?</button>
+          <Navbar />
         </div>
       </div>
 

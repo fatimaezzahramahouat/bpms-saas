@@ -86,11 +86,21 @@ model JobOffer {
 
   applications Application[]
 }
-
+enum CandidateStatus {
+  CANDIDATE
+  CONTACTED
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+}
 model Candidate {
   id    String @id @default(uuid())
   email String @unique
 
+  fullName String
+  phone    String?
+  cv       String?   
+  status   String @default("CANDIDATE") 
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])
 
@@ -98,6 +108,7 @@ model Candidate {
 
   @@index([organisationId])
 }
+
 
 model Application {
   id String @id @default(uuid())
