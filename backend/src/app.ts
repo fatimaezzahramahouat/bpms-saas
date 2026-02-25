@@ -1,10 +1,8 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import authRouter from "./routes/auth.routes";
 import organisationRouter from "./routes/organisation.routes";
-
-dotenv.config();
+import userManagementRouter from "./routes/userManagement.routes";
 
 const app = express();
 
@@ -16,5 +14,6 @@ app.use(express.urlencoded({ limit: '50mb', extended: true, parameterLimit: 5000
 
 app.use("/api/auth", authRouter);
 app.use("/api/organisation", organisationRouter);
+app.use("/api/users", userManagementRouter);
 
 export default app;
