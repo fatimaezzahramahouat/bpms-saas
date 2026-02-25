@@ -13,4 +13,7 @@ authRouter.post("/complete-organisation-info", authMiddleware, authController.co
 // POST /api/auth/login
 authRouter.post("/login", authController.login);
 
+// GET /api/auth/me (requires JWT)
+authRouter.get("/me", authMiddleware, authController.getCurrentUser);
+
 export default authRouter;
