@@ -59,7 +59,13 @@ export const authRepository = {
   async findUserByEmail(email: string) {
     return prisma.user.findUnique({
       where: { email },
-      include: { organisation: true, admin: true },
+      include: {
+        organisation: true,
+        admin: true,
+        rh: true,
+        manager: true,
+        employee: true
+      },
     });
   },
 
@@ -80,7 +86,15 @@ export const authRepository = {
     return prisma.organisation.findUnique({
       where: { id },
       include: {
-        orgInfo: true
+        orgInfo: true,
+        users: {
+          include: {
+            admin: true,
+            rh: true,
+            manager: true,
+            employee: true
+          }
+        }
       }
     });
   },

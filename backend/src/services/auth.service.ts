@@ -80,7 +80,8 @@ export const authService = {
         email: result.user.email,
         firstName: result.user.firstName,
         lastName: result.user.lastName,
-        organisationId: result.organisation.id
+        organisationId: result.organisation.id,
+        admin: result.admin
       }
     };
   },
@@ -122,7 +123,19 @@ export const authService = {
       { expiresIn: "24h" }
     );
 
-    return { token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } };
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isAdmin: !!user.admin,
+        isRH: !!user.rh,
+        isManager: !!user.manager,
+        isEmployee: !!user.employee
+      }
+    };
   },
 
   async getOrganisationProfile(organisationId: string) {
