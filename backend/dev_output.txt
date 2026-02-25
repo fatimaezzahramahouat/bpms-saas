@@ -1,0 +1,29 @@
+﻿
+> backend@1.0.0 dev
+> ts-node-dev --esm --respawn --transpile-only src/server.ts
+
+[INFO] 12:08:41 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+node.exe : 
+C:\Program Files\nod
+ejs\node.exe: bad 
+option: --esm
+At line:1 char:1
++ & "C:\Program File
+s\nodejs/node.exe" 
+"C:\Program Files\no
+dejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo  
+            : NotS  
+  pecified: (C:\P   
+ rogram File...d    
+ option: --esm:    
+String) [], Rem    
+oteException
+    + FullyQualifie 
+   dErrorId : Nati  
+  veCommandError
+ 

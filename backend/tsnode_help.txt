@@ -1,0 +1,3 @@
+﻿ts-node-dev: no script to run provided
+Usage: ts-node-dev [options] script [arguments]
+
