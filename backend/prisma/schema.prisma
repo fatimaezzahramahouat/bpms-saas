@@ -106,6 +106,9 @@ model Candidate {
 
   applications Application[]
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
   @@index([organisationId])
 }
 

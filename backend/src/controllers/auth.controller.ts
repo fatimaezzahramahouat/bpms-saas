@@ -151,7 +151,11 @@ export const authController = {
             firstName: user.firstName,
             lastName: user.lastName,
             role,
-            organisation: user.organisation
+            organisation: user.organisation,
+            admin: user.admin,
+            rh: user.rh,
+            manager: user.manager,
+            employee: user.employee
           }
         },
       });
