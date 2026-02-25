@@ -2,7 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 import { Home } from '../features/auth/pages/Home';
 import { Login } from '../features/auth/pages/Login';
 import { RegisterOrg } from '../features/auth/pages/RegisterOrg';
-import { Dashboard } from '../features/dashboard/pages/Dashboard';
+import { DashboardLayout } from '../features/dashboard/layouts/DashboardLayout';
+import { DashboardHome } from '../features/dashboard/pages/DashboardHome';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 
 /**
@@ -27,8 +28,10 @@ export function AppRouter() {
       <Route path="/register-org" element={<RegisterOrg />} />
 
       {/* Dashboard Routes - Protected */}
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/users" element={<UsersManagement />} />
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<DashboardHome />} />
+        <Route path="equipe" element={<UsersManagement />} />
+      </Route>
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />

@@ -82,7 +82,7 @@ export function Dashboard() {
                     <img src="/assets/nexflow.png" alt="NexFlow" className="h-8 shrink-0 hidden dark:block" />
 
                     {/* Vertical Divider */}
-                    <div className="w-[1px] bg-zinc-700 h-8 shrink-0 mx-2" />
+                    <div className="w-[1px] bg-zinc-700 h-8 shrink-0 mx-3" />
 
                     {/* Organisation Section */}
                     <AnimatePresence mode="wait">
@@ -98,7 +98,7 @@ export function Dashboard() {
                                     <img src={orgData.orgInfo.logo} alt="Logo" className="w-full h-full object-cover" />
                                 </div>
                             ) : (
-                                <div className="w-9 h-9 bg-h1-blue rounded-lg flex items-center justify-center font-black shrink-0 text-sm text-white">
+                                <div className="w-9 h-9 bg-h1-blue rounded-lg flex items-center justify-center font-black shrink-0 text-white text-sm">
                                     {orgData?.name?.charAt(0).toUpperCase() || 'O'}
                                 </div>
                             )}

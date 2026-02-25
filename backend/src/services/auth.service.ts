@@ -141,4 +141,8 @@ export const authService = {
   async getOrganisationProfile(organisationId: string) {
     return authRepository.findOrganisationById(organisationId);
   },
+  async getOrganisationLogo(organisationId: string) {
+    const org = await authRepository.getLogo(organisationId);
+    return org?.orgInfo?.logo || "";
+  },
 };

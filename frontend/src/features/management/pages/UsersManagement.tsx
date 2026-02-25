@@ -79,8 +79,8 @@ export function UsersManagement() {
                         animate={{ opacity: 1, y: 0, x: '-50%' }}
                         exit={{ opacity: 0, y: -20, x: '-50%' }}
                         className={`fixed top-8 left-1/2 z-[200] px-6 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 font-bold text-sm ${toast.type === 'success'
-                                ? 'bg-emerald-500 text-white border-emerald-400'
-                                : 'bg-red-500 text-white border-red-400'
+                            ? 'bg-emerald-500 text-white border-emerald-400'
+                            : 'bg-red-500 text-white border-red-400'
                             }`}
                     >
                         <CheckCircle2 className="w-5 h-5" />
@@ -139,13 +139,14 @@ export function UsersManagement() {
                         </thead>
                         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
                             {loading ? (
-                                [1, 2, 3].map(i => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td colSpan={5} className="px-6 py-8">
-                                            <div className="h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl w-full"></div>
-                                        </td>
-                                    </tr>
-                                ))
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-20 text-center">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <div className="w-12 h-12 border-4 border-h1-blue/20 border-t-h1-blue rounded-full animate-spin"></div>
+                                            <p className="text-zinc-500 font-bold animate-pulse">Chargement des utilisateurs...</p>
+                                        </div>
+                                    </td>
+                                </tr>
                             ) : filteredUsers.length > 0 ? (
                                 filteredUsers.map((user) => {
                                     const role = getRoleBadge(user);

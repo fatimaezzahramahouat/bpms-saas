@@ -12,7 +12,12 @@ export const userManagementRepository = {
     async getUsersByOrganisation(organisationId: string) {
         return prisma.user.findMany({
             where: { organisationId },
-            include: {
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                createdAt: true,
                 admin: true,
                 rh: true,
                 manager: true,
@@ -60,7 +65,7 @@ export const userManagementRepository = {
         });
     },
 
-    async updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string }) {
+    async updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string; password?: string }) {
         return prisma.user.update({
             where: { id },
             data,
