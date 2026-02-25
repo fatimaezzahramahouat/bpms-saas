@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Mail, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { X, User, Mail, ShieldCheck, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -13,8 +13,10 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
-        email: ''
+        email: '',
+        password: ''
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +25,8 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
             setFormData({
                 firstName: user.firstName || '',
                 lastName: user.lastName || '',
-                email: user.email || ''
+                email: user.email || '',
+                password: ''
             });
         }
     }, [user, isOpen]);
@@ -35,13 +38,18 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
 
         try {
             const token = localStorage.getItem('token');
+            const submissionData = { ...formData };
+            if (!submissionData.password) {
+                delete (submissionData as any).password;
+            }
+
             const response = await fetch(`http://localhost:5000/api/users/${user.id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(submissionData)
             });
 
             if (response.ok) {
@@ -136,6 +144,27 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Nouveau mot de passe (optionnel)</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-11 pr-12 py-3 placeholder:text-zinc-400 focus:border-h1-blue outline-none transition-all text-sm"
+                                        placeholder="••••••••"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-h1-blue transition-colors cursor-pointer"
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
                                 </div>
                             </div>
 

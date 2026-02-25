@@ -26,7 +26,7 @@ export const userManagementService = {
         );
     },
 
-    async updateUser(userId: string, data: { firstName?: string; lastName?: string; email?: string }, organisationId: string) {
+    async updateUser(userId: string, data: { firstName?: string; lastName?: string; email?: string; password?: string }, organisationId: string) {
         const user = await userManagementRepository.findUserById(userId);
         if (!user || user.organisationId !== organisationId) {
             throw new Error("User not found or access denied");
@@ -40,7 +40,13 @@ export const userManagementService = {
             }
         }
 
-        return userManagementRepository.updateUser(userId, data);
+        // Hash password if provided
+        const finalData = { ...data };
+        if (finalData.password) {
+            finalData.password = await bcrypt.hash(finalData.password, 10);
+        }
+
+        return userManagementRepository.updateUser(userId, finalData);
     },
 
     async deleteUser(userId: string, organisationId: string) {

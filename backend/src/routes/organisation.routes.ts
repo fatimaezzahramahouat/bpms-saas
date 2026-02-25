@@ -10,4 +10,7 @@ organisationRouter.post("/onboarding", authMiddleware, organisationController.on
 // GET /api/organisation/profile
 organisationRouter.get("/profile", authMiddleware, organisationController.profile);
 
+// GET /api/organisation/logo
+organisationRouter.get("/logo", authMiddleware, organisationController.getLogo);
+
 export default organisationRouter;

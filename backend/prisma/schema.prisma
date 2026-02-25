@@ -24,10 +24,13 @@ model Organisation {
   workflows     Workflow[]
   jobOffers     JobOffer[]
   documents     Document[]
+  tasks         Task[]
 
   orgInfo       OrgInfo?
 
   createdAt     DateTime @default(now())
+
+  @@index([email])
 }
 
 model OrgInfo {
@@ -67,6 +70,8 @@ model User {
   jobOffers     JobOffer[]
 
   createdAt DateTime @default(now())
+
+  @@index([organisationId])
 }
 
 model JobOffer {
@@ -100,6 +105,8 @@ model Candidate {
   organisation   Organisation @relation(fields: [organisationId], references: [id])
 
   applications Application[]
+
+  @@index([organisationId])
 }
 
 
@@ -200,8 +207,13 @@ model Task {
   stepId String
   step   Step   @relation(fields: [stepId], references: [id])
 
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
   createdAt   DateTime  @default(now())
   completedAt DateTime?
+
+  @@index([organisationId])
 }
 
 model Rule {

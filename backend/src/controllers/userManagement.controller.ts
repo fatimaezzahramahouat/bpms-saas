@@ -15,6 +15,7 @@ const updateUserSchema = z.object({
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
     email: z.string().email().optional(),
+    password: z.string().min(6).optional(),
 });
 
 export const userManagementController = {
@@ -90,7 +91,7 @@ export const userManagementController = {
 
             const updateData = Object.fromEntries(
                 Object.entries(parsed.data).filter(([_, v]) => v !== undefined)
-            ) as { firstName?: string; lastName?: string; email?: string };
+            ) as { firstName?: string; lastName?: string; email?: string; password?: string };
 
             const updatedUser = await userManagementService.updateUser(id, updateData, organisationId);
 

@@ -60,4 +60,19 @@ export const organisationController = {
             res.status(500).json({ error: "Internal server error" });
         }
     },
+
+    async getLogo(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const organisationId = req.user?.organisationId;
+            if (!organisationId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
+
+            const logoData = await authService.getOrganisationLogo(organisationId);
+            res.status(200).json({ logo: logoData });
+        } catch (error) {
+            res.status(500).json({ error: "Internal server error" });
+        }
+    },
 };
