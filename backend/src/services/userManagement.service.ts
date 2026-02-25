@@ -25,4 +25,30 @@ export const userManagementService = {
             organisationId
         );
     },
+
+    async updateUser(userId: string, data: { firstName?: string; lastName?: string; email?: string }, organisationId: string) {
+        const user = await userManagementRepository.findUserById(userId);
+        if (!user || user.organisationId !== organisationId) {
+            throw new Error("User not found or access denied");
+        }
+
+        // If email is changing, check if new email exists
+        if (data.email && data.email !== user.email) {
+            const existingUser = await userManagementRepository.findUserByEmail(data.email);
+            if (existingUser) {
+                throw new Error("Email already exists");
+            }
+        }
+
+        return userManagementRepository.updateUser(userId, data);
+    },
+
+    async deleteUser(userId: string, organisationId: string) {
+        const user = await userManagementRepository.findUserById(userId);
+        if (!user || user.organisationId !== organisationId) {
+            throw new Error("User not found or access denied");
+        }
+
+        return userManagementRepository.deleteUser(userId);
+    },
 };

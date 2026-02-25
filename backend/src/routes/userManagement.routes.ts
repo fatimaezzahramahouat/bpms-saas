@@ -8,5 +8,7 @@ router.use(authMiddleware);
 
 router.get("/", userManagementController.getUsers);
 router.post("/", userManagementController.createUser);
+router.patch("/:id", userManagementController.updateUser);
+router.delete("/:id", userManagementController.deleteUser);
 
 export default router;

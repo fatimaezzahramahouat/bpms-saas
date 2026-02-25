@@ -47,4 +47,41 @@ export const userManagementRepository = {
             where: { email },
         });
     },
+
+    async findUserById(id: string) {
+        return prisma.user.findUnique({
+            where: { id },
+            include: {
+                admin: true,
+                rh: true,
+                manager: true,
+                employee: true,
+            },
+        });
+    },
+
+    async updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string }) {
+        return prisma.user.update({
+            where: { id },
+            data,
+        });
+    },
+
+    async deleteUser(id: string) {
+        // Since we are using a heritage pattern with separate tables, 
+        // we should delete the user which should cascade or we delete related first if not configured in prisma
+        // Looking at the schema, it's better to do it in a transaction to be safe
+        return prisma.$transaction(async (tx) => {
+            // Check for roles and delete them first
+            await tx.admin.deleteMany({ where: { userId: id } });
+            await tx.rH.deleteMany({ where: { userId: id } });
+            await tx.manager.deleteMany({ where: { userId: id } });
+            await tx.employee.deleteMany({ where: { userId: id } });
+
+            // Delete the user
+            return tx.user.delete({
+                where: { id },
+            });
+        });
+    },
 };

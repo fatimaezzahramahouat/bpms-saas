@@ -1,13 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, User, Mail, Shield, UserPlus, Filter, Search as SearchIcon, MoreVertical } from 'lucide-react';
+import { Plus, User, Mail, Shield, UserPlus, Filter, Search as SearchIcon, MoreVertical, Edit2, Trash2, Users } from 'lucide-react';
 import { CreateUserModal } from '../components/CreateUserModal';
+import { EditUserModal } from '../components/EditUserModal';
+import { DeleteConfirmationModal } from '../components/DeleteConfirmationModal';
 
 export function UsersManagement() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const fetchUsers = async () => {
         try {
@@ -32,6 +41,21 @@ export function UsersManagement() {
         fetchUsers();
     }, []);
 
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setActiveDropdown(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
     const getRoleBadge = (user: any) => {
         if (user.admin) return { label: 'Administrateur', color: 'bg-red-500/10 text-red-500 border-red-500/20' };
         if (user.rh) return { label: 'Responsable RH', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' };
@@ -47,6 +71,24 @@ export function UsersManagement() {
 
     return (
         <div className="p-8 space-y-8 min-h-full">
+            {/* Toast Notification */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, x: '-50%' }}
+                        exit={{ opacity: 0, y: -20, x: '-50%' }}
+                        className={`fixed top-8 left-1/2 z-[200] px-6 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 font-bold text-sm ${toast.type === 'success'
+                                ? 'bg-emerald-500 text-white border-emerald-400'
+                                : 'bg-red-500 text-white border-red-400'
+                            }`}
+                    >
+                        <CheckCircle2 className="w-5 h-5" />
+                        {toast.message}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-black uppercase tracking-tight text-gray-900 dark:text-white flex items-center gap-3">
@@ -84,8 +126,8 @@ export function UsersManagement() {
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                <div className="overflow-x-auto min-h-[400px]">
+                    <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="border-b border-zinc-100 dark:border-zinc-800/50">
                                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400">Utilisateur</th>
@@ -108,7 +150,7 @@ export function UsersManagement() {
                                 filteredUsers.map((user) => {
                                     const role = getRoleBadge(user);
                                     return (
-                                        <tr key={user.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-all cursor-pointer">
+                                        <tr key={user.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-all">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-full bg-h1-blue/10 flex items-center justify-center text-h1-blue overflow-hidden border border-h1-blue/20">
@@ -132,14 +174,58 @@ export function UsersManagement() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <p className="text-sm text-zinc-500 italic">
+                                                <p className="text-sm text-zinc-500">
                                                     {new Date(user.createdAt).toLocaleDateString()}
                                                 </p>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <button className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-h1-blue transition-all">
-                                                    <MoreVertical className="w-5 h-5" />
-                                                </button>
+                                            <td className="px-6 py-4 relative">
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setActiveDropdown(activeDropdown === user.id ? null : user.id);
+                                                            setSelectedUser(user);
+                                                        }}
+                                                        className="p-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-h1-blue transition-all"
+                                                    >
+                                                        <MoreVertical className="w-5 h-5" />
+                                                    </button>
+
+                                                    <AnimatePresence>
+                                                        {activeDropdown === user.id && (
+                                                            <motion.div
+                                                                ref={dropdownRef}
+                                                                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                                className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                                                            >
+                                                                <div className="p-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setIsEditModalOpen(true);
+                                                                            setActiveDropdown(null);
+                                                                        }}
+                                                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:bg-h1-blue/10 hover:text-h1-blue rounded-xl transition-all"
+                                                                    >
+                                                                        <Edit2 className="w-4 h-4" />
+                                                                        Modifier l'utilisateur
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setIsDeleteModalOpen(true);
+                                                                            setActiveDropdown(null);
+                                                                        }}
+                                                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                        Supprimer l'utilisateur
+                                                                    </button>
+                                                                </div>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -167,17 +253,46 @@ export function UsersManagement() {
                 onSuccess={() => {
                     setIsModalOpen(false);
                     fetchUsers();
+                    showToast('Utilisateur créé avec succès !');
+                }}
+            />
+
+            <EditUserModal
+                isOpen={isEditModalOpen}
+                onClose={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedUser(null);
+                }}
+                user={selectedUser}
+                onSuccess={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedUser(null);
+                    fetchUsers();
+                    showToast('Utilisateur mis à jour avec succès !');
+                }}
+            />
+
+            <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setSelectedUser(null);
+                }}
+                user={selectedUser}
+                onSuccess={() => {
+                    setIsDeleteModalOpen(false);
+                    setSelectedUser(null);
+                    fetchUsers();
+                    showToast('Utilisateur supprimé avec succès !');
                 }}
             />
         </div>
     );
 }
 
-const Users = ({ className }: { className?: string }) => (
+const CheckCircle2 = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+        <path d="m9 12 2 2 4-4" />
     </svg>
 );
