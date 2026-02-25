@@ -8,6 +8,13 @@ import { ThemeSwitcher } from '@shared/components';
 export function DashboardLayout() {
     const getRoleLabel = (user: any) => {
         if (!user) return "";
+        // Priority: Role string from login (faster)
+        if (user.role === 'ADMIN') return "Administrateur";
+        if (user.role === 'RH') return "Responsable RH";
+        if (user.role === 'MANAGER') return "Manager";
+        if (user.role === 'EMPLOYEE') return "Employé";
+
+        // Fallback: Heritage objects
         if (user.admin) return "Administrateur";
         if (user.rh) return "Responsable RH";
         if (user.manager) return "Manager";
@@ -41,7 +48,7 @@ export function DashboardLayout() {
     });
 
     const [isAdmin, setIsAdmin] = useState(() => {
-        return !!userData?.admin;
+        return !!userData?.admin || userData?.role === 'ADMIN';
     });
 
     const [hasOrgInfo, setHasOrgInfo] = useState(true); // Default to true to prevent flicker blur
