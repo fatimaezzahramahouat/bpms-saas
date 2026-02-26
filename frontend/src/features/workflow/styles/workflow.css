@@ -1,0 +1,130 @@
+/* Turbo Flow Neon Styles */
+
+.turbo-flow .react-flow__background {
+  /* Dynamic via component props */
+}
+
+/* Custom Node Styles */
+.turbo-node {
+  /* background handled by tailwind classes */
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: visible;
+}
+
+.turbo-node::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  padding: 2px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #9333ea, #3b82f6);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.3;
+  transition: opacity 0.3s ease, border-width 0.3s ease;
+}
+
+.turbo-node:hover::before {
+  opacity: 0.8;
+  box-shadow: 0 0 15px rgba(147, 51, 234, 0.3);
+}
+
+.turbo-node.selected::before {
+  opacity: 1;
+  background: linear-gradient(135deg, #a855f7, #60a5fa);
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.6);
+}
+
+.turbo-node-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.15) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.turbo-node.selected .turbo-node-glow,
+.turbo-node:hover .turbo-node-glow {
+  opacity: 1;
+}
+
+/* Edge Styles */
+.react-flow__edge-path {
+  stroke-width: 3;
+  transition: stroke-width 0.3s ease, stroke 0.3s ease;
+  filter: drop-shadow(0 0 5px rgba(147, 51, 234, 0.3));
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 4;
+  filter: drop-shadow(0 0 8px rgba(147, 51, 234, 0.6));
+}
+
+/* Custom Handle Styles */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background-color: #9333ea;
+  border: 2px solid #0d0d12;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(147, 51, 234, 0.5);
+}
+
+.react-flow__handle:hover {
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%) scale(1.1);
+  background-color: #a855f7;
+}
+
+/* Node Sidebar Draggable items */
+.dndnode {
+  height: 64px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: grab;
+  /* background and color handled by tailwind */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dndnode:hover {
+  border-color: rgba(147, 51, 234, 0.5);
+  background: rgba(147, 51, 234, 0.05);
+  box-shadow: 0 0 15px rgba(147, 51, 234, 0.1);
+  transform: translateY(-2px);
+}
+
+/* AI Assistant Pulsing Effect */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 15px rgba(147, 51, 234, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(147, 51, 234, 0);
+  }
+}
+
+.ai-assistant-btn {
+  animation: pulse-glow 2s infinite;
+}

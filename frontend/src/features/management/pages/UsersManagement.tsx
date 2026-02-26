@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, User, Mail, Shield, UserPlus, Filter, Search as SearchIcon, MoreVertical, Edit2, Trash2, Users } from 'lucide-react';
+import { Plus, User, Mail, Shield, UserPlus, Filter, Search as SearchIcon, MoreVertical, Edit2, Trash2, Users, FileSpreadsheet } from 'lucide-react';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { EditUserModal } from '../components/EditUserModal';
 import { DeleteConfirmationModal } from '../components/DeleteConfirmationModal';
+import { ExcelImportModal } from '../components/ExcelImportModal';
 
 export function UsersManagement() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -97,13 +99,22 @@ export function UsersManagement() {
                     </h1>
                     <p className="text-zinc-500 mt-1">Gérez les membres de votre organisation et leurs permissions.</p>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 bg-h1-blue hover:bg-h1-blue/90 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-h1-blue/20"
-                >
-                    <Plus className="w-5 h-5" />
-                    NOUVEAU UTILISATEUR
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsExcelModalOpen(true)}
+                        className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20"
+                    >
+                        <FileSpreadsheet className="w-5 h-5" />
+                        IMPORTER VIA EXCEL
+                    </button>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 bg-h1-blue hover:bg-h1-blue/90 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-h1-blue/20"
+                    >
+                        <Plus className="w-5 h-5" />
+                        NOUVEAU UTILISATEUR
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-sm dark:shadow-none">
@@ -255,6 +266,15 @@ export function UsersManagement() {
                     setIsModalOpen(false);
                     fetchUsers();
                     showToast('Utilisateur créé avec succès !');
+                }}
+            />
+
+            <ExcelImportModal
+                isOpen={isExcelModalOpen}
+                onClose={() => setIsExcelModalOpen(false)}
+                onSuccess={() => {
+                    fetchUsers();
+                    showToast('Importation terminée avec succès !');
                 }}
             />
 
