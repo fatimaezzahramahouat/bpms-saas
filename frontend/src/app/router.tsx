@@ -6,6 +6,7 @@ import { DashboardLayout } from '../features/dashboard/layouts/DashboardLayout';
 import { DashboardHome } from '../features/dashboard/pages/DashboardHome';
 import { Dashboard } from '../features/dashboard/pages/Dashboard';
 import { RecruitmentPage } from '../pages/RecruitmentPage';
+import TeamPage from '../pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 
 /**
@@ -37,6 +38,9 @@ export function AppRouter() {
 
       {/* Recruitment Route */}
       <Route path="/recrutement" element={<RecruitmentPage />} />
+
+      {/* Team Route */}
+      <Route path="/our-team" element={<TeamPage />} />
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />
