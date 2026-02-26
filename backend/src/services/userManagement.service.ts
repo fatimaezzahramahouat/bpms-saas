@@ -57,4 +57,39 @@ export const userManagementService = {
 
         return userManagementRepository.deleteUser(userId);
     },
+
+    async bulkImport(users: any[], organisationId: string) {
+        const defaultPassword = "NexFlow@2025";
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+        const usersToCreate = [];
+        const existingEmails = new Set();
+
+        // Check for duplicates in the input list
+        const uniqueUsers = users.filter(user => {
+            if (existingEmails.has(user.email)) return false;
+            existingEmails.add(user.email);
+            return true;
+        });
+
+        for (const userData of uniqueUsers) {
+            const existingUser = await userManagementRepository.findUserByEmail(userData.email);
+            if (!existingUser) {
+                usersToCreate.push({
+                    firstName: userData.firstName,
+                    lastName: userData.lastName,
+                    email: userData.email,
+                    role: userData.role,
+                    password: hashedPassword,
+                    organisationId,
+                });
+            }
+        }
+
+        if (usersToCreate.length === 0) {
+            throw new Error("No new users to import (all exist or invalid data)");
+        }
+
+        return userManagementRepository.bulkCreateUsers(usersToCreate);
+    },
 };

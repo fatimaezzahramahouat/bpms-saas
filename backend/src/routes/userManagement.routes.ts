@@ -8,6 +8,7 @@ router.use(authMiddleware);
 
 router.get("/", userManagementController.getUsers);
 router.post("/", userManagementController.createUser);
+router.post("/bulk-import", userManagementController.bulkImport);
 router.patch("/:id", userManagementController.updateUser);
 router.delete("/:id", userManagementController.deleteUser);
 

@@ -151,4 +151,38 @@ export const userManagementController = {
             res.status(500).json({ error: "Internal server error" });
         }
     },
+
+    async bulkImport(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const organisationId = req.user?.organisationId;
+            const userId = req.user?.userId;
+
+            if (!organisationId || !userId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
+
+            // Real-time Admin check
+            const admin = await prisma.admin.findUnique({ where: { userId } });
+            if (!admin) {
+                res.status(403).json({ error: "Forbidden: Admin access required" });
+                return;
+            }
+
+            const { users } = req.body;
+            if (!users || !Array.isArray(users)) {
+                res.status(400).json({ error: "Invalid data format: 'users' array expected" });
+                return;
+            }
+
+            const result = await userManagementService.bulkImport(users, organisationId);
+
+            res.status(201).json({
+                message: `${result.length} utilisateurs ont été importés avec succès.`,
+                data: result,
+            });
+        } catch (error: any) {
+            res.status(500).json({ error: error.message || "Internal server error" });
+        }
+    },
 };
