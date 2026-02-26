@@ -89,4 +89,29 @@ export const userManagementRepository = {
             });
         });
     },
+
+    async bulkCreateUsers(usersData: (CreateUserData & { organisationId: string })[]) {
+        return prisma.$transaction(async (tx) => {
+            const createdUsers = [];
+            for (const data of usersData) {
+                const { role, ...userData } = data;
+                const user = await tx.user.create({
+                    data: {
+                        ...userData,
+                        [role.toLowerCase()]: {
+                            create: {},
+                        },
+                    },
+                    include: {
+                        admin: true,
+                        rh: true,
+                        manager: true,
+                        employee: true,
+                    },
+                });
+                createdUsers.push(user);
+            }
+            return createdUsers;
+        });
+    },
 };

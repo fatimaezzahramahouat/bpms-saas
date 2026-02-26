@@ -20,7 +20,6 @@ model Organisation {
   nb_employers  Int?
 
   users         User[]
-  candidates    Candidate[]
   workflows     Workflow[]
   jobOffers     JobOffer[]
   documents     Document[]
@@ -73,10 +72,39 @@ model User {
 
   @@index([organisationId])
 }
+enum ContractType {
+  CDI
+  CDD
+  STAGE
+  FREELANCE
+  ALTERNANCE
+}
 
+enum JobLevel {
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+  INTERN
+}
+
+enum WorkMode {
+  REMOTE
+  ONSITE
+  HYBRID
+}
 model JobOffer {
-  id    String @id @default(uuid())
-  title String
+  id          String @id @default(uuid())
+  title       String
+  description String
+
+  contractType ContractType
+  level        JobLevel
+  workMode     WorkMode
+
+  skills       String[]   // competences required (PostgreSQL supports arrays)
+
+  budget    Float?
 
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])
@@ -85,6 +113,11 @@ model JobOffer {
   createdBy   User   @relation(fields: [createdById], references: [id])
 
   applications Application[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organisationId])
 }
 enum CandidateStatus {
   CANDIDATE
@@ -100,16 +133,12 @@ model Candidate {
   fullName String
   phone    String?
   cv       String?   
-  status   String @default("CANDIDATE") 
-  organisationId String
-  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  status   CandidateStatus @default(CANDIDATE)
 
   applications Application[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  @@index([organisationId])
+  updatedAt DateTime @updatedAt
 }
 
 
@@ -132,6 +161,8 @@ model Application {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([candidateId, jobOfferId])
 }
 
 model Document {
