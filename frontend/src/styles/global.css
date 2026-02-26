@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@config "../../tailwind.config.js";
+ @import "tailwindcss";
 
+/* Tailwind v4 - Theme variables defined in @theme below */
 
 @theme {
   --color-h1-blue: #4b4dff;
@@ -37,10 +37,22 @@
     --input-bg: rgba(255, 255, 255, 0.05);
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--bg-main);
     color: var(--text-primary);
-    @apply font-sans min-h-screen transition-colors duration-300;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 300ms;
+  }
+
+  /* Smooth scroll offset for fixed navbar */
+  #fonctionnalites{
+    scroll-margin-top: 80px;
   }
 
   /* Ensure text colors are responsive to dark mode by default when using variables */
@@ -52,40 +64,118 @@
   h6,
   p,
   span {
-    @apply transition-colors duration-300;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 300ms;
   }
 }
 
 .bg-dots {
-  background-image: radial-gradient(var(--text-secondary) 1px, transparent 1px);
+  background-image: radial-gradient(circle, var(--text-secondary) 1px, transparent 1px);
   background-size: 24px 24px;
   opacity: 0.1;
 }
 
-.gov-card {
-  background-color: var(--card-bg);
-  border-color: var(--border-color);
-  @apply shadow-2xl rounded-xl border relative z-10;
-}
+@layer components {
+  .gov-card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border-radius: 0.75rem;
+    border-width: 1px;
+    position: relative;
+    z-index: 10;
+  }
 
-.gov-label-box-compact {
-  @apply bg-h1-blue text-white font-bold px-4 flex items-center w-48 h-12 uppercase text-xs tracking-wider shrink-0;
-}
+  .gov-label-box-compact {
+    background-color: var(--color-h1-blue);
+    color: white;
+    font-weight: 700;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    display: flex;
+    align-items: center;
+    width: 12rem;
+    height: 3rem;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
 
-.gov-input-compact {
-  background-color: var(--input-bg);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-  @apply border h-12 px-4 w-full focus:bg-white/10 focus:border-h1-blue/50 outline-none text-sm transition-all;
-}
+  .gov-input-compact {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    border-width: 1px;
+    height: 3rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    width: 100%;
+    outline: none;
+    font-size: 0.875rem;
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
 
-.gov-row-compact {
-  border-color: var(--border-color);
-  @apply flex overflow-hidden rounded-md border mb-4;
-}
+  .gov-input-compact:focus {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(75, 77, 255, 0.5);
+  }
 
-.gov-button-compact {
-  @apply bg-h1-blue hover:bg-h1-blue/90 text-white font-bold py-2 px-8 rounded-md flex items-center gap-2 transition-all shadow-md active:scale-95 uppercase text-xs tracking-widest;
+  .gov-row-compact {
+    border-color: var(--border-color);
+    display: flex;
+    overflow: hidden;
+    border-radius: 0.375rem;
+    border-width: 1px;
+    margin-bottom: 1rem;
+  }
+
+  .gov-button-compact {
+    background-color: var(--color-h1-blue);
+    color: white;
+    font-weight: 700;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  .gov-button-compact:hover {
+    background-color: rgba(75, 77, 255, 0.9);
+  }
+
+  .gov-button-compact:active {
+    transform: scale(0.95);
+  }
+
+  .glass-header {
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .dark .glass-header {
+    background-color: rgba(0, 0, 0, 0.8);
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+  }
 }
 
 @keyframes float-tl-br {
@@ -114,8 +204,4 @@
 
 .animate-float-tl-br {
   animation: float-tl-br 15s ease-in-out infinite;
-}
-
-.glass-header {
-  @apply bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-black/5 dark:border-white/5 sticky top-0 z-50;
 }
