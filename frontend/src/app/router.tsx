@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { Home } from '../features/auth/pages/Home';
+import { Pricing } from '../features/auth/pages/Pricing';
 import { Login } from '../features/auth/pages/Login';
 import { RegisterOrg } from '../features/auth/pages/RegisterOrg';
 import { DashboardLayout } from '../features/dashboard/layouts/DashboardLayout';
@@ -26,6 +27,7 @@ export function AppRouter() {
     <Routes>
       {/* Public Routes - Home/Landing */}
       <Route path="/" element={<Home />} />
+      <Route path="/pricing" element={<Pricing />} />
 
       {/* Auth Routes */}
       <Route path="/login" element={<Login />} />

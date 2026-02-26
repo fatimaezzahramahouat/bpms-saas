@@ -11,31 +11,42 @@ import { Footer, ThemeSwitcher } from '@shared/components';
  * This page is part of the auth feature module.
  */
 export function Home() {
+
   const [showSubMenu, setShowSubMenu] = useState(false);
   const [yearly, setYearly] = useState(false);
   const navigate = useNavigate();
 
+  const scrollToFeatures = () => {
+    const element = document.getElementById('fonctionnalites');
+    if (element) {
+      element.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   const plans = [
     {
-      name: "Starter",
+      name: "Démarrage",
       price: 49,
-      features: ["Up to 50 Employees", "Basic Recruitment", "Email Support", "Core HR Features"],
-      cta: "Start Free Trial",
+      features: ["Jusqu'à 50 Employés", "Recrutement de Base", "Support par Email", "Fonctionnalités RH de Base"],
+      cta: "Commencer l'Essai Gratuit",
       popular: false
     },
     {
-      name: "Professional",
+      name: "Professionnel",
       price: 149,
-      features: ["Up to 500 Employees", "Advanced Analytics", "Priority Support", "All Features", "API Access"],
-      cta: "Start Free Trial",
+      features: ["Jusqu'à 500 Employés", "Analyses Avancées", "Support Prioritaire", "Toutes les Fonctionnalités", "Accès API"],
+      cta: "Commencer l'Essai Gratuit",
       popular: true
     },
     {
-      name: "Enterprise",
+      name: "Entreprise",
       price: 0,
       isCustom: true,
-      features: ["Unlimited Employees", "Custom Integration", "24/7 Dedicated Support", "SLA Guarantee", "On-Premise Option"],
-      cta: "Contact Sales",
+      features: ["Employés Illimités", "Intégration Personnalisée", "Support Dédié 24/7", "Garantie SLA", "Option Sur Site"],
+      cta: "Contacter les Ventes",
       popular: false
     }
   ];
@@ -60,12 +71,14 @@ export function Home() {
                 Espace d'Organisation
                 <ChevronDown className="w-4 h-4 text-zinc-400 dark:text-white/40 group-hover:text-h1-blue dark:group-hover:text-white transition-colors" />
               </button>
-              <Link
-                to="/features"
-                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
-              >
-                Fonctionnalités
-              </Link>
+              
+              <button
+  onClick={scrollToFeatures}
+  className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0"
+>
+  Fonctionnalités
+</button>
+
               <Link
                 to="/pricing"
                 className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
@@ -210,14 +223,14 @@ export function Home() {
       </div>
 
       {/* Features Section */}
-      <section className="py-20 px-6 bg-white dark:bg-h1-black">
+      <section id="fonctionnalites" className="py-20 px-6 bg-white dark:bg-h1-black scroll-mt-20">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Everything You Need to Manage Your Team
+              Tout Ce Dont Vous Avez Besoin pour Gérer Votre Équipe
             </h2>
             <p className="text-gray-600 dark:text-white/70">
-              Powerful features designed for modern HR teams
+              Des fonctionnalités puissantes conçues pour les équipes RH modernes
             </p>
           </div>
           
@@ -225,23 +238,23 @@ export function Home() {
             {[
               {
                 icon: Users,
-                title: "Recruitment Management",
-                description: "Track candidates, schedule interviews, and manage your hiring pipeline effortlessly."
+                title: "Gestion du Recrutement",
+                description: "Suivez les candidats, planifiez les entretiens et gérez votre processus de recrutement en toute simplicité."
               },
               {
                 icon: UserCheck,
-                title: "Employee Tracking",
-                description: "Comprehensive employee database with attendance, leave management, and more."
+                title: "Suivi des Employés",
+                description: "Base de données complète des employés avec présence, gestion des congés, et plus encore."
               },
               {
                 icon: TrendingUp,
-                title: "Performance Analytics",
-                description: "Real-time insights and analytics to track employee performance and engagement."
+                title: "Analyses de Performance",
+                description: "Informations et analyses en temps réel pour suivre la performance et l'engagement des employés."
               },
               {
                 icon: FileText,
-                title: "Compliance & Reports",
-                description: "Automated compliance tracking and comprehensive reporting for audits."
+                title: "Conformité et Rapports",
+                description: "Suivi automatisé de la conformité et rapports complets pour les audits."
               }
             ].map((feature, index) => (
               <motion.div
@@ -272,15 +285,15 @@ export function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-white mb-4">
-              Simple, Transparent Pricing
+              Tarification Simple et Transparente
             </h2>
             <p className="text-white/80 mb-8">
-              Choose the perfect plan for your team size
+              Choisissez le plan parfait pour la taille de votre équipe
             </p>
             
             {/* Toggle */}
             <div className="flex items-center justify-center gap-4">
-              <span className={`text-sm font-medium ${!yearly ? 'text-white' : 'text-white/60'}`}>Monthly</span>
+              <span className={`text-sm font-medium ${!yearly ? 'text-white' : 'text-white/60'}`}>Mensuel</span>
               <button
                 onClick={() => setYearly(!yearly)}
                 className={`relative w-14 h-7 rounded-full transition-colors ${yearly ? 'bg-white' : 'bg-white/30'}`}
@@ -288,18 +301,18 @@ export function Home() {
                 <div className={`absolute top-1 w-5 h-5 rounded-full bg-h1-blue transition-all ${yearly ? 'left-8' : 'left-1'}`} />
               </button>
               <span className={`text-sm font-medium ${yearly ? 'text-white' : 'text-white/60'}`}>
-                Yearly
+                Annuel
               </span>
               <span className="ml-2 px-2 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
-                Save 20%
+                Économisez 20%
               </span>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {plans.map((plan, index) => {
-              const displayPrice = plan.isCustom ? 'Custom' : (yearly ? Math.round(plan.price * 12 * 0.8) : plan.price);
-              const period = plan.isCustom ? '' : (yearly ? '/year' : '/month');
+              const displayPrice = plan.isCustom ? 'Sur Mesure' : (yearly ? Math.round(plan.price * 12 * 0.8) : plan.price);
+              const period = plan.isCustom ? '' : (yearly ? '/an' : '/mois');
               
               return (
                 <div
@@ -308,7 +321,7 @@ export function Home() {
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-h1-blue text-white text-xs font-bold rounded-full">
-                      Most Popular
+                      Le Plus Populaire
                     </div>
                   )}
                   <h3 className={`text-2xl font-bold mb-4 ${plan.popular ? 'text-gray-900' : 'text-white'}`}>
@@ -351,10 +364,10 @@ export function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Trusted by HR Leaders
+              Approuvé par les Leaders RH
             </h2>
             <p className="text-gray-600 dark:text-white/70">
-              See what HR professionals have to say about Nexflow
+              Découvrez ce que les professionnels RH disent de Nexflow
             </p>
           </div>
           
@@ -362,21 +375,21 @@ export function Home() {
             {[
               {
                 name: "Sarah Martinez",
-                role: "Head of HR at TechVentures",
+                role: "Directrice RH chez TechVentures",
                 image: "https://i.pravatar.cc/100?img=1",
-                quote: "Nexflow has completely transformed our recruitment process. We reduced our time-to-hire by 45% and improved candidate quality significantly."
+                quote: "Nexflow a complètement transformé notre processus de recrutement. Nous avons réduit notre délai d'embauche de 45% et considérablement amélioré la qualité des candidats."
               },
               {
                 name: "David Chen",
-                role: "HR Director at GlobalCorp",
+                role: "Directeur RH chez GlobalCorp",
                 image: "https://i.pravatar.cc/100?img=11",
-                quote: "The analytics dashboard gives us real-time insights into team performance. It's become an essential tool for our 500+ employee organization."
+                quote: "Le tableau de bord analytique nous donne des informations en temps réel sur la performance de l'équipe. C'est devenu un outil essentiel pour notre organisation de plus de 500 employés."
               },
               {
                 name: "Emily Rodriguez",
-                role: "People Operations Manager",
+                role: "Responsable des Opérations RH",
                 image: "https://i.pravatar.cc/100?img=5",
-                quote: "Finally, an HR platform that's intuitive and powerful. Our team adopted it within days, and employee satisfaction has increased by 30%."
+                quote: "Enfin, une plateforme RH intuitive et puissante. Notre équipe l'a adoptée en quelques jours et la satisfaction des employés a augmenté de 30%."
               }
             ].map((testimonial, index) => (
               <div
@@ -401,24 +414,24 @@ export function Home() {
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto bg-gradient-to-br from-h1-blue/10 to-purple-500/10 dark:from-h1-blue/20 dark:to-purple-500/20 rounded-2xl py-16 px-8 text-center">
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Ready to Transform Your HR Operations?
+            Prêt à Transformer Vos Opérations RH ?
           </h2>
           <p className="text-gray-600 dark:text-white/70 mb-8">
-            Join thousands of companies modernizing their HR processes with Nexflow
+            Rejoignez des milliers d'entreprises qui modernisent leurs processus RH avec Nexflow
           </p>
           <div className="flex gap-4 justify-center mt-8 flex-wrap">
             <button
               onClick={() => navigate('/register-org')}
               className="bg-h1-blue hover:bg-[#3b3de0] text-white px-8 py-3 rounded-lg font-semibold transition-all flex items-center gap-2"
             >
-              Start Free Trial
+              Commencer l'Essai Gratuit
               <ArrowRight className="w-5 h-5" />
             </button>
             <Link
               to="/recrutement"
               className="border-2 border-h1-blue text-h1-blue hover:bg-h1-blue/10 px-8 py-3 rounded-lg font-semibold transition-all"
             >
-              Looking for Jobs?
+              Vous Cherchez un Emploi ?
             </Link>
           </div>
         </div>
