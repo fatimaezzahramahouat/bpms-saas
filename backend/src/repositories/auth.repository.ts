@@ -60,7 +60,20 @@ export const authRepository = {
     return prisma.user.findUnique({
       where: { email },
       include: {
-        organisation: true,
+        organisation: {
+          include: {
+            orgInfo: {
+              select: {
+                id: true,
+                domaine: true,
+                address: true,
+                city: true,
+                website: true,
+                logo: true
+              }
+            }
+          }
+        },
         admin: true,
         rh: true,
         manager: true,
@@ -86,13 +99,35 @@ export const authRepository = {
     return prisma.organisation.findUnique({
       where: { id },
       include: {
-        orgInfo: true,
+        orgInfo: {
+          select: {
+            id: true,
+            domaine: true,
+            address: true,
+            city: true,
+            website: true,
+            logo: true
+          }
+        },
         users: {
           include: {
             admin: true,
             rh: true,
             manager: true,
             employee: true
+          }
+        }
+      }
+    });
+  },
+
+  async getLogo(organisationId: string) {
+    return prisma.organisation.findUnique({
+      where: { id: organisationId },
+      select: {
+        orgInfo: {
+          select: {
+            logo: true
           }
         }
       }

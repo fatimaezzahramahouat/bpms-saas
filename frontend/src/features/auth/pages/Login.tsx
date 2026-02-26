@@ -1,7 +1,7 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { Mail, User, Check } from 'lucide-react';
+import { Mail, User, Check, Eye, EyeOff } from 'lucide-react';
 import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
 
 /**
@@ -12,6 +12,7 @@ import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
  */
 export function Login() {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLoginChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -89,15 +90,24 @@ export function Login() {
                 <User className="w-5 h-5 mr-4" />
                 Mot de passe
               </div>
-              <input
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                className="gov-input-compact"
-                value={loginData.password}
-                onChange={handleLoginChange}
-                required
-              />
+              <div className="flex-1 relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="••••••••"
+                  className="gov-input-compact pr-12"
+                  value={loginData.password}
+                  onChange={handleLoginChange}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-h1-blue transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col items-center gap-6 mt-4">

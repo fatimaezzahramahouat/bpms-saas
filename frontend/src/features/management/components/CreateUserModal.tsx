@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Mail, Lock, ShieldCheck, UserPlus, CheckCircle2 } from 'lucide-react';
+import { X, User, Mail, Lock, ShieldCheck, UserPlus, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 interface CreateUserModalProps {
     isOpen: boolean;
@@ -16,6 +16,7 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
         password: '',
         role: 'Employee'
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -136,13 +137,20 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                                     <input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         required
-                                        className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-11 pr-4 py-3 placeholder:text-zinc-400 focus:border-h1-blue outline-none transition-all text-sm"
+                                        className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-11 pr-12 py-3 placeholder:text-zinc-400 focus:border-h1-blue outline-none transition-all text-sm"
                                         placeholder="••••••••"
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-h1-blue transition-colors cursor-pointer"
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
                                 </div>
                             </div>
 

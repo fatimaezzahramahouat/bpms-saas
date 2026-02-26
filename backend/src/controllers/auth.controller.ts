@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import { z } from "zod";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import { authService } from "../services/auth.service";
+import { authRepository } from "../repositories/auth.repository";
 import { AuthRequest } from "../middleware/auth.middleware";
+
+const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
 // ─── Zod Schemas ─────────────────────────────────────────
 
@@ -95,18 +100,93 @@ export const authController = {
         return;
       }
 
-      const result = await authService.login(parsed.data);
+      const { email, password } = parsed.data;
+
+      // 1. Use the repository for a trusted, robust query
+      const user = await authRepository.findUserByEmail(email);
+
+      // 2. Safety Checks: If user not found
+      if (!user) {
+        console.warn(`Login attempt failed: User not found (${email})`);
+        res.status(401).json({ error: "Identifiants invalides" });
+        return;
+      }
+
+      // 3. Password Validation
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        console.warn(`Login attempt failed: Invalid password (${email})`);
+        res.status(401).json({ error: "Identifiants invalides" });
+        return;
+      }
+
+      // 4. Role Identification (Heritage Pattern safety)
+      let role = "EMPLOYEE";
+      if (user.admin) role = "ADMIN";
+      else if (user.rh) role = "RH";
+      else if (user.manager) role = "MANAGER";
+      else if (user.employee) role = "EMPLOYEE";
+
+      // 5. JWT Payload - RESTORE isAdmin for middleware compatibility
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          role: role,
+          organisationId: user.organisationId,
+          firstName: user.firstName,
+          isAdmin: !!user.admin, // Missing in previous version!
+        },
+        JWT_SECRET,
+        { expiresIn: "24h" }
+      );
 
       res.status(200).json({
         message: "Login successful",
-        data: result,
+        data: {
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role,
+            organisation: user.organisation,
+            admin: user.admin,
+            rh: user.rh,
+            manager: user.manager,
+            employee: user.employee
+          }
+        },
       });
     } catch (error: any) {
-      if (error.message === "Invalid email or password") {
-        res.status(401).json({ error: error.message });
+      console.error("LOGIN_CRITICAL_ERROR:", error);
+      res.status(500).json({
+        error: "Une erreur interne est survenue lors de la connexion",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined
+      });
+    }
+  },
+
+  async getCurrentUser(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        res.status(401).json({ error: "Non autorisé" });
         return;
       }
-      res.status(500).json({ error: "Internal server error" });
+
+      const user = await authRepository.findUserByEmail(req.user!.email);
+
+      if (!user) {
+        res.status(404).json({ error: "Utilisateur non trouvé" });
+        return;
+      }
+
+      res.status(200).json({ data: user });
+    } catch (error) {
+      console.error("GET_CURRENT_USER_ERROR:", error);
+      res.status(500).json({ error: "Erreur interne du serveur" });
     }
   },
 };
