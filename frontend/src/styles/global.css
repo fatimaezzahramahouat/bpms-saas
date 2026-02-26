@@ -1,4 +1,6 @@
- @import "tailwindcss";
+
+@import "tailwindcss";
+
 
 /* Tailwind v4 - Theme variables defined in @theme below */
 
@@ -205,3 +207,4 @@
 .animate-float-tl-br {
   animation: float-tl-br 15s ease-in-out infinite;
 }
+

@@ -152,6 +152,8 @@ export function RecruitmentPage() {
   const [location, setLocation] = useState('');
   const [selectedJob, setSelectedJob] = useState<JobOffer | null>(null);
   const [selectedJobForDetails, setSelectedJobForDetails] = useState<JobOffer | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const jobsPerPage = 6;
 
   /**
    * Filter job offers based on search query, contract type, and location
@@ -173,6 +175,22 @@ export function RecruitmentPage() {
   }, [searchQuery, contractType, location]);
 
   /**
+   * Pagination logic
+   */
+  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+  const startIndex = (currentPage - 1) * jobsPerPage;
+  const endIndex = startIndex + jobsPerPage;
+  const paginatedJobs = filteredJobs.slice(startIndex, endIndex);
+
+  /**
+   * Handle page change
+   */
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /**
    * Check if any filters are active
    */
   const hasActiveFilters = searchQuery || contractType || location;
@@ -184,6 +202,7 @@ export function RecruitmentPage() {
     setSearchQuery('');
     setContractType('');
     setLocation('');
+    setCurrentPage(1);
   };
 
   return (
@@ -305,13 +324,63 @@ export function RecruitmentPage() {
         
         {/* Responsive Grid */}
         {filteredJobs.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredJobs.map((job) => (
-              <div key={job.id}>
-                <JobCard job={job} onApply={setSelectedJob} onReadMore={setSelectedJobForDetails} />
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {paginatedJobs.map((job) => (
+                <div key={job.id}>
+                  <JobCard job={job} onApply={setSelectedJob} onReadMore={setSelectedJobForDetails} />
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination Component */}
+            {totalPages > 1 && (
+              <div className="mt-12">
+                <div className="flex flex-col items-center gap-4">
+                  {/* Page Info */}
+                  <div className="text-h1-slate dark:text-h1-slate text-sm font-medium">
+                    Page {currentPage} sur {totalPages}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  <div className="flex items-center gap-2">
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 rounded-lg text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-900 disabled:hover:border-gray-300 dark:disabled:hover:bg-h1-black dark:disabled:hover:text-white dark:disabled:hover:border-white/10"
+                    >
+                      Précédent
+                    </button>
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                          currentPage === page
+                            ? 'bg-h1-blue text-white'
+                            : 'bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 rounded-lg text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-900 disabled:hover:border-gray-300 dark:disabled:hover:bg-h1-black dark:disabled:hover:text-white dark:disabled:hover:border-white/10"
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           /* No Results Message */
           <div className="text-center py-12">
