@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Users, FileText, Settings, LogOut, Bell, Search } from 'lucide-react';
+import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
@@ -206,6 +206,19 @@ export function DashboardLayout() {
                             Equipe
                         </NavLink>
                     )}
+
+                    <NavLink
+                        to="/dashboard/workflow"
+                        className={({ isActive }) =>
+                            `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                                ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20'
+                                : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white'
+                            }`
+                        }
+                    >
+                        <GitMerge className="w-5 h-5" />
+                        Workflow
+                    </NavLink>
 
                     {[
                         { icon: FileText, label: 'Documents', href: '#' },
