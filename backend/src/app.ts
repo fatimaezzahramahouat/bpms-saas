@@ -2,8 +2,9 @@ import express from "express";
 import cors from "cors";
 import authRouter from "./routes/auth.routes";
 import organisationRouter from "./routes/organisation.routes";
-import candidateRouter from "./routes/candidate.routes";
 import userManagementRouter from "./routes/userManagement.routes";
+import jobOfferRouter from "./routes/jobOffer.routes";
+import { errorMiddleware } from "./middleware/error.middleware";
 
 const app = express();
 
@@ -11,11 +12,14 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true, parameterLimit: 50000 }));
-// Routes
 
+// Routes
 app.use("/api/auth", authRouter);
 app.use("/api/organisation", organisationRouter);
-app.use("/api/candidates", candidateRouter);
 app.use("/api/users", userManagementRouter);
+app.use("/api/joboffers", jobOfferRouter);
+
+// Global Error Handler
+app.use(errorMiddleware);
 
 export default app;
