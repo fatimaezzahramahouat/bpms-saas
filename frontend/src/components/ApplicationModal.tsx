@@ -10,7 +10,7 @@ interface ApplicationModalProps {
   isOpen: boolean;
   onClose: () => void;
   jobTitle: string;
-  jobId: number;
+  jobId: string | number;
 }
 
 interface FormData {

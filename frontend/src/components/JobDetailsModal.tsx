@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { X, ArrowLeft, MapPin, Clock, Building2, Briefcase, DollarSign, Calendar } from 'lucide-react';
+import { X, MapPin, Clock, Building2, Briefcase, DollarSign, Calendar } from 'lucide-react';
 import { ApplicationModal } from './ApplicationModal';
 
 interface JobDetailsModalProps {
   job: {
-    id: number;
+    id: string | number;
     title: string;
     company: string;
     location: string;
@@ -14,7 +14,9 @@ interface JobDetailsModalProps {
     skills?: string[];
     budget?: string;
     deadline?: string;
-    experienceLevel?: 'Junior' | 'Intermediate' | 'Senior';
+    experienceLevel?: string;
+    responsibilities?: string[];
+    workMode?: string;
   };
   isOpen: boolean;
   onClose: () => void;
@@ -88,6 +90,11 @@ export function JobDetailsModal({ job, isOpen, onClose }: JobDetailsModalProps) 
                   {job.experienceLevel}
                 </span>
               )}
+              {job.workMode && (
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-h1-blue/10 text-h1-blue">
+                  {job.workMode}
+                </span>
+              )}
               <span className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
                 <Clock className="w-4 h-4" />
                 {job.postedDate}
@@ -107,6 +114,22 @@ export function JobDetailsModal({ job, isOpen, onClose }: JobDetailsModalProps) 
                 {job.description}
               </div>
             </section>
+
+            {/* Responsibilities */}
+            {job.responsibilities && job.responsibilities.length > 0 && (
+              <section>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
+                  Responsabilités
+                </h3>
+                <ul className="list-disc pl-5 space-y-2 text-gray-600 dark:text-gray-300">
+                  {job.responsibilities.map((resp, index) => (
+                    <li key={index} className="leading-relaxed">
+                      {resp}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             {/* Job Details Grid */}
             <section>

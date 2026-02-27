@@ -7,7 +7,7 @@ import { ChevronRight } from 'lucide-react';
  */
 interface JobCardProps {
   job: {
-    id: number;
+    id: string | number;
     title: string;
     company: string;
     location: string;
@@ -17,7 +17,9 @@ interface JobCardProps {
     skills?: string[];
     budget?: string;
     deadline?: string;
-    experienceLevel?: 'Junior' | 'Intermediate' | 'Senior';
+    experienceLevel?: string;
+    responsibilities?: string[];
+    workMode?: string;
   };
   onApply?: (job: JobCardProps['job']) => void;
   onReadMore?: (job: JobCardProps['job']) => void;
@@ -43,10 +45,17 @@ export function JobCard({ job, onApply, onReadMore }: JobCardProps) {
         {job.description}
       </p>
       
-      {/* Posted Date */}
-      <span className="text-xs text-gray-500 dark:text-gray-500 mb-4">
-        {job.postedDate}
-      </span>
+      {/* Meta Info: WorkMode + Posted Date */}
+      <div className="flex items-center justify-between mb-4">
+        {job.workMode && (
+          <span className="text-xs px-2 py-1 rounded bg-h1-blue/10 text-h1-blue font-medium">
+            {job.workMode}
+          </span>
+        )}
+        <span className="text-xs text-gray-500 dark:text-gray-500">
+          {job.postedDate}
+        </span>
+      </div>
 
       {/* Actions - pushed to bottom with mt-auto */}
       <div className="mt-auto space-y-3">

@@ -1,186 +1,73 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { JobCard } from '../components/JobCard';
 import { ApplicationModal } from '../components/ApplicationModal';
 import { JobDetailsModal } from '../components/JobDetailsModal';
 import { Footer } from '@shared/components';
-import { Search, X, MapPin, Briefcase, Home } from 'lucide-react';
-
-/**
- * Job offer type definition
- */
-interface JobOffer {
-  id: number;
-  title: string;
-  company: string;
-  location: string;
-  type: string;
-  description: string;
-  postedDate: string;
-  skills?: string[];
-  budget?: string;
-  deadline?: string;
-  experienceLevel?: 'Junior' | 'Intermediate' | 'Senior';
-}
-
-/**
- * Mock job offers data
- */
-const jobOffers: JobOffer[] = [
-  {
-    id: 1,
-    title: 'Développeur Frontend React',
-    company: 'Nexflow',
-    location: 'Casablanca, Maroc',
-    type: 'CDI',
-    description: 'Rejoignez notre équipe pour développer des interfaces utilisateur modernes et performantes utilisant React, TypeScript et les dernières technologies web. Vous serez responsable de la conception et de l\'implémentation de nouvelles fonctionnalités, de l\'optimisation des performances et de l\'accessibilité.\n\nResponsabilités:\n• Développer des composants React réutilisables\n• Collaborer avec les designers pour implémenter des designs fidelity\n• Écrire des tests unitaires et d\'intégration\n• Participer aux code reviews\n• Contribuer à l\'amélioration continue de la base de code',
-    postedDate: 'Il y a 2 jours',
-    skills: ['React', 'TypeScript', 'Tailwind CSS', 'Jest', 'Git'],
-    budget: '8000 - 15000 MAD/mois',
-    deadline: '15 Mars 2025',
-    experienceLevel: 'Intermediate',
-  },
-  {
-    id: 2,
-    title: 'Designer UI/UX',
-    company: 'TechCorp',
-    location: 'Rabat, Maroc',
-    type: 'CDI',
-    description: 'Nous cherchons un designer créatif pour concevoir des expériences utilisateur exceptionnelles pour nos applications mobiles et web. Vous travaillerez en étroite collaboration avec les équipes produit et développement.',
-    postedDate: 'Il y a 3 jours',
-    skills: ['Figma', 'Adobe XD', 'UI Design', 'UX Research', 'Prototyping'],
-    budget: '6000 - 12000 MAD/mois',
-    deadline: '20 Mars 2025',
-    experienceLevel: 'Intermediate',
-  },
-  {
-    id: 3,
-    title: 'Développeur Backend Node.js',
-    company: 'DataFlow',
-    location: 'Casablanca, Maroc',
-    type: 'CDI',
-    description: 'Participez à la conception et au développement de nos APIs microservices utilisant Node.js, Express et PostgreSQL. Vous rejoindrez une équipe dynamique et participerez à des projets innovants.',
-    postedDate: 'Il y a 5 jours',
-    skills: ['Node.js', 'Express', 'PostgreSQL', 'Docker', 'Redis'],
-    budget: '10000 - 18000 MAD/mois',
-    deadline: '25 Mars 2025',
-    experienceLevel: 'Senior',
-  },
-  {
-    id: 4,
-    title: 'Stagiaire Marketing Digital',
-    company: 'GrowthLab',
-    location: 'Marrakech, Maroc',
-    type: 'Stage',
-    description: 'Une opportunité de stage pour acquérir une expérience pratique en marketing digital, SEO et gestion des réseaux sociaux. Vous assisterez l\'équipe marketing dans ses quotidiennes.',
-    postedDate: 'Il y a 1 semaine',
-    skills: ['Google Analytics', 'SEO', 'Social Media', 'Content Creation'],
-    budget: '2000 - 3000 MAD/mois',
-    deadline: '30 Avril 2025',
-    experienceLevel: 'Junior',
-  },
-  {
-    id: 5,
-    title: 'Chef de Projet IT',
-    company: 'InnovTech',
-    location: 'Tanger, Maroc',
-    type: 'CDI',
-    description: 'Gérez des projets technologiques from scratch, coordonnez les équipes de développement et assurez le respect des délais. Vous serez le point de contact principal entre les parties prenantes et l\'équipe technique.',
-    postedDate: 'Il y a 1 semaine',
-    skills: ['Project Management', 'Agile', 'Jira', 'Scrum', 'Communication'],
-    budget: '12000 - 20000 MAD/mois',
-    deadline: '10 Mars 2025',
-    experienceLevel: 'Senior',
-  },
-  {
-    id: 6,
-    title: 'Développeur Full Stack',
-    company: 'CloudNine',
-    location: 'Casablanca, Maroc',
-    type: 'CDD',
-    description: 'Travailler sur des projets stimulants en utilisant React pour le frontend et Node.js pour le backend. Vous participerez au développement de solutions cloud innovantes.',
-    postedDate: 'Il y a 2 semaines',
-    skills: ['React', 'Node.js', 'TypeScript', 'AWS', 'GraphQL'],
-    budget: '9000 - 16000 MAD/mois',
-    experienceLevel: 'Intermediate',
-  },
-  {
-    id: 7,
-    title: 'Développeur Freelance',
-    company: 'TechHub',
-    location: 'Remote',
-    type: 'Freelance',
-    description: 'Rejoignez notre pool de développeurs freelance pour des missions variées sur des projets innovants. Vous aurez la flexibilité de choisir vos missions et votre emploi du temps.',
-    postedDate: 'Il y a 3 jours',
-    skills: ['JavaScript', 'React', 'Node.js', 'MongoDB'],
-    budget: '300 - 500 MAD/jour',
-    experienceLevel: 'Intermediate',
-  },
-  {
-    id: 8,
-    title: 'Développeur Mobile React Native',
-    company: 'AppWorks',
-    location: 'Casablanca, Maroc',
-    type: 'CDI',
-    description: 'Développez des applications mobiles performantes pour iOS et Android avec React Native. Vous serez responsible de la création d\'interfaces utilisateur fluides et réactives.',
-    postedDate: 'Il y a 1 semaine',
-    skills: ['React Native', 'TypeScript', 'iOS', 'Android', 'Redux'],
-    budget: '8000 - 14000 MAD/mois',
-    deadline: '5 Avril 2025',
-    experienceLevel: 'Intermediate',
-  },
-];
-
-/**
- * Get unique contract types from job offers
- */
-const contractTypes = ['CDI', 'CDD', 'Stage', 'Freelance'];
-
-/**
- * Get unique locations from job offers
- */
-const uniqueLocations = Array.from(new Set(jobOffers.map(job => job.location.split(',')[0].trim())));
+import { Search, X, MapPin, Briefcase, Home, Loader2, AlertCircle } from 'lucide-react';
+import { jobOfferService, JobOffer } from '../shared/services/jobOffer.service';
 
 /**
  * Recruitment Page Component
  * 
- * Displays job offers in a responsive grid layout with search and filtering.
+ * Displays job offers in a responsive grid layout with search and filtering from backend.
  */
 export function RecruitmentPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [contractType, setContractType] = useState('');
   const [location, setLocation] = useState('');
+  const [workMode, setWorkMode] = useState('');
   const [selectedJob, setSelectedJob] = useState<JobOffer | null>(null);
   const [selectedJobForDetails, setSelectedJobForDetails] = useState<JobOffer | null>(null);
+  
+  // API States
+  const [jobs, setJobs] = useState<JobOffer[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const jobsPerPage = 6;
+  const contractTypes = ['CDI', 'CDD', 'STAGE', 'FREELANCE', 'ALTERNANCE'];
+  const workModes = ['REMOTE', 'ONSITE', 'HYBRID'];
 
   /**
-   * Filter job offers based on search query, contract type, and location
+   * Filter jobs in frontend by WorkMode
    */
   const filteredJobs = useMemo(() => {
-    return jobOffers.filter((job) => {
-      // Search by title (case-insensitive)
-      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.company.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Filter by contract type
-      const matchesContractType = !contractType || job.type === contractType;
-      
-      // Filter by location (partial match)
-      const matchesLocation = !location || job.location.toLowerCase().includes(location.toLowerCase());
-      
-      return matchesSearch && matchesContractType && matchesLocation;
-    });
-  }, [searchQuery, contractType, location]);
+    if (!workMode) return jobs;
+    return jobs.filter(job => job.workMode === workMode);
+  }, [jobs, workMode]);
 
   /**
-   * Pagination logic
+   * Fetch jobs from backend
    */
-  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
-  const startIndex = (currentPage - 1) * jobsPerPage;
-  const endIndex = startIndex + jobsPerPage;
-  const paginatedJobs = filteredJobs.slice(startIndex, endIndex);
+  const fetchJobs = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await jobOfferService.getPublicOffers({
+        page: currentPage,
+        limit: jobsPerPage,
+        search: searchQuery,
+        contractType: contractType || undefined,
+        city: location || undefined
+      });
+      setJobs(response.data);
+      setTotalPages(response.meta.totalPages);
+      setTotalCount(response.meta.total);
+    } catch (err) {
+      console.error('Error fetching jobs:', err);
+      setError('Impossible de charger les offres d\'emploi. Veuillez réessayer plus tard.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, searchQuery, contractType, location]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
   /**
    * Handle page change
@@ -193,7 +80,7 @@ export function RecruitmentPage() {
   /**
    * Check if any filters are active
    */
-  const hasActiveFilters = searchQuery || contractType || location;
+  const hasActiveFilters = searchQuery || contractType || location || workMode;
 
   /**
    * Reset all filters
@@ -202,6 +89,7 @@ export function RecruitmentPage() {
     setSearchQuery('');
     setContractType('');
     setLocation('');
+    setWorkMode('');
     setCurrentPage(1);
   };
 
@@ -253,12 +141,18 @@ export function RecruitmentPage() {
               type="text"
               placeholder="Rechercher par titre ou entreprise..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-h1-black/50 border border-gray-200 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-h1-blue focus:border-transparent transition-all"
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setCurrentPage(1);
+                }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X className="w-5 h-5" />
@@ -273,7 +167,10 @@ export function RecruitmentPage() {
               <Briefcase className="w-5 h-5 text-gray-400" />
               <select
                 value={contractType}
-                onChange={(e) => setContractType(e.target.value)}
+                onChange={(e) => {
+                  setContractType(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="px-4 py-2.5 bg-gray-50 dark:bg-h1-black/50 border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-h1-blue focus:border-transparent transition-all cursor-pointer"
               >
                 <option value="">Tous les contrats</option>
@@ -288,15 +185,30 @@ export function RecruitmentPage() {
             {/* Location Filter */}
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-gray-400" />
-              <select
+              <input
+                type="text"
+                placeholder="Ville (ex: Casablanca)"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={(e) => {
+                  setLocation(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2.5 bg-gray-50 dark:bg-h1-black/50 border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-h1-blue focus:border-transparent transition-all"
+              />
+            </div>
+
+            {/* WorkMode Filter */}
+            <div className="flex items-center gap-2">
+              <Home className="w-5 h-5 text-gray-400" />
+              <select
+                value={workMode}
+                onChange={(e) => setWorkMode(e.target.value)}
                 className="px-4 py-2.5 bg-gray-50 dark:bg-h1-black/50 border border-gray-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-h1-blue focus:border-transparent transition-all cursor-pointer"
               >
-                <option value="">Toutes les localisations</option>
-                {uniqueLocations.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
+                <option value="">Tous les modes</option>
+                {workModes.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
                   </option>
                 ))}
               </select>
@@ -316,17 +228,37 @@ export function RecruitmentPage() {
             {/* Results Count Badge */}
             <div className="ml-auto">
               <span className="px-4 py-2 bg-h1-blue/10 text-h1-blue font-semibold rounded-lg">
-                {filteredJobs.length} offre{filteredJobs.length !== 1 ? 's' : ''} trouvée{filteredJobs.length !== 1 ? 's' : ''}
+                {isLoading ? '...' : `${totalCount} offre${totalCount !== 1 ? 's' : ''} trouvée${totalCount !== 1 ? 's' : ''}`}
               </span>
             </div>
           </div>
         </div>
         
-        {/* Responsive Grid */}
-        {filteredJobs.length > 0 ? (
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader2 className="w-12 h-12 text-h1-blue animate-spin" />
+            <p className="text-gray-600 dark:text-gray-400 font-medium">Chargement des offres...</p>
+          </div>
+        ) : error ? (
+          /* Error State */
+          <div className="text-center py-12 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-200 dark:border-red-900/30">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2 text-red-900 dark:text-red-400">Erreur</h3>
+            <p className="text-red-600 dark:text-red-400 mb-6">{error}</p>
+            <button
+              onClick={() => fetchJobs()}
+              className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : filteredJobs.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paginatedJobs.map((job) => (
+              {filteredJobs.map((job) => (
                 <div key={job.id}>
                   <JobCard job={job} onApply={setSelectedJob} onReadMore={setSelectedJobForDetails} />
                 </div>
@@ -348,7 +280,7 @@ export function RecruitmentPage() {
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 rounded-lg text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-900 disabled:hover:border-gray-300 dark:disabled:hover:bg-h1-black dark:disabled:hover:text-white dark:disabled:hover:border-white/10"
+                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 rounded-lg text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Précédent
                     </button>
@@ -361,7 +293,7 @@ export function RecruitmentPage() {
                         className={`w-10 h-10 rounded-lg font-medium transition-all ${
                           currentPage === page
                             ? 'bg-h1-blue text-white'
-                            : 'bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue'
+                            : 'bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white'
                         }`}
                       >
                         {page}
@@ -372,7 +304,7 @@ export function RecruitmentPage() {
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 rounded-lg text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-900 disabled:hover:border-gray-300 dark:disabled:hover:bg-h1-black dark:disabled:hover:text-white dark:disabled:hover:border-white/10"
+                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-h1-black border border-gray-300 dark:border-white/10 rounded-lg text-gray-900 dark:text-white hover:bg-h1-blue hover:text-white hover:border-h1-blue transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Suivant
                     </button>
@@ -408,7 +340,7 @@ export function RecruitmentPage() {
         isOpen={!!selectedJob}
         onClose={() => setSelectedJob(null)}
         jobTitle={selectedJob?.title || ''}
-        jobId={selectedJob?.id || 0}
+        jobId={selectedJob?.id || ''}
       />
 
       {/* Job Details Modal */}
