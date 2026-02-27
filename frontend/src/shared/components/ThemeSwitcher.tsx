@@ -5,7 +5,8 @@ export function ThemeSwitcher() {
     const [isDark, setIsDark] = useState(() => {
         const saved = localStorage.getItem('theme');
         if (saved) return saved === 'dark';
-        return false; // Default to light
+        // Respect system preference if no saved preference
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     });
 
     useEffect(() => {
