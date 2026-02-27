@@ -1,9 +1,9 @@
-
 @import "tailwindcss";
 
+/* ✅ تفعيل dark mode class-based في Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
 
-/* Tailwind v4 - Theme variables defined in @theme below */
-
+/* Tailwind v4 - Theme variables */
 @theme {
   --color-h1-blue: #4b4dff;
   --color-h1-pink: #ff4b91;
@@ -11,7 +11,6 @@
   --color-h1-dark: #1e1e1e;
   --color-h1-slate: #94a3b8;
 
-  /* Mapping for existing components */
   --color-gov-orange: var(--color-h1-blue);
   --color-gov-green: var(--color-h1-pink);
   --color-gov-bg: var(--color-h1-black);
@@ -39,6 +38,10 @@
     --input-bg: rgba(255, 255, 255, 0.05);
   }
 
+  html.dark {
+    color-scheme: dark;
+  }
+
   html {
     scroll-behavior: smooth;
   }
@@ -48,26 +51,15 @@
     color: var(--text-primary);
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100vh;
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-duration: 300ms;
+    transition: background-color 300ms, color 300ms, border-color 300ms;
   }
 
-  /* Smooth scroll offset for fixed navbar */
-  #fonctionnalites{
+  #fonctionnalites {
     scroll-margin-top: 80px;
   }
 
-  /* Ensure text colors are responsive to dark mode by default when using variables */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  p,
-  span {
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-duration: 300ms;
+  h1, h2, h3, h4, h5, h6, p, span {
+    transition: color 300ms, background-color 300ms;
   }
 }
 
@@ -115,9 +107,7 @@
     width: 100%;
     outline: none;
     font-size: 0.875rem;
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .gov-input-compact:focus {
@@ -138,18 +128,13 @@
     background-color: var(--color-h1-blue);
     color: white;
     font-weight: 700;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
+    padding: 0.5rem 2rem;
     border-radius: 0.375rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     text-transform: uppercase;
     font-size: 0.75rem;
     letter-spacing: 0.1em;
@@ -167,8 +152,7 @@
     background-color: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-bottom-width: 1px;
-    border-bottom-color: rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     position: sticky;
     top: 0;
     z-index: 50;
@@ -181,30 +165,15 @@
 }
 
 @keyframes float-tl-br {
-
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-
-  50% {
-    transform: translate(100px, 100px);
-  }
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(100px, 100px); }
 }
 
 @keyframes float-br-tl {
-
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-
-  50% {
-    transform: translate(-100px, -100px);
-  }
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-100px, -100px); }
 }
 
 .animate-float-tl-br {
   animation: float-tl-br 15s ease-in-out infinite;
 }
-
