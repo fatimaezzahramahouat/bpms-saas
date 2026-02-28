@@ -57,14 +57,13 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
         try {
             setLoading(true);
             setError(null);
-            const token = localStorage.getItem('token');
             const response = await fetch('http://localhost:5000/api/users/bulk-import', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ users: parsedUsers }),
+                credentials: 'include',
             });
 
             const result = await response.json();

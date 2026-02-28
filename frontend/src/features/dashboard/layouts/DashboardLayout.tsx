@@ -58,12 +58,9 @@ export function DashboardLayout() {
 
     const fetchProfile = async () => {
         try {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-
             // Fetch full user profile with relations
             const response = await fetch('http://localhost:5000/api/auth/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include'
             });
 
             if (response.ok) {

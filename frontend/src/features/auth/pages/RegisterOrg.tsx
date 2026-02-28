@@ -42,13 +42,15 @@ export function RegisterOrg() {
           nb_employers: formData.employeeCount,
           email: formData.email,
           password: formData.password
-        })
+        }),
+        credentials: 'include'
       });
 
       if (response.ok) {
         const result = await response.json();
-        localStorage.setItem('token', result.data.token);
+        // The token is now handled automatically by the browser via HTTP-only cookie
         localStorage.setItem('user', JSON.stringify(result.data.user));
+        localStorage.setItem('isAuthenticated', 'true');
         alert('Inscription validée !');
         navigate('/dashboard');
       } else {

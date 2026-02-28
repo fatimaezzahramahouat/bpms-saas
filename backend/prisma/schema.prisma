@@ -57,6 +57,8 @@ model User {
   rh             RH?
   tasks          Task[]
   organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  resetToken     String?        @unique
+  resetExpires   DateTime?
 
   @@index([organisationId])
 }

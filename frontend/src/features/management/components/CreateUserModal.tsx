@@ -26,14 +26,13 @@ export function CreateUserModal({ isOpen, onClose, onSuccess }: CreateUserModalP
         setError(null);
 
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch('http://localhost:5000/api/users', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData),
+                credentials: 'include'
             });
 
             if (response.ok) {
