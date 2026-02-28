@@ -150,22 +150,39 @@ model Employee {
   user   User   @relation(fields: [userId], references: [id])
 }
 
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
 model Workflow {
   id             String            @id @default(uuid())
   name           String
+  description    String?
+  status         WorkflowStatus    @default(DRAFT)
+  version        Int               @default(1)
+  nodes          Json?             @default("[]")
+  edges          Json?             @default("[]")
   organisationId String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   instances      ProcessInstance[]
   steps          Step[]
   organisation   Organisation      @relation(fields: [organisationId], references: [id])
+
+  @@index([status])
+  @@index([organisationId])
 }
 
 model Step {
   id         String   @id @default(uuid())
   name       String
   order      Int
+  metadata   Json?
   workflowId String
   rules      Rule[]
-  workflow   Workflow @relation(fields: [workflowId], references: [id])
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   tasks      Task[]
 }
 
@@ -192,7 +209,7 @@ model Rule {
   id     String @id @default(uuid())
   logic  Json
   stepId String
-  step   Step   @relation(fields: [stepId], references: [id])
+  step   Step   @relation(fields: [stepId], references: [id], onDelete: Cascade)
 }
 
 model ProcessInstance {

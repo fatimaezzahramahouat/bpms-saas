@@ -10,14 +10,15 @@ export const workflowService = {
      * auto-create a single default "Step 1" so a workflow is never empty.
      */
     async createWorkflow(organisationId: string, input: CreateWorkflowInput) {
-        const steps =
-            input.steps && input.steps.length > 0
-                ? input.steps
-                : [{ name: "Step 1", order: 1 }];
-
         const workflow = await workflowRepository.createWorkflowWithSteps(
             organisationId,
-            { name: input.name, steps }
+            {
+                name: input.name,
+                description: input.description,
+                nodes: input.nodes,
+                edges: input.edges,
+                steps: input.steps || [],
+            }
         );
 
         return workflow;
@@ -46,13 +47,44 @@ export const workflowService = {
         organisationId: string,
         input: UpdateWorkflowInput
     ) {
+        const current = await workflowRepository.findByIdAndOrg(id, organisationId);
+        if (!current) return null;
+
+        let version = current.version;
+        // Business Rule: If editing an ACTIVE workflow, increment version
+        if (current.status === "ACTIVE" && (input.nodes || input.edges || input.name)) {
+            version += 1;
+        }
+
         const result = await workflowRepository.updateWorkflow(id, organisationId, {
-            name: input.name,
+            ...input,
+            version,
         });
 
         if (result.count === 0) return null;
 
         return workflowRepository.findByIdAfterUpdate(id, organisationId);
+    },
+
+    /**
+     * Publication Logic:
+     * - Verify presence of at least one 'trigger' and one 'end' node.
+     * - Update status to ACTIVE.
+     */
+    async publishWorkflow(id: string, organisationId: string) {
+        const workflow = await workflowRepository.findByIdAndOrg(id, organisationId);
+        if (!workflow) return null;
+
+        const nodes = Array.isArray(workflow.nodes) ? workflow.nodes : [];
+        const hasTrigger = nodes.some((n: any) => n.data?.variant === 'trigger');
+        const hasEnd = nodes.some((n: any) => n.data?.variant === 'end');
+
+        if (!hasTrigger || !hasEnd) {
+            throw new Error("Workflow must have at least one Trigger and one End node to be published.");
+        }
+
+        await workflowRepository.updateWorkflow(id, organisationId, { status: "ACTIVE" });
+        return workflowRepository.findByIdAndOrg(id, organisationId);
     },
 
     /**

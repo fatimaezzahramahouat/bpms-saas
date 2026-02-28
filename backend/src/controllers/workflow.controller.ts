@@ -154,6 +154,25 @@ export const workflowController = {
     }),
 
     /**
+     * PATCH /api/workflows/:id/publish
+     * Validates graph connectivity and marks workflow as ACTIVE.
+     */
+    publishWorkflow: catchAsync(async (req: AuthRequest, res: Response) => {
+        const organisationId = getOrgId(req);
+        const id = req.params.id as string;
+
+        try {
+            const workflow = await workflowService.publishWorkflow(id, organisationId);
+            res.status(200).json({
+                message: "Workflow published successfully",
+                data: workflow,
+            });
+        } catch (error: any) {
+            res.status(400).json({ error: error.message });
+        }
+    }),
+
+    /**
      * DELETE /api/workflows/:id/steps/:stepId
      * Removes a step from a workflow.
      */
