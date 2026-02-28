@@ -1,6 +1,8 @@
+import crypto from "crypto";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { authRepository } from "../repositories/auth.repository";
+import { mailService } from "./mail.service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
@@ -144,5 +146,48 @@ export const authService = {
   async getOrganisationLogo(organisationId: string) {
     const org = await authRepository.getLogo(organisationId);
     return org?.orgInfo?.logo || "";
+  },
+
+  async forgotPassword(email: string) {
+    // 1. Find user by email
+    const user = await authRepository.findUserByEmail(email);
+    if (!user) {
+      // For security, don't reveal if user exists. 
+      // Use case: suggest account creation/contact admin if specifically asked, 
+      // but standard practice is a generic message.
+      // But the requirement says: "Not exists -> show message & suggest create account/contact admin."
+      throw new Error("Cet email n'existe pas dans notre base de données.");
+    }
+
+    // 2. Generate secure token (valid for 1 hour)
+    const token = crypto.randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 3600000); // 1 hour
+
+    // 3. Save to DB
+    await authRepository.updateUserResetToken(user.id, token, expires);
+
+    // 4. Send Email
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+    await mailService.sendResetPasswordEmail(user.email, resetLink);
+
+    return { message: "Email de réinitialisation envoyé." };
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    // 1. Find user by token
+    const user = await authRepository.findUserByResetToken(token);
+    
+    // 2. Verify token and expiration
+    if (!user || !user.resetExpires || user.resetExpires < new Date()) {
+      throw new Error("Le jeton de réinitialisation est invalide ou a expiré.");
+    }
+
+    // 3. Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 4. Update password and clear token
+    await authRepository.updateUserPassword(user.id, hashedPassword);
+
+    return { message: "Mot de passe réinitialisé avec succès." };
   },
 };

@@ -13,7 +13,14 @@ authRouter.post("/complete-organisation-info", authMiddleware, authController.co
 // POST /api/auth/login
 authRouter.post("/login", authController.login);
 
+// POST /api/auth/logout
+authRouter.post("/logout", authController.logout);
+
 // GET /api/auth/me (requires JWT)
 authRouter.get("/me", authMiddleware, authController.getCurrentUser);
+
+// PUBLIC: Forgot and Reset Password
+authRouter.post("/forgot-password", authController.forgotPassword);
+authRouter.post("/reset-password", authController.resetPassword);
 
 export default authRouter;

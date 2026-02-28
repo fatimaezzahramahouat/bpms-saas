@@ -133,4 +133,31 @@ export const authRepository = {
       }
     });
   },
+
+  async updateUserResetToken(id: string, token: string | null, expires: Date | null) {
+    return prisma.user.update({
+      where: { id },
+      data: {
+        resetToken: token,
+        resetExpires: expires,
+      },
+    });
+  },
+
+  async findUserByResetToken(token: string) {
+    return prisma.user.findUnique({
+      where: { resetToken: token },
+    });
+  },
+
+  async updateUserPassword(id: string, hashedPassword: string) {
+    return prisma.user.update({
+      where: { id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetExpires: null,
+      },
+    });
+  },
 };
