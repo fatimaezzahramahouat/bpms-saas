@@ -15,8 +15,9 @@ import {
     BackgroundVariant,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { WorkflowSidebar } from '../features/workflow/WorkflowSidebar';
-import { TurboNode, TurboNodeData } from '../features/workflow/components/TurboNode';
+import { WorkflowSidebar } from '../features/workflow/components/WorkflowSidebar';
+import { WorkflowData } from '../features/workflow/types';
+import TurboNode from '../features/workflow/components/turbo/TurboNode';
 import { AIAssistant } from '../features/workflow/components/AIAssistant';
 import '../features/workflow/styles/workflow.css';
 import { Lock, Eye, Save, ChevronLeft, ShieldCheck } from 'lucide-react';
@@ -29,18 +30,26 @@ const nodeTypes = {
     turbo: TurboNode,
 };
 
-const initialNodes: Node<TurboNodeData>[] = [
+const initialNodes: Node<WorkflowData>[] = [
     {
         id: '1',
         type: 'turbo',
-        data: { label: 'Début du Processus', variant: 'trigger' },
+        data: {
+            title: 'Début du Processus',
+            variant: 'trigger',
+            role: 'ADMIN',
+            assigneeType: 'ALL',
+            slaDuration: 0,
+            requiredDocuments: [],
+            autoEmail: { enabled: false }
+        },
         position: { x: 250, y: 150 },
     },
 ];
 
 const EditorContent: React.FC = () => {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowData>>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const { screenToFlowPosition } = useReactFlow();
 
@@ -74,11 +83,19 @@ const EditorContent: React.FC = () => {
                     y: event.clientY,
                 });
 
-                const newNode = {
+                const newNode: Node<WorkflowData> = {
                     id: `node_${Date.now()}`,
                     type: 'turbo',
                     position,
-                    data: { label, variant },
+                    data: {
+                        title: label,
+                        variant: variant,
+                        role: 'EMPLOYE',
+                        assigneeType: 'ALL',
+                        slaDuration: 24,
+                        requiredDocuments: [],
+                        autoEmail: { enabled: false }
+                    },
                 };
 
                 setNodes((nds) => nds.concat(newNode));
@@ -136,7 +153,7 @@ const EditorContent: React.FC = () => {
                     </div>
                 </div>
 
-                <ReactFlow
+                <ReactFlow<Node<WorkflowData>, Edge>
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
@@ -159,7 +176,7 @@ const EditorContent: React.FC = () => {
                             if (n.type === 'turbo') return '#9333ea';
                             return '#eee';
                         }}
-                        nodeColor={(n) => {
+                        nodeColor={() => {
                             return 'rgba(147, 51, 234, 0.1)';
                         }}
                     />

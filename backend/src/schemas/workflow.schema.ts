@@ -8,27 +8,33 @@ const stepInputSchema = z.object({
         .number({ message: "Order must be a number" })
         .int("Order must be an integer")
         .positive("Order must be a positive integer"),
+    metadata: z.any().optional(), // Flexible JSON for React Flow data
 });
 
 // ─── Workflow Schemas ─────────────────────────────────────
 
 /**
  * POST /api/workflows
- * Creates a workflow and optionally its initial steps.
- * If `steps` is omitted, the service auto-creates "Step 1".
+ * Creates a workflow with its initial graph (nodes/edges) and steps.
  */
 export const createWorkflowSchema = z.object({
     name: z.string().min(1, "Workflow name is required"),
+    description: z.string().optional(),
+    nodes: z.any().optional().default([]), // Expected to be an array of XYFlow nodes
+    edges: z.any().optional().default([]), // Expected to be an array of XYFlow edges
     steps: z.array(stepInputSchema).optional(),
 });
 
 /**
  * PUT /api/workflows/:id
- * Partial update — only the workflow name for now.
- * Steps are managed via dedicated step endpoints.
+ * Updates name, description, graph, or status.
  */
 export const updateWorkflowSchema = z.object({
-    name: z.string().min(1, "Workflow name is required"),
+    name: z.string().min(1, "Workflow name is required").optional(),
+    description: z.string().optional(),
+    nodes: z.any().optional(),
+    edges: z.any().optional(),
+    status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(),
 });
 
 /**

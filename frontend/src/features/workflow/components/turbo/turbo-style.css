@@ -1,0 +1,52 @@
+/* Turbo Design System */
+.turbo-glass {
+  background: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.turbo-gradient-border {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.turbo-gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1.5px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), rgba(168, 85, 247, 0.5), rgba(236, 72, 153, 0.2));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.turbo-node-selected {
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4), 0 0 20px rgba(139, 92, 246, 0.2);
+  transform: translateY(-2px);
+}
+
+.turbo-node-selected .turbo-gradient-border::before {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+  opacity: 1;
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+.turbo-edge-path {
+  stroke-dasharray: 10;
+  animation: dash-flow 1s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(167, 139, 250, 0.5));
+}
+
+.turbo-glow-text {
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+}
