@@ -10,6 +10,7 @@ import { RecruitmentPage } from '../pages/RecruitmentPage';
 import TeamPage from '../pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
+import { ResetPassword } from '../features/auth/pages/ResetPassword';
 
 /**
  * Application Router
@@ -32,6 +33,7 @@ export function AppRouter() {
       {/* Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register-org" element={<RegisterOrg />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Dashboard Routes - Protected */}
       <Route path="/dashboard" element={<DashboardLayout />}>

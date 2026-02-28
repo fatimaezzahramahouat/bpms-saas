@@ -34,6 +34,15 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 // ─── Controllers ─────────────────────────────────────────
 
 export const authController = {
@@ -48,9 +57,16 @@ export const authController = {
 
       const result = await authService.registerOrganisation(parsed.data);
 
+      res.cookie("token", result.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      });
+
       res.status(201).json({
         message: "Organisation registered successfully",
-        data: result,
+        data: { user: result.user },
       });
     } catch (error: any) {
       if (error.code === "P2002") {
@@ -135,16 +151,22 @@ export const authController = {
           role: role,
           organisationId: user.organisationId,
           firstName: user.firstName,
-          isAdmin: !!user.admin, // Missing in previous version!
+          isAdmin: !!user.admin,
         },
         JWT_SECRET,
         { expiresIn: "24h" }
       );
 
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      });
+
       res.status(200).json({
         message: "Login successful",
         data: {
-          token,
           user: {
             id: user.id,
             email: user.email,
@@ -168,6 +190,11 @@ export const authController = {
     }
   },
 
+  async logout(req: Request, res: Response): Promise<void> {
+    res.clearCookie("token");
+    res.status(200).json({ message: "Logged out successfully" });
+  },
+
   async getCurrentUser(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.userId;
@@ -187,6 +214,37 @@ export const authController = {
     } catch (error) {
       console.error("GET_CURRENT_USER_ERROR:", error);
       res.status(500).json({ error: "Erreur interne du serveur" });
+    }
+  },
+
+  async forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const parsed = forgotPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
+        return;
+      }
+
+      const result = await authService.forgotPassword(parsed.data.email);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
+  async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const parsed = resetPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
+        return;
+      }
+
+      const { token, password } = parsed.data;
+      const result = await authService.resetPassword(token, password);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   },
 };

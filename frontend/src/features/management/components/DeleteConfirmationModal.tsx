@@ -18,12 +18,9 @@ export function DeleteConfirmationModal({ isOpen, onClose, onSuccess, user }: De
         setError(null);
 
         try {
-            const token = localStorage.getItem('token');
             const response = await fetch(`http://localhost:5000/api/users/${user.id}`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                credentials: 'include'
             });
 
             if (response.ok) {

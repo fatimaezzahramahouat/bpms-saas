@@ -34,51 +34,100 @@ export async function login(credentials: LoginCredentials): Promise<AuthUser> {
 
 /**
  * Logout function
- * 
- * TODO: Implement proper token invalidation
  */
 export async function logout(): Promise<void> {
-  // Clear tokens from storage
-  localStorage.removeItem('auth_token');
-  sessionStorage.removeItem('auth_token');
+  try {
+    await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    localStorage.removeItem('user');
+    localStorage.removeItem('isAuthenticated');
+  }
 }
 
 /**
  * Register organization
- * 
- * TODO: Replace with actual API call when backend is ready
  */
 export async function registerOrganization(data: OrganizationRegistration): Promise<{ success: boolean }> {
-  console.log('Organization registration:', data);
-  
-  // Mock response
-  return { success: true };
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register-organisation`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      credentials: 'include',
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Erreur lors de l\'inscription');
+    
+    localStorage.setItem('user', JSON.stringify(result.data.user));
+    localStorage.setItem('isAuthenticated', 'true');
+    return { success: true };
+  } catch (err: any) {
+    throw new Error(err.message || 'Erreur réseau');
+  }
 }
 
 /**
  * Check if user is authenticated
- * 
- * TODO: Implement proper token validation
  */
 export function isAuthenticated(): boolean {
-  const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
-  return !!token;
+  return localStorage.getItem('isAuthenticated') === 'true';
 }
 
 /**
- * Get current user from token
- * 
- * TODO: Decode JWT and return user info
+ * Get current user
  */
 export function getCurrentUser(): AuthUser | null {
-  const token = localStorage.getItem('auth_token');
-  if (!token) return null;
-  
-  // Mock user - in production, decode JWT
-  return {
-    id: '1',
-    email: 'user@example.com',
-    role: 'user',
-    token,
-  };
+  const user = localStorage.getItem('user');
+  if (!user) return null;
+  try {
+    return JSON.parse(user);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Request password reset
+ */
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+      credentials: 'include',
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Erreur lors de la demande');
+    return result;
+  } catch (err: any) {
+    throw new Error(err.message || 'Erreur réseau');
+  }
+}
+
+/**
+ * Reset password
+ */
+export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+      credentials: 'include',
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Erreur lors de la réinitialisation');
+    return result;
+  } catch (err: any) {
+    throw new Error(err.message || 'Erreur réseau');
+  }
 }

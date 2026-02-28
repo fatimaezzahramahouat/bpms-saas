@@ -23,9 +23,8 @@ export function UsersManagement() {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
             const response = await fetch('http://localhost:5000/api/users', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                credentials: 'include'
             });
 
             if (response.ok) {

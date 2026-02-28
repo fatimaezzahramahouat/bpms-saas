@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Mail, User, Check, Eye, EyeOff } from 'lucide-react';
 import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
+import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 
 /**
  * Login Page Component
@@ -13,6 +14,7 @@ import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
 export function Login() {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLoginChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -25,13 +27,15 @@ export function Login() {
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginData)
+        body: JSON.stringify(loginData),
+        credentials: 'include'
       });
 
       if (response.ok) {
         const result = await response.json();
-        localStorage.setItem('token', result.data.token);
+        // The token is now handled automatically by the browser via HTTP-only cookie
         localStorage.setItem('user', JSON.stringify(result.data.user));
+        localStorage.setItem('isAuthenticated', 'true');
         navigate('/dashboard');
       } else {
         const error = await response.json();
@@ -116,13 +120,22 @@ export function Login() {
                 IDENTIFICATION
               </button>
 
-              <button type="button" className="text-h1-blue text-xs font-bold uppercase tracking-widest hover:text-white transition-all">
+              <button 
+                type="button" 
+                onClick={() => setIsForgotModalOpen(true)}
+                className="text-h1-blue text-xs font-bold uppercase tracking-widest hover:text-white transition-all cursor-pointer"
+              >
                 Mot de passe oublié ? Récupérer mon accès
               </button>
             </div>
           </form>
         </motion.div>
       </div>
+
+      <ForgotPasswordModal 
+        isOpen={isForgotModalOpen} 
+        onClose={() => setIsForgotModalOpen(false)} 
+      />
     </div>
   );
 }

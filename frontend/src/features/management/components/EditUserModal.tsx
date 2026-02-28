@@ -37,7 +37,6 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
         setError(null);
 
         try {
-            const token = localStorage.getItem('token');
             const submissionData = { ...formData };
             if (!submissionData.password) {
                 delete (submissionData as any).password;
@@ -46,10 +45,10 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
             const response = await fetch(`http://localhost:5000/api/users/${user.id}`, {
                 method: 'PATCH',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(submissionData)
+                body: JSON.stringify(submissionData),
+                credentials: 'include'
             });
 
             if (response.ok) {
