@@ -47,6 +47,8 @@ model User {
   lastName       String
   organisationId String
   createdAt      DateTime       @default(now())
+  resetExpires   DateTime?
+  resetToken     String?        @unique
   admin          Admin?
   documents      Document[]
   employee       Employee?
@@ -57,29 +59,27 @@ model User {
   rh             RH?
   tasks          Task[]
   organisation   Organisation   @relation(fields: [organisationId], references: [id])
-  resetToken     String?        @unique
-  resetExpires   DateTime?
 
   @@index([organisationId])
 }
 
 model JobOffer {
-  id             String        @id @default(uuid())
-  title          String
-  organisationId String
-  createdById    String
-  budget         Float?
-  contractType   ContractType
-  createdAt      DateTime      @default(now())
-  description    String
-  level          JobLevel
- responsibilities String[] @default([])
-  skills         String[]
-  updatedAt      DateTime      @updatedAt
-  workMode       WorkMode
-  applications   Application[]
-  createdBy      User          @relation(fields: [createdById], references: [id])
-  organisation   Organisation  @relation(fields: [organisationId], references: [id])
+  id               String        @id @default(uuid())
+  title            String
+  organisationId   String
+  createdById      String
+  budget           Float?
+  contractType     ContractType
+  createdAt        DateTime      @default(now())
+  description      String
+  level            JobLevel
+  responsibilities String[]      @default([])
+  skills           String[]
+  updatedAt        DateTime      @updatedAt
+  workMode         WorkMode
+  applications     Application[]
+  createdBy        User          @relation(fields: [createdById], references: [id])
+  organisation     Organisation  @relation(fields: [organisationId], references: [id])
 
   @@index([organisationId])
 }
@@ -150,23 +150,17 @@ model Employee {
   user   User   @relation(fields: [userId], references: [id])
 }
 
-enum WorkflowStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
-
 model Workflow {
   id             String            @id @default(uuid())
   name           String
-  description    String?
-  status         WorkflowStatus    @default(DRAFT)
-  version        Int               @default(1)
-  nodes          Json?             @default("[]")
-  edges          Json?             @default("[]")
   organisationId String
   createdAt      DateTime          @default(now())
+  description    String?
+  edges          Json?             @default("[]")
+  nodes          Json?             @default("[]")
+  status         WorkflowStatus    @default(DRAFT)
   updatedAt      DateTime          @updatedAt
+  version        Int               @default(1)
   instances      ProcessInstance[]
   steps          Step[]
   organisation   Organisation      @relation(fields: [organisationId], references: [id])
@@ -179,8 +173,8 @@ model Step {
   id         String   @id @default(uuid())
   name       String
   order      Int
-  metadata   Json?
   workflowId String
+  metadata   Json?
   rules      Rule[]
   workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   tasks      Task[]
@@ -254,6 +248,12 @@ model EventLog {
   createdAt         DateTime        @default(now())
   processInstance   ProcessInstance @relation(fields: [processInstanceId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
 }
 
 enum ContractType {
