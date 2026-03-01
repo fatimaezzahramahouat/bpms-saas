@@ -18,7 +18,7 @@ import '@xyflow/react/dist/style.css';
 import { WorkflowSidebar } from '../features/workflow/components/WorkflowSidebar';
 import { WorkflowData } from '../features/workflow/types';
 import TurboNode from '../features/workflow/components/turbo/TurboNode';
-import { AIAssistant } from '../features/workflow/components/AIAssistant';
+import { AIFlowDesigner } from '../features/workflow/components/AIFlowDesigner';
 import '../features/workflow/styles/workflow.css';
 import { Lock, Eye, Save, ChevronLeft, ShieldCheck } from 'lucide-react';
 
@@ -183,7 +183,7 @@ const EditorContent: React.FC = () => {
                 </ReactFlow>
 
                 {/* AI Assistant - Only for Admins */}
-                {isAdmin && <AIAssistant onGenerate={(prompt) => console.log('AI Generate:', prompt)} />}
+                {isAdmin && <AIFlowDesigner onGenerate={(nodes, edges) => setNodes((nds) => nds.concat(nodes))} />}
             </div>
         </div>
     );

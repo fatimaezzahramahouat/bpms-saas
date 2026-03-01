@@ -20,15 +20,17 @@ import TurboNode from '../components/turbo/TurboNode';
 import { WorkflowData, ActionNodeData, TriggerNodeData, EndNodeData } from '../types';
 import TurboEdge from '../components/turbo/TurboEdge';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
-import { AIAssistant } from '../components/AIAssistant';
+import { AIFlowDesigner } from '../components/AIFlowDesigner';
 import { AnimatePresence } from 'motion/react';
 import { workflowService } from '../../../services/workflow.service';
 import { toast } from 'react-toastify';
 import { WorkflowHeader } from '../components/WorkflowHeader';
 import { NodeConfigPanel } from '../components/NodeConfigPanel';
+import ConditionNode from '../components/turbo/ConditionNode';
 
 const nodeTypes = {
     turbo: TurboNode,
+    conditionNode: ConditionNode,
 };
 
 const edgeTypes = {
@@ -202,59 +204,31 @@ const WorkflowEditor: React.FC = () => {
         }
     };
 
-    const handleAIGeneration = (prompt: string) => {
-        const newId1 = getNewId();
-        const newId2 = getNewId();
-
-        const aiNodes: Node<WorkflowData>[] = [
-            {
-                id: newId1,
-                type: 'turbo',
-                position: { x: 400, y: 100 },
-                data: {
-                    title: 'RH Validation',
-                    variant: 'action',
-                    role: 'RH',
-                    assigneeType: 'ALL',
-                    slaDuration: 24,
-                    requiredDocuments: [],
-                    autoEmail: { enabled: false }
-                } as ActionNodeData,
-            },
-            {
-                id: newId2,
-                type: 'turbo',
-                position: { x: 600, y: 100 },
-                data: {
-                    title: 'AI Check',
-                    variant: 'ai',
-                    model: 'gpt-4o',
-                    systemPrompt: 'You are an AI assistant',
-                    temperature: 0.7
-                } as any, // Quick cast for AI node as it's a mock
-            }
-        ];
-
-        const aiEdges: Edge[] = [
-            { id: `e-${newId1}-${newId2}`, source: newId1, target: newId2, type: 'turbo', animated: true }
-        ];
-
-        setNodes((nds) => nds.concat(aiNodes));
-        setEdges((eds) => eds.concat(aiEdges));
+    const handleAIGeneration = (newNodes: Node<WorkflowData>[], newEdges: Edge[]) => {
+        setNodes((nds) => nds.concat(newNodes));
+        setEdges((eds) => eds.concat(newEdges));
 
         setTimeout(() => reactFlowInstance?.fitView({ duration: 800 }), 100);
     };
 
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050507] transition-colors duration-300 overflow-hidden">
-            <div className="flex-1 relative turbo-flow" ref={reactFlowWrapper}>
-                {isAdmin && <WorkflowSidebar />}
-                <WorkflowHeader
-                    title="Workflow Designer"
-                    subtitle={isAdmin ? 'Editor Mode (Admin)' : 'Viewer Mode'}
-                    onSave={saveWorkflow}
-                    onReset={resetWorkflow}
-                />
+            <div className="flex-1 relative turbo-flow z-0" ref={reactFlowWrapper}>
+                {isAdmin && (
+                    <div className="pt-20 absolute inset-y-0 left-0 z-30 pointer-events-none">
+                        <div className="h-full pointer-events-auto">
+                            <WorkflowSidebar />
+                        </div>
+                    </div>
+                )}
+                <div className="z-40 relative">
+                    <WorkflowHeader
+                        title="Workflow Designer"
+                        subtitle={isAdmin ? 'Editor Mode (Admin)' : 'Viewer Mode'}
+                        onSave={saveWorkflow}
+                        onReset={resetWorkflow}
+                    />
+                </div>
 
                 <ReactFlow<Node<WorkflowData>, Edge>
                     nodes={nodes}
@@ -300,7 +274,7 @@ const WorkflowEditor: React.FC = () => {
                     </svg>
                 </ReactFlow>
 
-                {isAdmin && <AIAssistant onGenerate={handleAIGeneration} />}
+                {isAdmin && <AIFlowDesigner onGenerate={handleAIGeneration} />}
 
                 <AnimatePresence>
                     {selectedNode && (
