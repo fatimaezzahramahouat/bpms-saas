@@ -4,6 +4,7 @@ import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Sea
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
+import { RHJobOffersButton } from '@/features/rh/components';
 
 export function DashboardLayout() {
     const getRoleLabel = (user: any) => {
@@ -216,6 +217,11 @@ export function DashboardLayout() {
                         <GitMerge className="w-5 h-5" />
                         Workflow
                     </NavLink>
+
+                    {/* RH Job Offers Button - Only visible to RH users */}
+                    <div className="mt-2">
+                        <RHJobOffersButton />
+                    </div>
 
                     {[
                         { icon: FileText, label: 'Documents', href: '#' },
