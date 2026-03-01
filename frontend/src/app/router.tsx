@@ -13,6 +13,7 @@ import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { PublicRouteWrapper } from '../shared/components/transitions/PublicRouteWrapper';
+import { JobOffersManagement } from '../features/rh/pages/JobOffersManagement';
 
 /**
  * Application Router
@@ -44,6 +45,13 @@ export function AppRouter() {
 
           {/* Recruitment Route */}
           <Route path="/recrutement" element={<RecruitmentPage />} />
+      {/* Dashboard Routes - Protected */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<DashboardHome />} />
+        <Route path="equipe" element={<UsersManagement />} />
+        <Route path="workflow" element={<WorkflowPage />} />
+        <Route path="rh/job-offers" element={<JobOffersManagement />} />
+      </Route>
 
           {/* Team Route */}
           <Route path="/our-team" element={<TeamPage />} />
