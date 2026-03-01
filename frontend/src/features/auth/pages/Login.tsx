@@ -34,6 +34,8 @@ export function Login() {
       if (response.ok) {
         const result = await response.json();
         // The token is now handled automatically by the browser via HTTP-only cookie
+        // BUT we also store it in localStorage for Axios interceptors if cookies are restricted
+        localStorage.setItem('token', result.data.token);
         localStorage.setItem('user', JSON.stringify(result.data.user));
         localStorage.setItem('isAuthenticated', 'true');
         navigate('/dashboard');
@@ -120,8 +122,8 @@ export function Login() {
                 IDENTIFICATION
               </button>
 
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setIsForgotModalOpen(true)}
                 className="text-h1-blue text-xs font-bold uppercase tracking-widest hover:text-white transition-all cursor-pointer"
               >
@@ -132,9 +134,9 @@ export function Login() {
         </motion.div>
       </div>
 
-      <ForgotPasswordModal 
-        isOpen={isForgotModalOpen} 
-        onClose={() => setIsForgotModalOpen(false)} 
+      <ForgotPasswordModal
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
       />
     </div>
   );
