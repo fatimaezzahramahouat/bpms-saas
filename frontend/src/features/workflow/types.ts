@@ -23,6 +23,8 @@ export interface ActionNodeData extends BaseWorkflowData {
     actionType?: ActionType;
     assigneeType?: 'ALL' | 'SPECIFIC';
     specificUserId?: string;
+    assignmentType?: 'ROLE' | 'SPECIFIC' | 'DYNAMIC';
+    assignedTo?: string;
     autoEmail?: {
         enabled: boolean;
         templateId?: string;
@@ -40,9 +42,10 @@ export interface DecisionNodeData extends BaseWorkflowData {
 
 export interface AINodeData extends BaseWorkflowData {
     variant: 'ai';
-    model: 'gpt-4o' | 'claude-3-5-sonnet' | 'gpt-4-turbo';
-    systemPrompt: string;
-    temperature: number;
+    aiModel?: 'gpt-4' | 'claude-3' | 'mistral' | 'gpt-4o';
+    systemRole?: string;
+    userPrompt?: string;
+    temperature?: number;
 }
 
 export interface APINodeData extends BaseWorkflowData {
