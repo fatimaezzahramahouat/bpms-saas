@@ -1,0 +1,1 @@
+export { JobOffersManagement } from './JobOffersManagement';
