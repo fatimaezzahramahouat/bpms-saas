@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
 import { Home } from '../features/auth/pages/Home';
 import { Pricing } from '../features/auth/pages/Pricing';
 import { Login } from '../features/auth/pages/Login';
@@ -11,6 +12,7 @@ import TeamPage from '../pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
+import { PublicRouteWrapper } from '../shared/components/transitions/PublicRouteWrapper';
 import { JobOffersManagement } from '../features/rh/pages/JobOffersManagement';
 
 /**
@@ -25,17 +27,24 @@ import { JobOffersManagement } from '../features/rh/pages/JobOffersManagement';
  * - Add nested routes for complex features
  */
 export function AppRouter() {
+  const location = useLocation();
+
   return (
-    <Routes>
-      {/* Public Routes - Home/Landing */}
-      <Route path="/" element={<Home />} />
-      <Route path="/pricing" element={<Pricing />} />
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Public Transitions Wrapper */}
+        <Route element={<PublicRouteWrapper />}>
+          {/* Public Routes - Home/Landing */}
+          <Route path="/" element={<Home />} />
+          <Route path="/pricing" element={<Pricing />} />
 
-      {/* Auth Routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register-org" element={<RegisterOrg />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
+          {/* Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register-org" element={<RegisterOrg />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
+          {/* Recruitment Route */}
+          <Route path="/recrutement" element={<RecruitmentPage />} />
       {/* Dashboard Routes - Protected */}
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
@@ -44,15 +53,21 @@ export function AppRouter() {
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
       </Route>
 
-      {/* Recruitment Route */}
-      <Route path="/recrutement" element={<RecruitmentPage />} />
+          {/* Team Route */}
+          <Route path="/our-team" element={<TeamPage />} />
+        </Route>
 
-      {/* Team Route */}
-      <Route path="/our-team" element={<TeamPage />} />
+        {/* Dashboard Routes - Protected (No Transition) */}
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route index element={<DashboardHome />} />
+          <Route path="equipe" element={<UsersManagement />} />
+          <Route path="workflow" element={<WorkflowPage />} />
+        </Route>
 
-      {/* 404 Catch-all - Must be last */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        {/* 404 Catch-all - Must be last */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
 
