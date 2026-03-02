@@ -15,6 +15,9 @@ export interface JobOffer {
   organisationId: string;
   createdById: string;
   applicationsCount?: number;
+  _count?: {
+    applications: number;
+  };
 }
 
 export interface JobOfferFilters {
@@ -72,6 +75,14 @@ export const jobOfferService = {
    */
   async getOfferById(id: string): Promise<{ data: JobOffer }> {
     const response = await api.get(`/joboffers/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Get candidates for a specific job offer
+   */
+  async getJobCandidates(id: string): Promise<{ data: any[] }> {
+    const response = await api.get(`/joboffers/rh/${id}/candidates`);
     return response.data;
   }
 };

@@ -56,6 +56,9 @@ export const jobOfferRepository = {
               },
             },
           },
+          _count: {
+            select: { applications: true },
+          },
         },
         orderBy: { [sortBy]: sortOrder },
         skip,
@@ -105,6 +108,9 @@ export const jobOfferRepository = {
             firstName: true,
             lastName: true,
           },
+        },
+        _count: {
+          select: { applications: true },
         },
       },
     });

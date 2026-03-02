@@ -1,4 +1,5 @@
 import { jobOfferRepository } from "../repositories/jobOffer.repository";
+import { candidateRepository } from "../repositories/candidate.repository";
 import { CreateJobOfferInput, UpdateJobOfferInput, JobOfferQueryInput } from "../schemas/jobOffer.schema";
 
 export const jobOfferService = {
@@ -31,5 +32,9 @@ export const jobOfferService = {
 
   async getOfferById(id: string, organisationId?: string) {
     return jobOfferRepository.findById(id, organisationId);
+  },
+
+  async getCandidates(id: string, organisationId: string) {
+    return candidateRepository.findByJobOffer(id, organisationId);
   },
 };

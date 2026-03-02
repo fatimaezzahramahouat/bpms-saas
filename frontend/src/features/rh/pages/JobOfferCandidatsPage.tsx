@@ -9,193 +9,23 @@ import { Pagination, PaginationSkeleton } from '../components/Pagination';
 import { SearchBar, CandidateFilters, ActiveFilters } from '../components';
 import { useCandidateFilters } from '../hooks/useCandidateFilters';
 import { exportCandidatesToCSV, exportAnalysisToPDF, copyToClipboard, generateShareableLink } from '../utils/exportUtils';
+import { jobOfferService } from '../../../services/jobOffer.service';
 
 // ========== INTERFACES (at top) ==========
 interface JobOffer {
   id: string;
   title: string;
-  department: string;
-  type: string;
-  location: string;
+  department?: string;
+  type?: string;
+  contractType: string;
+  workMode: string;
+  location?: string;
   requiredSkills?: string[];
   requiredExperience?: string;
   requiredEducation?: string;
 }
 
-// ========== MOCK DATA (at top, outside component) ==========
-const mockJobOffer: JobOffer = {
-  id: '1',
-  title: 'Développeur Full Stack',
-  department: 'Développement',
-  type: 'CDI',
-  location: 'Casablanca',
-  requiredSkills: ['React', 'Node.js', 'TypeScript', 'MongoDB', 'AWS', '5+ ans expérience'],
-  requiredExperience: '5+ ans',
-  requiredEducation: 'Bac+5 en Informatique',
-};
 
-const mockCandidates: Candidate[] = [
-  {
-    id: '1',
-    firstName: 'Mohamed',
-    lastName: 'El Amrani',
-    email: 'mohamed.elamrani@email.com',
-    phone: '+212 6 12 34 56 78',
-    appliedDate: '2026-02-15',
-    status: 'Nouveau',
-    jobOfferId: '1',
-    formData: {
-      skills: ['React', 'TypeScript', 'Node.js', 'JavaScript', 'PostgreSQL'],
-      experienceLevel: '3 ans',
-      education: 'Master en Informatique',
-      availability: 'Immédiate',
-      salaryExpectations: '45 000€ - 55 000€',
-      coverLetter: 'Passionné par le développement web...',
-      cvFileName: 'cv_mohamed_el_amrani.pdf',
-    },
-    matchPercentage: 72,
-  },
-  {
-    id: '2',
-    firstName: 'Fatima',
-    lastName: 'Zahra',
-    email: 'fatima.zahra@email.com',
-    phone: '+212 6 23 45 67 89',
-    appliedDate: '2026-02-10',
-    status: 'En cours',
-    jobOfferId: '1',
-    formData: {
-      skills: ['React', 'Node.js', 'AWS', 'Docker', 'Kubernetes'],
-      experienceLevel: '6 ans',
-      education: 'Diplôme d\'Ingénieur en Informatique',
-      availability: '1 mois',
-      salaryExpectations: '55 000€ - 65 000€',
-      coverLetter: 'Experte en architectures cloud...',
-      cvFileName: 'cv_fatima_zahra.pdf',
-    },
-    matchPercentage: 88,
-  },
-  {
-    id: '3',
-    firstName: 'Youssef',
-    lastName: 'Benali',
-    email: 'youssef.benali@email.com',
-    phone: '+212 6 34 56 78 90',
-    appliedDate: '2026-02-08',
-    status: 'Nouveau',
-    jobOfferId: '1',
-    formData: {
-      skills: ['JavaScript', 'HTML', 'CSS', 'jQuery'],
-      experienceLevel: '1 an',
-      education: 'Licence en Développement Web',
-      availability: 'Immédiate',
-      salaryExpectations: '30 000€ - 40 000€',
-      coverLetter: 'Junior motivé...',
-      cvFileName: 'cv_youssef_benali.pdf',
-    },
-    matchPercentage: 35,
-  },
-  {
-    id: '4',
-    firstName: 'Amina',
-    lastName: 'Khatib',
-    email: 'amina.khatib@email.com',
-    phone: '+212 6 45 67 89 01',
-    appliedDate: '2026-02-05',
-    status: 'Archivé',
-    jobOfferId: '1',
-    formData: {
-      skills: ['React', 'Vue.js', 'TypeScript', 'Figma'],
-      experienceLevel: '4 ans',
-      education: 'Master en Design UI/UX',
-      availability: '2 mois',
-      salaryExpectations: '48 000€ - 58 000€',
-      coverLetter: 'Designer et développeuse front-end...',
-      cvFileName: 'cv_amina_khatib.pdf',
-    },
-    matchPercentage: 65,
-  },
-  {
-    id: '5',
-    firstName: 'Ali',
-    lastName: 'Mansouri',
-    email: 'ali.mansouri@email.com',
-    phone: '+212 6 56 78 90 12',
-    appliedDate: '2026-02-01',
-    status: 'Rejeté',
-    jobOfferId: '1',
-    formData: {
-      skills: ['Python', 'Django', 'SQL'],
-      experienceLevel: '2 ans',
-      education: 'Bac+3 en Informatique',
-      availability: '3 mois',
-      salaryExpectations: '35 000€ - 45 000€',
-      coverLetter: 'Passionné par Python...',
-      cvFileName: 'cv_ali_mansouri.pdf',
-    },
-    matchPercentage: 28,
-  },
-  {
-    id: '6',
-    firstName: 'Sara',
-    lastName: 'Benharkat',
-    email: 'sara.benharkat@email.com',
-    phone: '+212 6 67 89 01 23',
-    appliedDate: '2026-01-28',
-    status: 'En cours',
-    jobOfferId: '1',
-    formData: {
-      skills: ['React', 'Next.js', 'GraphQL', 'Tailwind CSS'],
-      experienceLevel: '5 ans',
-      education: 'Diplôme d\'Ingénieur',
-      availability: 'Immédiate',
-      salaryExpectations: '50 000€ - 60 000€',
-      coverLetter: 'Développeuse passionnée...',
-      cvFileName: 'cv_sara_benharkat.pdf',
-    },
-    matchPercentage: 78,
-  },
-  {
-    id: '7',
-    firstName: 'Omar',
-    lastName: 'Tazi',
-    email: 'omar.tazi@email.com',
-    phone: '+212 6 78 90 12 34',
-    appliedDate: '2026-01-25',
-    status: 'Nouveau',
-    jobOfferId: '1',
-    formData: {
-      skills: ['Java', 'Spring Boot', 'Microservices'],
-      experienceLevel: '7 ans',
-      education: 'Master en Ingénierie Logicielle',
-      availability: '1 mois',
-      salaryExpectations: '60 000€ - 70 000€',
-      coverLetter: 'Expert Java...',
-      cvFileName: 'cv_omar_tazi.pdf',
-    },
-    matchPercentage: 45,
-  },
-  {
-    id: '8',
-    firstName: 'Laila',
-    lastName: 'Chraibi',
-    email: 'laila.chraibi@email.com',
-    phone: '+212 6 89 01 23 45',
-    appliedDate: '2026-01-20',
-    status: 'En cours',
-    jobOfferId: '1',
-    formData: {
-      skills: ['React', 'Node.js', 'TypeScript', 'MongoDB', 'AWS'],
-      experienceLevel: '4 ans',
-      education: 'Engineer Degree',
-      availability: '2 mois',
-      salaryExpectations: '52 000€ - 62 000€',
-      coverLetter: 'Full-stack developer...',
-      cvFileName: 'cv_laila_chraibi.pdf',
-    },
-    matchPercentage: 82,
-  },
-];
 
 // ========== SKELETON COMPONENT (outside main component) ==========
 function CandidateSkeleton() {
@@ -274,18 +104,55 @@ export function JobOfferCandidatsPage() {
 
   // ========== PHASE 2: HELPER FUNCTIONS (NOT HOOKS) ==========
   const loadData = useCallback(async () => {
+    if (!id) return;
     setIsLoading(true);
     setError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (id === '404') {
+      const [offerRes, candidatesRes] = await Promise.all([
+        jobOfferService.getOfferById(id),
+        jobOfferService.getJobCandidates(id)
+      ]);
+      
+      if (!offerRes.data) {
         setError('offre-404');
         return;
       }
-      setJobOffer(mockJobOffer);
-      setCandidates(mockCandidates);
-    } catch (err) {
-      setError('Erreur lors du chargement des données');
+
+      setJobOffer(offerRes.data as any);
+
+      // Map backend candidates to frontend Candidate type
+      const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
+        const app = c.applications?.[0];
+        const fullNameParts = c.fullName.split(' ');
+        const firstName = fullNameParts[0] || '';
+        const lastName = fullNameParts.slice(1).join(' ') || '';
+
+        return {
+          id: c.id,
+          firstName,
+          lastName,
+          email: c.email,
+          phone: c.phone || 'Non renseigné',
+          appliedDate: app?.createdAt || c.createdAt,
+          status: (app?.status === 'APPLIED' ? 'Nouveau' : 
+                   app?.status === 'INTERVIEW' ? 'En cours' : 
+                   app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as any,
+          jobOfferId: id,
+          formData: {
+            skills: app?.aiAnalyses?.[0]?.result?.skills || [],
+            experienceLevel: app?.aiAnalyses?.[0]?.result?.experience || 'Non spécifié',
+            education: app?.aiAnalyses?.[0]?.result?.education || 'Non spécifié',
+            availability: 'Non spécifié',
+            cvFileName: app?.documents?.[0]?.fileName || 'cv.pdf',
+          },
+          matchPercentage: app?.aiAnalyses?.[0]?.confidence ? Math.round(app.aiAnalyses[0].confidence * 100) : 0,
+        };
+      });
+
+      setCandidates(mappedCandidates);
+    } catch (err: any) {
+      console.error('Error loading candidates data:', err);
+      setError(err.response?.data?.error || 'Erreur lors du chargement des données');
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Edit, Trash2, Eye, X, ChevronDown, RotateCcw, SlidersHorizontal, ChevronLeft, ChevronRight,Loader2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, X, ChevronDown, RotateCcw, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2, Users } from 'lucide-react';
 import { JobOfferModal } from '../components/JobOfferModal';
 import { jobOfferService, JobOffer, JobOfferFilters } from '../../../services/jobOffer.service';
 
@@ -336,12 +336,13 @@ export function JobOffersManagement() {
                         <span className="capitalize">{job.contractType.toLowerCase()}</span>
                         <span>{job.workMode}</span>
                         <span>Créée le {new Date(job.createdAt).toLocaleDateString()}</span>
-                        {job.applicationsCount !== undefined && (
+                        {job._count?.applications !== undefined && (
                           <Link
                             to={`/dashboard/rh/job-offers/${job.id}/candidats`}
-                            className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 hover:bg-[#8000ff]/10 hover:text-[#8000ff] transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full text-xs font-semibold hover:bg-purple-500/20 border border-purple-500/20 transition-all shadow-sm"
                           >
-                            {job.applicationsCount} candidature{job.applicationsCount > 1 ? 's' : ''}
+                            <Users className="w-3.5 h-3.5" />
+                            {job._count.applications} candidat{job._count.applications > 1 ? 's' : ''}
                           </Link>
                         )}
                       </div>

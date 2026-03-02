@@ -13,6 +13,7 @@ jobOfferRouter.get("/rh", jobOfferController.getRHOffers);
 jobOfferRouter.post("/rh", jobOfferController.createOffer);
 jobOfferRouter.put("/rh/:id", jobOfferController.updateOffer);
 jobOfferRouter.delete("/rh/:id", jobOfferController.deleteOffer);
+jobOfferRouter.get("/rh/:id/candidates", jobOfferController.getCandidates);
 
 // --- PUBLIC ENDPOINTS ---
 // GET /api/joboffers (Pagination, search, filters)
