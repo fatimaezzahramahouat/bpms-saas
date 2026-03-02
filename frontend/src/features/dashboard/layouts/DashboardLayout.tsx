@@ -5,22 +5,17 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
 import { usePermission } from '@shared/hooks/usePermission';
+import { RHJobOffersButton } from '@/features/rh/components';
 
 export function DashboardLayout() {
-    const { isAdmin: isUserAdmin, isHR: isUserHR, isEmployee } = usePermission();
+    const { role: currentRole, isAdmin: isUserAdmin, isHR: isUserHR, isEmployee } = usePermission();
 
-    const getRoleLabel = (user: any) => {
-        if (!user) return "";
-        const role = (user.role || "").toString().toUpperCase();
-        if (role.includes('ADMIN')) return "Administrateur";
-        if (role.includes('RH')) return "Responsable RH";
-        if (role.includes('MANAGER')) return "Manager";
-        if (role.includes('EMPLOYEE') || role.includes('USER')) return "Employé";
-
-        // Fallback: Heritage objects
-        if (user.admin) return "Administrateur";
-        if (user.rh) return "Responsable RH";
-        return "Utilisateur";
+    const getRoleLabel = (role: string) => {
+        const r = role.toUpperCase();
+        if (r.includes('ADMIN')) return "Administrateur";
+        if (r.includes('RH') || r.includes('HR')) return "Responsable RH";
+        if (r.includes('MANAGER')) return "Manager";
+        return "Employé";
     };
 
     const [userData, setUserData] = useState<any>(() => {
@@ -38,15 +33,8 @@ export function DashboardLayout() {
         return null;
     });
 
-    const [userName, setUserName] = useState(() => {
-        if (userData) return `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
-        return '';
-    });
-
-    const [userRole, setUserRole] = useState(() => {
-        if (userData) return getRoleLabel(userData);
-        return '';
-    });
+    const userRole = getRoleLabel(currentRole);
+    const userName = userData ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : 'Utilisateur';
 
     // Helper to determine if current user should see "Admin/HR" dashboard features
     const hasElevatedAccess = isUserAdmin || isUserHR;
@@ -66,11 +54,10 @@ export function DashboardLayout() {
                 const result = await response.json();
                 const user = result.data;
                 localStorage.setItem('user', JSON.stringify(user));
+                window.dispatchEvent(new CustomEvent('user-data-updated'));
 
                 setUserData(user);
                 setOrgData(user.organisation);
-                setUserName(`${user.firstName} ${user.lastName}`);
-                setUserRole(getRoleLabel(user));
 
                 if (user.organisation?.orgInfo) {
                     setHasOrgInfo(true);
@@ -148,6 +135,12 @@ export function DashboardLayout() {
                             <Zap className="w-5 h-5" />
                             Mes Demandes
                         </NavLink>
+                    )}
+
+                    {isUserHR && (
+                        <div className="mt-4 px-2">
+                            <RHJobOffersButton />
+                        </div>
                     )}
 
                     <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 text-left">

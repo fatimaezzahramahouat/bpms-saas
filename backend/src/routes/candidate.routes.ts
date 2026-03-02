@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { candidateController } from "../controllers/candidate.controller";
+import { candidateStatisticsController } from "../controllers/candidateStatistics.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
 import { requireRH } from "../middleware/role.middleware";
 
@@ -29,6 +30,7 @@ candidateRouter.post("/", upload.single("cv"), candidateController.createCandida
 // --- PROTECTED ENDPOINTS (RH/Admin) ---
 candidateRouter.use(authMiddleware);
 
+candidateRouter.get("/statistics", candidateStatisticsController.getStatistics);
 candidateRouter.get("/", candidateController.getAllCandidates);
 candidateRouter.get("/:id", candidateController.getCandidateById);
 candidateRouter.put("/:id", upload.single("cv"), candidateController.updateCandidate);
