@@ -12,12 +12,9 @@ import TeamPage from '../pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
-<<<<<<< manal
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
-=======
 import { PublicRouteWrapper } from '../shared/components/transitions/PublicRouteWrapper';
-import { JobOffersManagement } from '../features/rh/pages/JobOffersManagement';
->>>>>>> main
+
 
 /**
  * Application Router
