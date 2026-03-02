@@ -5,8 +5,8 @@ import { requireRH } from "../middleware/role.middleware";
 
 const jobOfferRouter = Router();
 
-// --- RH DASHBOARD ENDPOINTS ---
-// Protected by Auth and RH Role
+// ---- RH PROTECTED ENDPOINTS ----
+// All /rh routes require authenticated RH user
 jobOfferRouter.use("/rh", authMiddleware, requireRH);
 
 jobOfferRouter.get("/rh", jobOfferController.getRHOffers);
@@ -15,8 +15,15 @@ jobOfferRouter.put("/rh/:id", jobOfferController.updateOffer);
 jobOfferRouter.delete("/rh/:id", jobOfferController.deleteOffer);
 jobOfferRouter.get("/rh/:id/candidates", jobOfferController.getCandidates);
 
-// --- PUBLIC ENDPOINTS ---
-// GET /api/joboffers (Pagination, search, filters)
+// ---- SYSTEM AUTOMATION ENDPOINTS ----
+// These should ideally be protected by an internal API key or system middleware.
+// For now they are protected by authMiddleware only (tighten as needed).
+jobOfferRouter.use("/system", authMiddleware);
+jobOfferRouter.patch("/system/:id/fill", jobOfferController.markAsFilled);
+jobOfferRouter.patch("/system/:id/close", jobOfferController.markAsClosed);
+
+// ---- PUBLIC ENDPOINTS ----
+// GET /api/joboffers (search with pagination)
 jobOfferRouter.get("/", jobOfferController.getPublicOffers);
 jobOfferRouter.get("/:id", jobOfferController.getOfferById);
 
