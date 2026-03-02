@@ -5,6 +5,7 @@ import authRouter from "./routes/auth.routes";
 import organisationRouter from "./routes/organisation.routes";
 import userManagementRouter from "./routes/userManagement.routes";
 import jobOfferRouter from "./routes/jobOffer.routes";
+import candidateRouter from "./routes/candidate.routes";
 import { errorMiddleware } from "./middleware/error.middleware";
 
 const app = express();
@@ -23,6 +24,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/organisation", organisationRouter);
 app.use("/api/users", userManagementRouter);
 app.use("/api/joboffers", jobOfferRouter);
+app.use("/api/candidates", candidateRouter);
 
 // Global Error Handler
 app.use(errorMiddleware);

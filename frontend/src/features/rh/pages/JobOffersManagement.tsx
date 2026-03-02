@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { Plus, Search, Edit, Trash2, Eye, X, ChevronDown, RotateCcw, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { JobOfferModal } from '../components/JobOfferModal';
 
@@ -407,7 +408,7 @@ export function JobOffersManagement() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#8000ff] text-white rounded-lg hover:bg-[#6a00cc] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-[#2563eb] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium"
         >
           <Plus className="w-5 h-5" />
           Nouvelle offre
@@ -591,9 +592,12 @@ export function JobOffersManagement() {
                         <span>{job.type}</span>
                         <span>Créée le {job.createdAt}</span>
                         {job.applicationsCount !== undefined && (
-                          <span className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1">
+                          <Link
+                            to={`/dashboard/rh/job-offers/${job.id}/candidats`}
+                            className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 hover:bg-[#8000ff]/10 hover:text-[#8000ff] transition-colors cursor-pointer"
+                          >
                             {job.applicationsCount} candidature{job.applicationsCount > 1 ? 's' : ''}
-                          </span>
+                          </Link>
                         )}
                       </div>
                     </div>

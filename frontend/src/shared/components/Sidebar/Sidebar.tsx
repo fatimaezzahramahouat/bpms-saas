@@ -6,12 +6,16 @@ import {
     Files,
     Settings,
     ChevronRight,
-    Zap
+    Zap,
+    BarChart3,
+    Briefcase
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const menuItems = [
     { name: 'Tableau de bord', icon: LayoutDashboard, path: '/dashboard' },
+    { name: 'Offres d\'emploi', icon: Briefcase, path: '/dashboard/rh/job-offers' },
+    { name: 'Statistiques', icon: BarChart3, path: '/dashboard/rh/statistics' },
     { name: 'Equipe', icon: Users, path: '/dashboard/equipe' },
     { name: 'Workflow', icon: GitMerge, path: '/dashboard/workflow' },
     { name: 'Documents', icon: Files, path: '/documents' },
