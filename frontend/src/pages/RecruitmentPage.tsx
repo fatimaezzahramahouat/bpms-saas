@@ -340,7 +340,7 @@ export function RecruitmentPage() {
         isOpen={!!selectedJob}
         onClose={() => setSelectedJob(null)}
         jobTitle={selectedJob?.title || ''}
-        jobId={selectedJob?.id || ''}
+        jobId={selectedJob?.id ? String(selectedJob.id) : ''}
       />
 
       {/* Job Details Modal */}
