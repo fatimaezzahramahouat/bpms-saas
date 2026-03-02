@@ -63,25 +63,52 @@ model User {
   @@index([organisationId])
 }
 
+enum JobOfferStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  CLOSED
+  FILLED
+  CANCELLED
+}
+enum StatusSource {
+  MANUAL
+  AUTOMATIC
+}
+
 model JobOffer {
-  id               String        @id @default(uuid())
-  title            String
-  organisationId   String
-  createdById      String
-  budget           Float?
-  contractType     ContractType
-  createdAt        DateTime      @default(now())
-  description      String
-  level            JobLevel
-  responsibilities String[]      @default([])
+  id          String @id @default(uuid())
+  title       String
+  description String
+
+  organisationId String
+  createdById    String
+  workflowId     String?
+
+  budget       Float?
+  contractType ContractType
+  level        JobLevel
+  workMode     WorkMode
+
+  responsibilities String[] @default([])
   skills           String[]
-  updatedAt        DateTime      @updatedAt
-  workMode         WorkMode
-  applications     Application[]
-  createdBy        User          @relation(fields: [createdById], references: [id])
-  organisation     Organisation  @relation(fields: [organisationId], references: [id])
+
+  status      JobOfferStatus @default(PUBLISHED)
+  statusSource StatusSource  @default(MANUAL)  
+
+  publishedAt DateTime?
+  closedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+  createdBy    User          @relation(fields: [createdById], references: [id])
+  organisation Organisation  @relation(fields: [organisationId], references: [id])
+  workflow     Workflow?     @relation(fields: [workflowId], references: [id])
 
   @@index([organisationId])
+  @@index([status])
 }
 
 model Candidate {
@@ -163,6 +190,7 @@ model Workflow {
   version        Int               @default(1)
   instances      ProcessInstance[]
   steps          Step[]
+  jobOffers      JobOffer[]
   organisation   Organisation      @relation(fields: [organisationId], references: [id])
 
   @@index([status])

@@ -10,11 +10,17 @@ export interface JobOffer {
   skills: string[];
   responsibilities: string[];
   budget?: number | null;
-  status: 'ACTIVE' | 'CLOSED' | 'DRAFT';
+  // Status: DRAFT | PUBLISHED | PAUSED | CANCELLED are manual (RH)
+  // FILLED | CLOSED are automatic (system)
+  status: 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'CANCELLED' | 'FILLED' | 'CLOSED';
+  // statusSource indicates who set the status — used to enable/disable delete
+  statusSource: 'MANUAL' | 'AUTOMATIC';
+  publishedAt?: string | null;
+  closedAt?: string | null;
+  workflowId?: string | null;
   createdAt: string;
   organisationId: string;
   createdById: string;
-  applicationsCount?: number;
   _count?: {
     applications: number;
   };
