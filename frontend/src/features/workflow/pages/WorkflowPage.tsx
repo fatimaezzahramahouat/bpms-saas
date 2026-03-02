@@ -27,6 +27,7 @@ import { toast } from 'react-toastify';
 import { WorkflowHeader } from '../components/WorkflowHeader';
 import { NodeConfigPanel } from '../components/NodeConfigPanel';
 import ConditionNode from '../components/turbo/ConditionNode';
+import { usePermission } from '../../../shared/hooks/usePermission';
 
 const nodeTypes = {
     turbo: TurboNode,
@@ -64,18 +65,22 @@ const WorkflowEditor: React.FC = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowData>>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
+
+    // Permission Hook
+    const { role: rawRole, canEditWorkflow } = usePermission();
+
+    // DEBUG LOG FOR DEMO
+    console.log("DEBUG ROLE:", rawRole);
+
+    const roleString = (rawRole || '').toUpperCase();
+    const canEdit = canEditWorkflow;
+
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
     const selectedNode = useMemo(
         () => nodes.find((n) => n.id === selectedNodeId) || null,
         [nodes, selectedNodeId]
     );
-
-    useEffect(() => {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        setIsAdmin(userData.role === 'ADMIN' || userData.isAdmin || userData.admin);
-    }, []);
 
     const onConnect = useCallback(
         (params: Connection) => {
@@ -214,7 +219,7 @@ const WorkflowEditor: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050507] transition-colors duration-300 overflow-hidden">
             <div className="flex-1 relative turbo-flow z-0" ref={reactFlowWrapper}>
-                {isAdmin && (
+                {canEdit && (
                     <div className="pt-20 absolute inset-y-0 left-0 z-30 pointer-events-none">
                         <div className="h-full pointer-events-auto">
                             <WorkflowSidebar />
@@ -224,7 +229,7 @@ const WorkflowEditor: React.FC = () => {
                 <div className="z-40 relative">
                     <WorkflowHeader
                         title="Workflow Designer"
-                        subtitle={isAdmin ? 'Editor Mode (Admin)' : 'Viewer Mode'}
+                        subtitle={canEdit ? `Editor Mode (${roleString})` : 'Viewer Mode'}
                         onSave={saveWorkflow}
                         onReset={resetWorkflow}
                     />
@@ -257,7 +262,7 @@ const WorkflowEditor: React.FC = () => {
 
                     <Controls
                         className="!bg-white dark:!bg-[#0d0d12] !border-zinc-200 dark:!border-white/5 !fill-zinc-600 dark:!fill-white/70"
-                        showInteractive={isAdmin}
+                        showInteractive={canEdit}
                     />
 
                     <svg style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
@@ -274,7 +279,7 @@ const WorkflowEditor: React.FC = () => {
                     </svg>
                 </ReactFlow>
 
-                {isAdmin && <AIFlowDesigner onGenerate={handleAIGeneration} />}
+                {canEdit && <AIFlowDesigner onGenerate={handleAIGeneration} />}
 
                 <AnimatePresence>
                     {selectedNode && (

@@ -9,17 +9,31 @@ import {
     Zap
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { usePermission } from '../../hooks/usePermission';
 
 const menuItems = [
     { name: 'Tableau de bord', icon: LayoutDashboard, path: '/dashboard' },
     { name: 'Equipe', icon: Users, path: '/dashboard/equipe' },
-    { name: 'Workflow', icon: GitMerge, path: '/dashboard/workflow' },
+    { name: 'Workflow Builder', icon: GitMerge, path: '/dashboard/workflow' },
+    { name: 'Mes Demandes', icon: Zap, path: '/dashboard/mes-demandes' },
     { name: 'Documents', icon: Files, path: '/documents' },
     { name: 'Paramètres', icon: Settings, path: '/settings' },
 ];
 
 export const Sidebar: React.FC = () => {
     const location = useLocation();
+    const { canEditWorkflow, canManageUsers, role, isAdmin, isHR } = usePermission();
+
+    const filteredMenuItems = menuItems.filter(item => {
+        // Only Admin and RH can see Workflow Builder
+        if (item.path === '/dashboard/workflow') return isAdmin || isHR;
+
+        // Only Employees see "Mes Demandes" (or hide builder for them)
+        if (item.path === '/dashboard/mes-demandes') return !isAdmin && !isHR;
+
+        if (item.path.includes('equipe')) return canManageUsers;
+        return true;
+    });
 
     return (
         <aside className="w-64 h-screen bg-[#0a0a0c] border-r border-white/5 flex flex-col fixed left-0 top-0 z-50">
@@ -35,7 +49,7 @@ export const Sidebar: React.FC = () => {
 
             {/* Navigation section */}
             <nav className="flex-1 px-4 py-6 space-y-2">
-                {menuItems.map((item) => {
+                {filteredMenuItems.map((item) => {
                     const isActive = location.pathname === item.path;
                     const Icon = item.icon;
 
@@ -74,8 +88,8 @@ export const Sidebar: React.FC = () => {
                 <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 border border-white/10" />
                     <div className="flex-1">
-                        <p className="text-sm font-medium text-white group-hover:text-purple-400 transition-colors">Admin User</p>
-                        <p className="text-xs text-gray-500">Premium Account</p>
+                        <p className="text-sm font-medium text-white group-hover:text-purple-400 transition-colors">{role}</p>
+                        <p className="text-xs text-gray-500">Compte {role === 'ADMIN' ? 'Administrateur' : role === 'HR_MANAGER' ? 'RH' : 'Utilisateur'}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400" />
                 </div>

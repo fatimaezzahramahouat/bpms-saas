@@ -10,6 +10,7 @@ import { RecruitmentPage } from '../pages/RecruitmentPage';
 import TeamPage from '../pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
+import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 
 /**
@@ -40,6 +41,7 @@ export function AppRouter() {
         <Route index element={<DashboardHome />} />
         <Route path="equipe" element={<UsersManagement />} />
         <Route path="workflow" element={<WorkflowPage />} />
+        <Route path="mes-demandes" element={<EmployeeDashboard />} />
       </Route>
 
       {/* Recruitment Route */}
