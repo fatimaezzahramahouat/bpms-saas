@@ -112,4 +112,15 @@ export const jobOfferController = {
     }
     res.status(200).json({ data: offer });
   }),
+
+  /**
+   * GET /api/joboffers/rh/:id/candidates
+   */
+  getCandidates: catchAsync(async (req: AuthRequest, res: Response) => {
+    const { organisationId } = req.user!;
+    const { id } = req.params;
+    
+    const candidates = await jobOfferService.getCandidates(id as string, organisationId);
+    res.status(200).json({ data: candidates });
+  }),
 };

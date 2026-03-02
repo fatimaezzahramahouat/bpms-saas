@@ -85,4 +85,29 @@ export const candidateRepository = {
       where: { id },
     });
   },
+
+  async findByJobOffer(jobOfferId: string, organisationId: string) {
+    return prisma.candidate.findMany({
+      where: {
+        applications: {
+          some: {
+            jobOfferId,
+            jobOffer: { organisationId },
+          },
+        },
+      },
+      include: {
+        applications: {
+          where: { jobOfferId },
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            documents: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
 };
