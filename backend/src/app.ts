@@ -7,7 +7,9 @@ import userManagementRouter from "./routes/userManagement.routes";
 import jobOfferRouter from "./routes/jobOffer.routes";
 import candidateRouter from "./routes/candidate.routes";
 import { errorMiddleware } from "./middleware/error.middleware";
-
+import workflowRouter from "./routes/workflow.routes";
+import applicationRouter from "./routes/application.routes";
+import candidateRouter from "./routes/candidate.routes";
 const app = express();
 
 // Middleware
@@ -24,6 +26,11 @@ app.use("/api/auth", authRouter);
 app.use("/api/organisation", organisationRouter);
 app.use("/api/users", userManagementRouter);
 app.use("/api/joboffers", jobOfferRouter);
+<<<<<<< manal
+=======
+app.use("/api/workflows", workflowRouter);
+app.use("/api/applications", applicationRouter);
+>>>>>>> main
 app.use("/api/candidates", candidateRouter);
 
 // Global Error Handler

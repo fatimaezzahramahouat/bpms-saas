@@ -16,28 +16,41 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { TurboNode, TurboNodeData } from '../components/TurboNode';
-import { TurboEdge } from '../components/TurboEdge';
+import TurboNode from '../components/turbo/TurboNode';
+import { WorkflowData, ActionNodeData, TriggerNodeData, EndNodeData } from '../types';
+import TurboEdge from '../components/turbo/TurboEdge';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
-import { AIAssistant } from '../components/AIAssistant';
-import { NodeConfigPanel } from '../components/NodeConfigPanel';
-import '../styles/workflow.css';
+import { AIFlowDesigner } from '../components/AIFlowDesigner';
 import { AnimatePresence } from 'motion/react';
+import { workflowService } from '../../../services/workflow.service';
+import { toast } from 'react-toastify';
+import { WorkflowHeader } from '../components/WorkflowHeader';
+import { NodeConfigPanel } from '../components/NodeConfigPanel';
+import ConditionNode from '../components/turbo/ConditionNode';
 
 const nodeTypes = {
     turbo: TurboNode,
+    conditionNode: ConditionNode,
 };
 
 const edgeTypes = {
     turbo: TurboEdge,
 };
 
-const initialNodes: Node[] = [
+const initialNodes: Node<WorkflowData>[] = [
     {
         id: 'start-1',
         type: 'turbo',
         position: { x: 250, y: 250 },
-        data: { label: 'Start Workflow', variant: 'trigger', targetRole: 'ADMIN', stepType: 'step' },
+        data: {
+            title: 'Start Workflow',
+            variant: 'trigger',
+            role: 'ADMIN',
+            assigneeType: 'ALL',
+            slaDuration: 0,
+            requiredDocuments: [],
+            autoEmail: { enabled: false }
+        } as TriggerNodeData,
     },
 ];
 
@@ -48,7 +61,7 @@ const getNewId = () => `node_ai_${nodeId++}_${Date.now()}`;
 
 const WorkflowEditor: React.FC = () => {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowData>>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -67,12 +80,9 @@ const WorkflowEditor: React.FC = () => {
     const onConnect = useCallback(
         (params: Connection) => {
             const sourceNode = nodes.find((n) => n.id === params.source);
-            const isCondition = sourceNode?.data.variant === 'condition';
+            const isCondition = sourceNode?.data.variant === 'condition' || sourceNode?.data.variant === 'decision';
 
-            // If it's a condition node, we might want to color the edge
-            // For simplicity, we can use the sourceHandle to distinguish (if available)
-            // or just cycle through colors for this demo
-            const color = isCondition ? '#22c55e' : '#3b82f6'; // Default green for condition first branch
+            const color = isCondition ? '#22c55e' : '#3b82f6';
 
             setEdges((eds) => addEdge({
                 ...params,
@@ -92,11 +102,11 @@ const WorkflowEditor: React.FC = () => {
         setSelectedNodeId(null);
     }, []);
 
-    const updateNodeData = useCallback((id: string, newData: any) => {
+    const updateNodeData = useCallback((id: string, newData: Partial<WorkflowData>) => {
         setNodes((nds) =>
             nds.map((node) => {
                 if (node.id === id) {
-                    return { ...node, data: newData };
+                    return { ...node, data: { ...node.data, ...newData } as WorkflowData };
                 }
                 return node;
             })
@@ -107,6 +117,13 @@ const WorkflowEditor: React.FC = () => {
         setNodes((nds) => nds.filter((node) => node.id !== id));
         setEdges((eds) => eds.filter((edge) => edge.source !== id && edge.target !== id));
         setSelectedNodeId(null);
+    }, [setNodes, setEdges]);
+
+    const resetWorkflow = useCallback(() => {
+        setNodes(initialNodes);
+        setEdges(initialEdges);
+        setSelectedNodeId(null);
+        toast.info("Le canvas a été réinitialisé.");
     }, [setNodes, setEdges]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
@@ -128,16 +145,19 @@ const WorkflowEditor: React.FC = () => {
                 y: event.clientY,
             });
 
-            const newNode: Node = {
+            const newNode: Node<WorkflowData> = {
                 id: getNewId(),
                 type: parsed.nodeType,
                 position,
                 data: {
-                    label: parsed.label,
+                    title: parsed.label,
                     variant: parsed.variant,
-                    targetRole: 'SYSTEM',
-                    stepType: parsed.variant === 'condition' ? 'condition' : (parsed.variant === 'ai' ? 'ai' : 'step')
-                },
+                    role: 'EMPLOYE',
+                    assigneeType: 'ALL',
+                    slaDuration: 24,
+                    requiredDocuments: [],
+                    autoEmail: { enabled: false }
+                } as ActionNodeData,
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -145,86 +165,72 @@ const WorkflowEditor: React.FC = () => {
         [reactFlowInstance, setNodes]
     );
 
-    const saveWorkflow = () => {
-        // 1. Find the trigger node
+    const saveWorkflow = async () => {
         const startNode = nodes.find(n => n.data.variant === 'trigger');
         if (!startNode) {
-            alert("Erreur : Aucun nœud 'Début' (Trigger) trouvé !");
+            toast.error("Erreur : Aucun nœud 'Début' (Trigger) trouvé !");
             return;
         }
 
-        const steps: any[] = [];
-        const visited = new Set<string>();
-        const queue: { id: string, order: number }[] = [{ id: startNode.id, order: 1 }];
-
-        // 2. Simple BFS traversal to calculate order
-        while (queue.length > 0) {
-            const { id, order } = queue.shift()!;
-            if (visited.has(id)) continue;
-            visited.add(id);
-
-            const node = nodes.find(n => n.id === id);
-            if (node && node.data.variant !== 'trigger' && node.data.variant !== 'end') {
-                steps.push({
-                    id: node.id,
-                    label: node.data.label,
-                    targetRole: node.data.targetRole || 'SYSTEM',
-                    stepType: node.data.stepType || 'step',
-                    order: order
-                });
+        const steps = nodes.map((node, index) => ({
+            name: node.data.title || 'Étape sans titre',
+            order: index + 1,
+            metadata: {
+                variant: node.data.variant,
+                role: (node.data as any).role,
+                slaDuration: (node.data as any).slaDuration,
+                requiredDocuments: (node.data as any).requiredDocuments,
+                autoEmail: (node.data as any).autoEmail,
+                actionType: (node.data as any).actionType,
+                position: node.position,
+                nodeId: node.id
             }
+        }));
 
-            // Find neighbors
-            const outboundEdges = edges.filter(e => e.source === id);
-            outboundEdges.forEach((edge, index) => {
-                if (!visited.has(edge.target)) {
-                    queue.push({ id: edge.target, order: steps.length + 1 });
-                }
-            });
+        const payload = {
+            name: 'Nouveau Workflow',
+            nodes: nodes,
+            edges: edges,
+            steps: steps,
+        };
+
+        const loadingToast = toast.loading("Sauvegarde du workflow...");
+        try {
+            await workflowService.createWorkflow(payload);
+            toast.update(loadingToast, { render: "Workflow sauvegardé dans la base de données !", type: "success", isLoading: false, autoClose: 3000 });
+        } catch (error: any) {
+            console.error('Save Error:', error);
+            toast.update(loadingToast, { render: `Échec de la sauvegarde : ${error.message}`, type: "error", isLoading: false, autoClose: 5000 });
         }
-
-        console.log("=== WORKFLOW EXPORT (JobInTech Schema) ===");
-        console.log(JSON.stringify(steps, null, 2));
-        alert("Workflow sauvegardé ! Consultez la console pour le JSON.");
     };
 
-    const handleAIGeneration = (prompt: string) => {
-        // Simulated AI generation of nodes based on prompt
-        const newId1 = getNewId();
-        const newId2 = getNewId();
+    const handleAIGeneration = (newNodes: Node<WorkflowData>[], newEdges: Edge[]) => {
+        setNodes((nds) => nds.concat(newNodes));
+        setEdges((eds) => eds.concat(newEdges));
 
-        const aiNodes: Node[] = [
-            {
-                id: newId1,
-                type: 'turbo',
-                position: { x: 400, y: 100 },
-                data: { label: 'RH Validation', variant: 'action', targetRole: 'RH', stepType: 'step' },
-            },
-            {
-                id: newId2,
-                type: 'turbo',
-                position: { x: 600, y: 100 },
-                data: { label: 'AI Check', variant: 'condition', targetRole: 'SYSTEM', stepType: 'step' },
-            }
-        ];
-
-        const aiEdges: Edge[] = [
-            { id: `e-${newId1}-${newId2}`, source: newId1, target: newId2, type: 'turbo', animated: true }
-        ];
-
-        setNodes((nds) => nds.concat(aiNodes));
-        setEdges((eds) => eds.concat(aiEdges));
-
-        // Auto-fit view after AI generation
         setTimeout(() => reactFlowInstance?.fitView({ duration: 800 }), 100);
     };
 
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050507] transition-colors duration-300 overflow-hidden">
-            <div className="flex-1 relative turbo-flow" ref={reactFlowWrapper}>
-                {isAdmin && <WorkflowSidebar />}
+            <div className="flex-1 relative turbo-flow z-0" ref={reactFlowWrapper}>
+                {isAdmin && (
+                    <div className="pt-20 absolute inset-y-0 left-0 z-30 pointer-events-none">
+                        <div className="h-full pointer-events-auto">
+                            <WorkflowSidebar />
+                        </div>
+                    </div>
+                )}
+                <div className="z-40 relative">
+                    <WorkflowHeader
+                        title="Workflow Designer"
+                        subtitle={isAdmin ? 'Editor Mode (Admin)' : 'Viewer Mode'}
+                        onSave={saveWorkflow}
+                        onReset={resetWorkflow}
+                    />
+                </div>
 
-                <ReactFlow
+                <ReactFlow<Node<WorkflowData>, Edge>
                     nodes={nodes}
                     edges={edges}
                     onNodesChange={onNodesChange}
@@ -254,31 +260,6 @@ const WorkflowEditor: React.FC = () => {
                         showInteractive={isAdmin}
                     />
 
-                    <Panel position="top-right" className="bg-white/80 dark:bg-[#0d0d12]/60 backdrop-blur-md border border-zinc-200 dark:border-white/5 p-4 rounded-2xl shadow-xl flex flex-col gap-4">
-                        <div className="flex items-center justify-between gap-8">
-                            <div>
-                                <h1 className="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400 uppercase tracking-tight">
-                                    Workflow Designer
-                                </h1>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className={`w-2 h-2 rounded-full ${isAdmin ? 'bg-green-500' : 'bg-blue-500'}`} />
-                                    <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                                        {isAdmin ? 'Editor Mode (Admin)' : 'Viewer Mode'}
-                                    </p>
-                                </div>
-                            </div>
-                            {isAdmin && (
-                                <button
-                                    onClick={saveWorkflow}
-                                    className="px-6 py-2.5 bg-h1-blue hover:bg-h1-blue/90 text-white rounded-xl text-xs font-bold shadow-lg shadow-h1-blue/20 transition-all flex items-center gap-2"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    Sauvegarder
-                                </button>
-                            )}
-                        </div>
-                    </Panel>
-
                     <svg style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
                         <defs>
                             <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -293,12 +274,12 @@ const WorkflowEditor: React.FC = () => {
                     </svg>
                 </ReactFlow>
 
-                {isAdmin && <AIAssistant onGenerate={handleAIGeneration} />}
+                {isAdmin && <AIFlowDesigner onGenerate={handleAIGeneration} />}
 
                 <AnimatePresence>
                     {selectedNode && (
                         <NodeConfigPanel
-                            node={selectedNode as Node<TurboNodeData>}
+                            node={selectedNode}
                             onUpdate={updateNodeData}
                             onDelete={deleteNode}
                             onClose={() => setSelectedNodeId(null)}

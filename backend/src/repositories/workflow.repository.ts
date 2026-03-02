@@ -5,16 +5,25 @@ import { StepInput } from "../schemas/workflow.schema";
 
 interface CreateWorkflowData {
     name: string;
+    description?: string;
+    nodes?: any;
+    edges?: any;
     steps: StepInput[];
 }
 
 interface UpdateWorkflowData {
-    name: string;
+    name?: string;
+    description?: string;
+    nodes?: any;
+    edges?: any;
+    status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+    version?: number;
 }
 
 interface AddStepData {
     name: string;
     order: number;
+    metadata?: any;
 }
 
 // ─── Repository ───────────────────────────────────────────
@@ -33,6 +42,9 @@ export const workflowRepository = {
             const workflow = await tx.workflow.create({
                 data: {
                     name: data.name,
+                    description: data.description,
+                    nodes: data.nodes || [],
+                    edges: data.edges || [],
                     organisationId,
                 },
             });
@@ -44,6 +56,7 @@ export const workflowRepository = {
                         name: step.name,
                         order: step.order,
                         workflowId: workflow.id,
+                        metadata: step.metadata || null,
                     })),
                 });
             }
@@ -102,7 +115,14 @@ export const workflowRepository = {
     ) {
         return prisma.workflow.updateMany({
             where: { id, organisationId },
-            data: { name: data.name },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.description !== undefined && { description: data.description }),
+                ...(data.nodes !== undefined && { nodes: data.nodes }),
+                ...(data.edges !== undefined && { edges: data.edges }),
+                ...(data.status && { status: data.status }),
+                ...(data.version && { version: data.version }),
+            },
         });
     },
 
@@ -149,6 +169,7 @@ export const workflowRepository = {
                 name: data.name,
                 order: data.order,
                 workflowId,
+                metadata: data.metadata || null,
             },
         });
     },

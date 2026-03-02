@@ -14,6 +14,7 @@ export const createJobOfferSchema = z.object({
   level: JobLevelEnum,
   workMode: WorkModeEnum,
   skills: z.array(z.string()).min(1, "At least one skill is required"),
+  responsibilities: z.array(z.string()).default([]),
   budget: z.number().optional().nullable(),
 });
 
