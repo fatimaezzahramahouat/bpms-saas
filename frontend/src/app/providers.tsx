@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { ToastProvider } from '../shared/components/Toast';
+import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 
 /**
  * Application Providers
@@ -9,7 +11,8 @@ import { BrowserRouter } from 'react-router-dom';
  * - Router setup
  * - Authentication context (future)
  * - Theme providers (future)
- * - Error boundaries (future)
+ * - Error boundaries
+ * - Toast notifications
  * - Analytics (future)
  */
 interface ProvidersProps {
@@ -18,8 +21,12 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <BrowserRouter>
-      {children}
-    </BrowserRouter>
+    <ErrorBoundary>
+      <ToastProvider>
+        <BrowserRouter>
+          {children}
+        </BrowserRouter>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }

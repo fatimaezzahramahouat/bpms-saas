@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, X, ChevronDown, RotateCcw, SlidersHorizontal, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Edit, Trash2, Eye, X, ChevronDown, RotateCcw, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { JobOfferModal } from '../components/JobOfferModal';
 import { jobOfferService, JobOffer, JobOfferFilters } from '../../../services/jobOffer.service';
 
@@ -243,7 +244,7 @@ export function JobOffersManagement() {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#8000ff] text-white rounded-lg hover:bg-[#6a00cc] transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-[#2563eb] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium"
         >
           <Plus className="w-5 h-5" /> Nouvelle offre
         </button>
@@ -308,6 +309,44 @@ export function JobOffersManagement() {
               )}
             </div>
           ) : (
+<<<<<<< manal
+            <>
+              {paginatedJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 hover:border-[#8000ff]/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                          {job.title}
+                        </h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(job.status)}`}>
+                          {getStatusLabel(job.status)}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                        {job.description}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-[#8000ff]" />
+                          {job.department}
+                        </span>
+                        <span>{job.location}</span>
+                        <span>{job.type}</span>
+                        <span>Créée le {job.createdAt}</span>
+                        {job.applicationsCount !== undefined && (
+                          <Link
+                            to={`/dashboard/rh/job-offers/${job.id}/candidats`}
+                            className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-full px-3 py-1 hover:bg-[#8000ff]/10 hover:text-[#8000ff] transition-colors cursor-pointer"
+                          >
+                            {job.applicationsCount} candidature{job.applicationsCount > 1 ? 's' : ''}
+                          </Link>
+                        )}
+                      </div>
+=======
             jobOffers.map((job) => (
               <div key={job.id} className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 hover:border-[#8000ff]/30 transition-colors">
                 <div className="flex items-start justify-between">
@@ -317,6 +356,7 @@ export function JobOffersManagement() {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(job.status)}`}>
                         {getStatusLabel(job.status)}
                       </span>
+>>>>>>> main
                     </div>
                     <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">{job.description}</p>
                     <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">

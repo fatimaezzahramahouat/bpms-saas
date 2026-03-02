@@ -12,8 +12,12 @@ import TeamPage from '../pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
+<<<<<<< manal
+import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
+=======
 import { PublicRouteWrapper } from '../shared/components/transitions/PublicRouteWrapper';
 import { JobOffersManagement } from '../features/rh/pages/JobOffersManagement';
+>>>>>>> main
 
 /**
  * Application Router
@@ -51,6 +55,8 @@ export function AppRouter() {
         <Route path="equipe" element={<UsersManagement />} />
         <Route path="workflow" element={<WorkflowPage />} />
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
+        <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
+        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
       </Route>
 
           {/* Team Route */}
