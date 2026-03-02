@@ -34,7 +34,20 @@ export const jobOfferRepository = {
       prisma.jobOffer.count({ where }),
       prisma.jobOffer.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          contractType: true,
+          level: true,
+          workMode: true,
+          skills: true,
+          responsibilities: true,
+          budget: true,
+          createdAt: true,
+          updatedAt: true,
+          organisationId: true,
+          createdById: true,
           organisation: {
             select: {
               name: true,
@@ -67,7 +80,20 @@ export const jobOfferRepository = {
         id,
         ...(organisationId && { organisationId }),
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        contractType: true,
+        level: true,
+        workMode: true,
+        skills: true,
+        responsibilities: true,
+        budget: true,
+        createdAt: true,
+        updatedAt: true,
+        organisationId: true,
+        createdById: true,
         organisation: {
           select: {
             name: true,
@@ -93,6 +119,7 @@ export const jobOfferRepository = {
         level: data.level,
         workMode: data.workMode,
         skills: data.skills,
+        responsibilities: data.responsibilities || [],
         budget: data.budget ?? null,
         organisationId: data.organisationId,
         createdById: data.createdById,
