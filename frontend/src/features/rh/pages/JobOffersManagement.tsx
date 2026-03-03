@@ -14,14 +14,15 @@ interface FilterState {
 
 // Filter options
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'Tous' },
-  { value: 'ACTIVE', label: 'Actif' },
+  { value: 'all', label: 'Tous les statuts' },
+  { value: 'PUBLISHED', label: 'Publié' },
+  { value: 'PAUSED', label: 'En pause' },
   { value: 'DRAFT', label: 'Brouillon' },
-  { value: 'CLOSED', label: 'Fermé' },
+  { value: 'CANCELLED', label: 'Annulé' },
 ];
 
 const CONTRACT_OPTIONS = [
-  { value: 'all', label: 'Tous' },
+  { value: 'all', label: 'Tous les contrats' },
   { value: 'CDI', label: 'CDI' },
   { value: 'CDD', label: 'CDD' },
   { value: 'Stage', label: 'Stage' },
@@ -78,6 +79,9 @@ export function JobOffersManagement() {
     sort: 'createdAt:desc',
   });
 
+  // State for status update feedback
+  const [statusToast, setStatusToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   // Debounced search value (300ms)
   const debouncedSearch = useDebounce(filters.search, 300);
 
@@ -91,19 +95,14 @@ export function JobOffersManagement() {
         limit: itemsPerPage,
         search: debouncedSearch || undefined,
         contractType: filters.contractType !== 'all' ? filters.contractType : undefined,
+        status: filters.status !== 'all' ? filters.status : undefined,
         sortBy,
         sortOrder: sortOrder as 'asc' | 'desc',
       };
 
       const response = await jobOfferService.getRHOffers(apiParams);
-      // Filter by status on frontend if backend doesn't support it directly in search
-      // (Backend schema has no status in query schema currently)
-      let filteredData = response.data;
-      if (filters.status !== 'all') {
-        filteredData = response.data.filter(job => job.status === filters.status);
-      }
       
-      setJobOffers(filteredData);
+      setJobOffers(response.data);
       setTotalItems(response.total);
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -111,6 +110,24 @@ export function JobOffersManagement() {
       setIsLoading(false);
     }
   }, [currentPage, itemsPerPage, debouncedSearch, filters.contractType, filters.sort, filters.status]);
+
+  // Handle manual status change
+  const handleStatusChange = async (jobId: string, newStatus: string) => {
+    try {
+      await jobOfferService.updateOffer(jobId, { status: newStatus as any });
+      setStatusToast({ type: 'success', message: 'Statut mis à jour avec succès' });
+      fetchJobs(); // Refresh the list
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      setStatusToast({ 
+        type: 'error', 
+        message: error.response?.data?.error || 'Erreur lors de la mise à jour du statut' 
+      });
+    } finally {
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => setStatusToast(null), 3000);
+    }
+  };
 
   useEffect(() => {
     fetchJobs();
@@ -145,9 +162,14 @@ export function JobOffersManagement() {
   // Get status display label
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      ACTIVE: 'Actif',
-      CLOSED: 'Fermé',
       DRAFT: 'Brouillon',
+      PUBLISHED: 'Publié',
+      PAUSED: 'En pause',
+      CANCELLED: 'Annulé',
+      FILLED: 'Pourvu',
+      CLOSED: 'Fermé',
+      // Legacy support if needed
+      ACTIVE: 'Publié',
     };
     return labels[status] || status;
   };
@@ -194,9 +216,13 @@ export function JobOffersManagement() {
 
   const getStatusBadge = (status: string) => {
     const styles = {
+      DRAFT: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
+      PUBLISHED: 'bg-green-500/20 text-green-400 border-green-500/30',
+      PAUSED: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      CANCELLED: 'bg-red-500/20 text-red-600 border-red-500/30',
+      FILLED: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      CLOSED: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
       ACTIVE: 'bg-green-500/20 text-green-400 border-green-500/30',
-      CLOSED: 'bg-red-500/20 text-red-400 border-red-500/30',
-      DRAFT: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     };
     return styles[status as keyof typeof styles] || styles.DRAFT;
   };
@@ -321,9 +347,30 @@ export function JobOffersManagement() {
                         <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                           {job.title}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(job.status)}`}>
-                          {getStatusLabel(job.status)}
-                        </span>
+                        
+                        {/* Status Control: Select for manual, Badge for automatic */}
+                        {job.statusSource === 'MANUAL' ? (
+                          <div className="relative group">
+                            <select
+                              value={job.status}
+                              onChange={(e) => handleStatusChange(job.id, e.target.value)}
+                              className={`appearance-none px-3 py-1 pr-8 rounded-full text-xs font-semibold border cursor-pointer outline-none focus:ring-2 focus:ring-[#8000ff]/50 transition-all ${getStatusBadge(job.status)}`}
+                            >
+                              <option value="DRAFT">Brouillon</option>
+                              <option value="PUBLISHED">Publié</option>
+                              <option value="PAUSED">En pause</option>
+                              <option value="CANCELLED">Annulé</option>
+                            </select>
+                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 opacity-60 pointer-events-none" />
+                          </div>
+                        ) : (
+                          <span 
+                            className={`px-3 py-1 rounded-full text-xs font-semibold border cursor-default ${getStatusBadge(job.status)}`}
+                            title="Statut géré automatiquement par le système"
+                          >
+                            {getStatusLabel(job.status)} (Auto)
+                          </span>
+                        )}
                       </div>
                       <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
                         {job.description}
@@ -410,6 +457,20 @@ export function JobOffersManagement() {
         onSuccess={() => fetchJobs()}
         initialData={editingJob as any}
       />
+
+      {/* Status Update Toast */}
+      {statusToast && (
+        <div className="fixed bottom-8 right-8 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className={`px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 border ${
+            statusToast.type === 'success' 
+              ? 'bg-green-500 text-white border-green-600' 
+              : 'bg-red-500 text-white border-red-600'
+          }`}>
+            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span className="font-semibold">{statusToast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

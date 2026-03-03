@@ -96,8 +96,13 @@ export const jobOfferService = {
     
     const result = await response.json();
     return {
-      ...result,
-      data: result.data.map(mapBackendToFrontend)
+      data: result.data.map(mapBackendToFrontend),
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
     };
   }
 };
