@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     email: string;
     organisationId: string;
     isAdmin: boolean;
+    role: string;
   };
 }
 
@@ -33,6 +34,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
       email: string;
       organisationId: string;
       isAdmin: boolean;
+      role: string;
     };
     req.user = decoded;
     next();

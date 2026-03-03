@@ -212,7 +212,19 @@ export const authController = {
         return;
       }
 
-      res.status(200).json({ data: user });
+      // Role Identification (consistent with login logic)
+      let role = "EMPLOYEE";
+      if (user.admin) role = "ADMIN";
+      else if (user.rh) role = "RH";
+      else if (user.manager) role = "MANAGER";
+      else if (user.employee) role = "EMPLOYEE";
+
+      res.status(200).json({
+        data: {
+          ...user,
+          role
+        }
+      });
     } catch (error) {
       console.error("GET_CURRENT_USER_ERROR:", error);
       res.status(500).json({ error: "Erreur interne du serveur" });

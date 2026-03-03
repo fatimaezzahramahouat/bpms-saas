@@ -10,6 +10,7 @@ import { RecruitmentPage } from '../pages/RecruitmentPage';
 import TeamPage from '../pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
+import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
 
@@ -37,6 +38,16 @@ export function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register-org" element={<RegisterOrg />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+
+
+      {/* Dashboard Routes - Protected */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<DashboardHome />} />
+        <Route path="equipe" element={<UsersManagement />} />
+        <Route path="workflow" element={<WorkflowPage />} />
+        <Route path="mes-demandes" element={<EmployeeDashboard />} />
+      </Route>
+
 
       {/* Recruitment Route */}
       <Route path="/recrutement" element={<RecruitmentPage />} />
