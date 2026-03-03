@@ -95,9 +95,15 @@ export const jobOfferService = {
     }
     
     const result = await response.json();
+    // Backend returns pagination at root level, transform to expected meta structure
     return {
-      ...result,
-      data: result.data.map(mapBackendToFrontend)
+      data: result.data.map(mapBackendToFrontend),
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      }
     };
   }
 };

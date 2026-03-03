@@ -81,6 +81,14 @@ export function AIAnalysisPanel({
 
     const result: GeminiAnalysis = {
       overallScore: quickResult.percentage,
+      categoryScores: {
+        skills: quickResult.percentage,
+        experience: quickResult.percentage,
+        education: 70,
+        technicalFit: quickResult.percentage,
+      },
+      matchedRequirements: quickResult.matched,
+      missingRequirements: quickResult.missing,
       skillsMatch: {
         matched: quickResult.matched,
         missing: quickResult.missing,
