@@ -38,9 +38,13 @@ export const jobOfferRepository = {
     const skip = (page - 1) * limit;
 
     const where: Prisma.JobOfferWhereInput = {
-      ...(organisationId && { organisationId }),
+      // If organisationId is missing, this is a PUBLIC query.
+      // We MUST strictly enforce 'PUBLISHED' status to prevent leaked drafts/closed offers.
+      ...(organisationId 
+        ? { organisationId, ...(status && { status }) } 
+        : { status: "PUBLISHED" as any }
+      ),
       ...(contractType && { contractType }),
-      ...(status && { status }),
       ...(search && {
         OR: [
           { title: { contains: search, mode: "insensitive" } },
