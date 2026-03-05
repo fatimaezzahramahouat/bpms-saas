@@ -1,3 +1,15 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
+-- CreateEnum
+CREATE TYPE "JobOfferStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'PAUSED', 'CLOSED', 'FILLED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "StatusSource" AS ENUM ('MANUAL', 'AUTOMATIC');
+
+-- CreateEnum
+CREATE TYPE "WorkflowStatus" AS ENUM ('DRAFT', 'ACTIVE', 'ARCHIVED');
+
 -- CreateEnum
 CREATE TYPE "ContractType" AS ENUM ('CDI', 'CDD', 'STAGE', 'FREELANCE', 'ALTERNANCE');
 
@@ -47,6 +59,8 @@ CREATE TABLE "User" (
     "lastName" TEXT NOT NULL,
     "organisationId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "resetExpires" TIMESTAMP(3),
+    "resetToken" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -66,6 +80,11 @@ CREATE TABLE "JobOffer" (
     "skills" TEXT[],
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "workMode" "WorkMode" NOT NULL,
+    "closedAt" TIMESTAMP(3),
+    "publishedAt" TIMESTAMP(3),
+    "status" "JobOfferStatus" NOT NULL DEFAULT 'PUBLISHED',
+    "workflowId" TEXT,
+    "statusSource" "StatusSource" NOT NULL DEFAULT 'MANUAL',
 
     CONSTRAINT "JobOffer_pkey" PRIMARY KEY ("id")
 );
@@ -147,6 +166,13 @@ CREATE TABLE "Workflow" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "organisationId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "description" TEXT,
+    "edges" JSONB DEFAULT '[]',
+    "nodes" JSONB DEFAULT '[]',
+    "status" "WorkflowStatus" NOT NULL DEFAULT 'DRAFT',
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "version" INTEGER NOT NULL DEFAULT 1,
 
     CONSTRAINT "Workflow_pkey" PRIMARY KEY ("id")
 );
@@ -157,6 +183,7 @@ CREATE TABLE "Step" (
     "name" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
     "workflowId" TEXT NOT NULL,
+    "metadata" JSONB,
 
     CONSTRAINT "Step_pkey" PRIMARY KEY ("id")
 );
@@ -205,6 +232,21 @@ CREATE TABLE "AIAnalysis" (
     "processInstanceId" TEXT,
     "applicationId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "candidateId" VARCHAR(255),
+    "educationScore" DOUBLE PRECISION,
+    "experienceScore" DOUBLE PRECISION,
+    "interviewQuestions" TEXT[],
+    "jobOfferId" VARCHAR(255),
+    "matchedSkills" TEXT[],
+    "missingSkills" TEXT[],
+    "overallScore" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "priority" TEXT,
+    "recommendation" TEXT,
+    "skillsScore" DOUBLE PRECISION,
+    "strengths" TEXT[],
+    "technicalFitScore" DOUBLE PRECISION,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "weaknesses" TEXT[],
 
     CONSTRAINT "AIAnalysis_pkey" PRIMARY KEY ("id")
 );
@@ -245,10 +287,16 @@ CREATE UNIQUE INDEX "OrgInfo_organisationId_key" ON "OrgInfo"("organisationId");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "User_resetToken_key" ON "User"("resetToken");
+
+-- CreateIndex
 CREATE INDEX "User_organisationId_idx" ON "User"("organisationId");
 
 -- CreateIndex
 CREATE INDEX "JobOffer_organisationId_idx" ON "JobOffer"("organisationId");
+
+-- CreateIndex
+CREATE INDEX "JobOffer_status_idx" ON "JobOffer"("status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Candidate_email_key" ON "Candidate"("email");
@@ -272,7 +320,28 @@ CREATE UNIQUE INDEX "RH_userId_key" ON "RH"("userId");
 CREATE UNIQUE INDEX "Employee_userId_key" ON "Employee"("userId");
 
 -- CreateIndex
+CREATE INDEX "Workflow_status_idx" ON "Workflow"("status");
+
+-- CreateIndex
+CREATE INDEX "Workflow_organisationId_idx" ON "Workflow"("organisationId");
+
+-- CreateIndex
 CREATE INDEX "Task_organisationId_idx" ON "Task"("organisationId");
+
+-- CreateIndex
+CREATE INDEX "AIAnalysis_candidateId_idx" ON "AIAnalysis"("candidateId");
+
+-- CreateIndex
+CREATE INDEX "AIAnalysis_jobOfferId_idx" ON "AIAnalysis"("jobOfferId");
+
+-- CreateIndex
+CREATE INDEX "AIAnalysis_applicationId_idx" ON "AIAnalysis"("applicationId");
+
+-- CreateIndex
+CREATE INDEX "AIAnalysis_type_idx" ON "AIAnalysis"("type");
+
+-- CreateIndex
+CREATE INDEX "AIAnalysis_overallScore_idx" ON "AIAnalysis"("overallScore");
 
 -- AddForeignKey
 ALTER TABLE "OrgInfo" ADD CONSTRAINT "OrgInfo_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -285,6 +354,9 @@ ALTER TABLE "JobOffer" ADD CONSTRAINT "JobOffer_createdById_fkey" FOREIGN KEY ("
 
 -- AddForeignKey
 ALTER TABLE "JobOffer" ADD CONSTRAINT "JobOffer_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "JobOffer" ADD CONSTRAINT "JobOffer_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "Workflow"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Application" ADD CONSTRAINT "Application_candidateId_fkey" FOREIGN KEY ("candidateId") REFERENCES "Candidate"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -320,7 +392,7 @@ ALTER TABLE "Employee" ADD CONSTRAINT "Employee_userId_fkey" FOREIGN KEY ("userI
 ALTER TABLE "Workflow" ADD CONSTRAINT "Workflow_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Step" ADD CONSTRAINT "Step_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "Workflow"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Step" ADD CONSTRAINT "Step_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "Workflow"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Task" ADD CONSTRAINT "Task_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -335,7 +407,7 @@ ALTER TABLE "Task" ADD CONSTRAINT "Task_stepId_fkey" FOREIGN KEY ("stepId") REFE
 ALTER TABLE "Task" ADD CONSTRAINT "Task_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Rule" ADD CONSTRAINT "Rule_stepId_fkey" FOREIGN KEY ("stepId") REFERENCES "Step"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Rule" ADD CONSTRAINT "Rule_stepId_fkey" FOREIGN KEY ("stepId") REFERENCES "Step"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ProcessInstance" ADD CONSTRAINT "ProcessInstance_workflowId_fkey" FOREIGN KEY ("workflowId") REFERENCES "Workflow"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -354,3 +426,4 @@ ALTER TABLE "EventLog" ADD CONSTRAINT "EventLog_processInstanceId_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "EventLog" ADD CONSTRAINT "EventLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
