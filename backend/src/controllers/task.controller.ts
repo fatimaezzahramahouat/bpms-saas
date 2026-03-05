@@ -72,5 +72,23 @@ export const taskController = {
             message: `Task ${action === 'APPROVE' ? 'approved' : 'rejected'} successfully.`,
             ...result
         });
+    }),
+
+    /**
+     * PATCH /api/tasks/:id/approve
+     * Approves the task and moves to next step.
+     */
+    approveTask: catchAsync(async (req: AuthRequest, res: Response) => {
+        const { id } = req.params;
+        const userId = req.user?.userId;
+
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const result = await workflowEngineService.approveTask(id, userId);
+
+        res.status(200).json({
+            message: "Task approved successfully",
+            data: result
+        });
     })
 };

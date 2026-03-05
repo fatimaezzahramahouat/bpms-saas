@@ -16,4 +16,12 @@ export const taskService = {
         const response = await api.patch(`/tasks/${taskId}`, { action });
         return response.data;
     },
+
+    /**
+     * Approves a task specifically using the graph progression logic.
+     */
+    async approveTask(taskId: string) {
+        const response = await api.patch(`/tasks/${taskId}/approve`);
+        return response.data;
+    },
 };

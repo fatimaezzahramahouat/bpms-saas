@@ -11,6 +11,7 @@ import { errorMiddleware } from "./middleware/error.middleware";
 import workflowRouter from "./routes/workflow.routes";
 import applicationRouter from "./routes/application.routes";
 import taskRouter from "./routes/task.routes";
+import processRouter from "./routes/process.routes";
 const app = express();
 
 // Security Middleware
@@ -44,6 +45,7 @@ app.use("/api/workflows", workflowRouter);
 app.use("/api/applications", applicationRouter);
 app.use("/api/candidates", candidateRouter);
 app.use("/api/tasks", taskRouter);
+app.use("/api/process", processRouter);
 
 // Global Error Handler
 app.use(errorMiddleware);

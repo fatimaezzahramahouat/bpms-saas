@@ -218,6 +218,7 @@ model ProcessInstance {
   id          String       @id @default(uuid())
   status      String       @default("IN_PROGRESS")
   workflowId  String
+  context     Json?
   createdAt   DateTime     @default(now())
   aiAnalyses  AIAnalysis[]
   application Application?

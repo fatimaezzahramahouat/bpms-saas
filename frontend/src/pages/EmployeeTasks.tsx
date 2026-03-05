@@ -13,8 +13,11 @@ import {
     Search
 } from 'lucide-react';
 import { taskService } from '../services/task.service';
+import { workflowService, IWorkflow } from '../services/workflow.service';
+import { processService } from '../services/process.service';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'motion/react';
+import { LeaveRequestForm } from '../features/workflow/components/LeaveRequestForm';
 
 interface TaskDocument {
     id: string;
@@ -58,6 +61,10 @@ export const EmployeeTasks: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [workflows, setWorkflows] = useState<IWorkflow[]>([]);
+    const [selectedWorkflowId, setSelectedWorkflowId] = useState('');
+    const [isStarting, setIsStarting] = useState(false);
 
     const fetchTasks = async () => {
         try {
@@ -73,7 +80,38 @@ export const EmployeeTasks: React.FC = () => {
 
     useEffect(() => {
         fetchTasks();
+        fetchWorkflows();
     }, []);
+
+    const fetchWorkflows = async () => {
+        try {
+            const response = await workflowService.getAllWorkflows();
+            setWorkflows(response.data || []);
+        } catch (error) {
+            console.error('Error fetching workflows:', error);
+        }
+    };
+
+    const handleStartProcess = async () => {
+        if (!selectedWorkflowId) {
+            toast.error('Veuillez sélectionner un workflow');
+            return;
+        }
+
+        setIsStarting(true);
+        try {
+            await processService.startProcess(selectedWorkflowId);
+            toast.success('Demande créée avec succès !');
+            setIsModalOpen(false);
+            setSelectedWorkflowId('');
+            fetchTasks(); // Refresh task list
+        } catch (error: any) {
+            console.error('Error starting process:', error);
+            toast.error(error.response?.data?.error || 'Erreur lors du lancement de la demande');
+        } finally {
+            setIsStarting(false);
+        }
+    };
 
     const getPriority = (dueDate: string | null) => {
         if (!dueDate) return { label: 'Faible', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20', icon: CheckCircle2 };
@@ -113,12 +151,91 @@ export const EmployeeTasks: React.FC = () => {
                     <p className="text-zinc-500 dark:text-zinc-400 font-medium">Gérez vos tâches de recrutement quotidiennes avec efficacité.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="px-6 py-2.5 bg-h1-blue hover:bg-h1-blue/90 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg shadow-h1-blue/20 transition-all flex items-center gap-2"
+                    >
+                        <Briefcase size={16} />
+                        Nouvelle Demande
+                    </button>
                     <div className="px-5 py-2.5 bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 rounded-2xl flex items-center gap-3">
                         <div className="w-2 h-2 bg-h1-blue rounded-full"></div>
                         <span className="text-sm font-bold text-gray-700 dark:text-zinc-300">{tasks.length} Tâches en attente</span>
                     </div>
                 </div>
             </header>
+
+            {/* Modal de Nouvelle Demande */}
+            <AnimatePresence>
+                {isModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsModalOpen(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="relative bg-white dark:bg-zinc-950 w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl border border-zinc-200 dark:border-zinc-800"
+                        >
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Nouvelle Demande</h2>
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Choisissez le type de processus à lancer.</p>
+                                </div>
+
+                                {selectedWorkflowId && workflows.find(w => w.id === selectedWorkflowId)?.name.toUpperCase().includes("CONGE") ? (
+                                    <LeaveRequestForm
+                                        onSuccess={() => {
+                                            setIsModalOpen(false);
+                                            fetchTasks();
+                                        }}
+                                        onCancel={() => setSelectedWorkflowId('')}
+                                    />
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="space-y-4">
+                                            <label className="block text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Type de Workflow</label>
+                                            <select
+                                                value={selectedWorkflowId}
+                                                onChange={(e) => setSelectedWorkflowId(e.target.value)}
+                                                className="w-full px-5 py-4 bg-zinc-50 dark:bg-zinc-900 border-2 border-zinc-100 dark:border-zinc-800 rounded-2xl text-gray-900 dark:text-white font-bold appearance-none cursor-pointer focus:border-h1-blue transition-colors outline-none"
+                                            >
+                                                <option value="">Sélectionnez un workflow...</option>
+                                                {workflows.map((wf) => (
+                                                    <option key={wf.id} value={wf.id}>{wf.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex flex-col gap-3 pt-4">
+                                            <button
+                                                onClick={handleStartProcess}
+                                                disabled={isStarting || !selectedWorkflowId}
+                                                className="w-full py-4 bg-h1-blue hover:bg-h1-blue/90 disabled:opacity-50 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-h1-blue/20 flex items-center justify-center gap-2"
+                                            >
+                                                {isStarting ? (
+                                                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                                ) : 'Lancer la demande'}
+                                            </button>
+                                            <button
+                                                onClick={() => setIsModalOpen(false)}
+                                                className="w-full py-4 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 font-black text-sm uppercase tracking-widest rounded-2xl transition-all"
+                                            >
+                                                Annuler
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Task List */}

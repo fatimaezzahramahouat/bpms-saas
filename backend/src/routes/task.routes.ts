@@ -8,5 +8,6 @@ taskRouter.use(authMiddleware);
 
 taskRouter.get("/", taskController.getTasks);
 taskRouter.patch("/:id", taskController.updateTaskStatus);
+taskRouter.patch("/:id/approve", taskController.approveTask);
 
 export default taskRouter;
