@@ -157,10 +157,10 @@ export function DashboardLayout() {
                         <FileText className="w-5 h-5" />
                         Documents
                     </button>
-                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 text-left">
+                    <NavLink to="/dashboard/settings" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
                         <Settings className="w-5 h-5" />
                         Paramètres
-                    </button>
+                    </NavLink>
                 </nav>
 
                 <div className="p-4 border-t border-zinc-200 dark:border-zinc-800">
@@ -199,7 +199,7 @@ export function DashboardLayout() {
                 </header>
 
                 <div className="flex-1 overflow-auto p-8">
-                    <Outlet context={{ orgData, isAdmin: hasElevatedAccess, userData }} />
+                    <Outlet context={{ orgData, isAdmin: isUserAdmin, isHR: isUserHR, userData }} />
                 </div>
             </main>
 
