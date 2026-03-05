@@ -11,7 +11,7 @@ export interface JobOfferFormData {
   workMode: 'REMOTE' | 'ONSITE' | 'HYBRID';
   skills: string[];
   responsibilities: string[];
-  budget?: number | null;
+  budget: number | null;
 }
 
 interface JobOfferModalProps {
@@ -36,17 +36,28 @@ interface FormErrors {
   title?: string;
   description?: string;
   skills?: string;
+  responsibilities?: string;
+  budget?: string;
 }
 
 const validateForm = (data: JobOfferFormData): FormErrors => {
   const errors: FormErrors = {};
+
   if (!data.title.trim()) errors.title = 'Le titre est requis';
   else if (data.title.length < 3) errors.title = 'Le titre doit contenir au moins 3 caractères';
-  
+
   if (!data.description.trim()) errors.description = 'La description est requise';
   else if (data.description.length < 10) errors.description = 'La description doit contenir au moins 10 caractères';
 
   if (data.skills.length === 0) errors.skills = 'Au moins une compétence est requise';
+
+  if (data.responsibilities.length === 0) errors.responsibilities = 'Au moins une responsabilité est requise';
+
+  if (data.budget === null || data.budget === undefined || isNaN(Number(data.budget)))
+    errors.budget = 'Le budget est requis';
+  else if (Number(data.budget) <= 0)
+    errors.budget = 'Le budget doit être un nombre positif';
+
   return errors;
 };
 
@@ -174,25 +185,27 @@ export function JobOfferModal({ isOpen, onClose, onSuccess, initialData }: JobOf
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Titre du poste*</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Titre du poste <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => updateField('title', e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border-0 rounded-xl focus:ring-2 focus:ring-[#8000ff] transition-all"
+                className={`w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border-0 rounded-xl focus:ring-2 focus:ring-[#8000ff] transition-all ${errors.title ? 'ring-2 ring-red-400' : ''}`}
                 placeholder="Ex: Senior Backend Engineer"
+                required
               />
               {errors.title && <p className="mt-1 text-sm text-red-500 font-medium">{errors.title}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description*</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description <span className="text-red-500">*</span></label>
               <textarea
                 rows={5}
                 value={formData.description}
                 onChange={(e) => updateField('description', e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border-0 rounded-xl focus:ring-2 focus:ring-[#8000ff] transition-all resize-none"
+                className={`w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border-0 rounded-xl focus:ring-2 focus:ring-[#8000ff] transition-all resize-none ${errors.description ? 'ring-2 ring-red-400' : ''}`}
                 placeholder="Décrivez les missions et le contexte du poste..."
+                required
               />
               {errors.description && <p className="mt-1 text-sm text-red-500 font-medium">{errors.description}</p>}
             </div>
@@ -234,19 +247,24 @@ export function JobOfferModal({ isOpen, onClose, onSuccess, initialData }: JobOf
           </div>
 
           <div className="space-y-4">
-            <TagsInput label="Compétences*" tags={formData.skills} onChange={tags => updateField('skills', tags)} placeholder="React, Node.js..." error={errors.skills} />
-            <TagsInput label="Responsabilités" tags={formData.responsibilities} onChange={tags => updateField('responsibilities', tags)} placeholder="Concevoir l'architecture..." />
+            <TagsInput label="Compétences *" tags={formData.skills} onChange={tags => updateField('skills', tags)} placeholder="React, Node.js..." error={errors.skills} />
+            <TagsInput label="Responsabilités *" tags={formData.responsibilities} onChange={tags => updateField('responsibilities', tags)} placeholder="Concevoir l'architecture..." error={errors.responsibilities} />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Budget (MAD/an)</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Budget (MAD/an) <span className="text-red-500">*</span>
+            </label>
             <input
               type="number"
-              value={formData.budget || ''}
+              min="1"
+              value={formData.budget ?? ''}
               onChange={(e) => updateField('budget', e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border-0 rounded-xl focus:ring-2 focus:ring-[#8000ff] transition-all"
-              placeholder="Facultatif"
+              className={`w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border-0 rounded-xl focus:ring-2 focus:ring-[#8000ff] transition-all ${errors.budget ? 'ring-2 ring-red-400' : ''}`}
+              placeholder="Ex: 120000"
+              required
             />
+            {errors.budget && <p className="mt-1 text-sm text-red-500 font-medium">{errors.budget}</p>}
           </div>
         </form>
 
