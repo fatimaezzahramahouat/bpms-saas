@@ -15,6 +15,7 @@ import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
 import { MyApprovals } from '@/pages/MyApprovals';
 import { EmployeeTasks } from '@/pages/EmployeeTasks';
+import { SettingsPage } from '../features/dashboard/pages/SettingsPage';
 
 
 
@@ -60,6 +61,17 @@ export function AppRouter() {
 
       {/* Team Route */}
       <Route path="/our-team" element={<TeamPage />} />
+
+      {/* Dashboard Routes - Protected */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route index element={<DashboardHome />} />
+        <Route path="equipe" element={<UsersManagement />} />
+        <Route path="workflow" element={<WorkflowPage />} />
+        <Route path="rh/job-offers" element={<JobOffersManagement />} />
+        <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
+        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />
