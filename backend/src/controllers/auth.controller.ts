@@ -156,7 +156,14 @@ export const authController = {
         JWT_SECRET,
         { expiresIn: "24h" }
       );
-
+     
+      // 5. Create Session record
+      await authRepository.createSession(
+        user.id,
+        req.headers["user-agent"] as string,
+        req.ip
+      );
+     
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

@@ -36,6 +36,7 @@ model OrgInfo {
   website        String?
   organisationId String       @unique
   createdAt      DateTime     @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
   organisation   Organisation @relation(fields: [organisationId], references: [id])
 }
 
@@ -46,35 +47,28 @@ model User {
   firstName      String
   lastName       String
   organisationId String
-  createdAt      DateTime       @default(now())
   resetExpires   DateTime?
   resetToken     String?        @unique
   admin          Admin?
-  documents      Document[]
+  manager        Manager?
+  rh             RH?
   employee       Employee?
+  theme                String?   @default("light")
+  emailNotifications   Boolean   @default(true)
+  inAppNotifications   Boolean   @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  documents      Document[]
   eventLogs      EventLog[]
   jobOffers      JobOffer[]
-  manager        Manager?
   notifications  Notification[]
-  rh             RH?
+  sessions       Session[]
   tasks          Task[]
   organisation   Organisation   @relation(fields: [organisationId], references: [id])
   processInstances ProcessInstance[]
 
   @@index([organisationId])
-}
-
-enum JobOfferStatus {
-  DRAFT
-  PUBLISHED
-  PAUSED
-  CLOSED
-  FILLED
-  CANCELLED
-}
-enum StatusSource {
-  MANUAL
-  AUTOMATIC
 }
 
 model JobOffer {
@@ -114,6 +108,9 @@ model Candidate {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   status       CandidateStatus @default(CANDIDATE)
+  skills         String[]   @default([])
+  experience     String?
+  education      String?
   applications Application[]
 }
 
@@ -182,9 +179,9 @@ model Workflow {
   status         WorkflowStatus    @default(DRAFT)
   updatedAt      DateTime          @updatedAt
   version        Int               @default(1)
+  jobOffers      JobOffer[]
   instances      ProcessInstance[]
   steps          Step[]
-  jobOffers      JobOffer[]
   organisation   Organisation      @relation(fields: [organisationId], references: [id])
 
   @@index([status])
@@ -244,15 +241,36 @@ model ProcessInstance {
 }
 
 model AIAnalysis {
-  id                String           @id @default(uuid())
-  type              String
-  result            Json
-  confidence        Float?
-  processInstanceId String?
-  applicationId     String?
-  createdAt         DateTime         @default(now())
-  application       Application?     @relation(fields: [applicationId], references: [id])
-  processInstance   ProcessInstance? @relation(fields: [processInstanceId], references: [id])
+  id                 String           @id @default(uuid())
+  type               String
+  result             Json
+  confidence         Float?
+  processInstanceId  String?
+  applicationId      String?
+  createdAt          DateTime         @default(now())
+  candidateId        String?          @db.VarChar(255)
+  educationScore     Float?
+  experienceScore    Float?
+  interviewQuestions String[]
+  jobOfferId         String?          @db.VarChar(255)
+  matchedSkills      String[]
+  missingSkills      String[]
+  overallScore       Float            @default(0)
+  priority           String?
+  recommendation     String?
+  skillsScore        Float?
+  strengths          String[]
+  technicalFitScore  Float?
+  updatedAt          DateTime         @updatedAt
+  weaknesses         String[]
+  application        Application?     @relation(fields: [applicationId], references: [id])
+  processInstance    ProcessInstance? @relation(fields: [processInstanceId], references: [id])
+
+  @@index([candidateId])
+  @@index([jobOfferId])
+  @@index([applicationId])
+  @@index([type])
+  @@index([overallScore])
 }
 
 model Notification {
@@ -273,6 +291,33 @@ model EventLog {
   createdAt         DateTime        @default(now())
   processInstance   ProcessInstance @relation(fields: [processInstanceId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+
+enum JobOfferStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  CLOSED
+  FILLED
+  CANCELLED
+}
+
+enum StatusSource {
+  MANUAL
+  AUTOMATIC
 }
 
 enum WorkflowStatus {

@@ -13,6 +13,7 @@ import applicationRouter from "./routes/application.routes";
 import taskRouter from "./routes/task.routes";
 import processRouter from "./routes/process.routes";
 import notificationRouter from "./routes/notification.routes";
+import settingsRouter from "./routes/settings.routes";
 const app = express();
 
 // Security Middleware
@@ -48,6 +49,7 @@ app.use("/api/candidates", candidateRouter);
 app.use("/api/tasks", taskRouter);
 app.use("/api/process", processRouter);
 app.use("/api/notifications", notificationRouter);
+app.use("/api/settings", settingsRouter);
 
 // Global Error Handler
 app.use(errorMiddleware);

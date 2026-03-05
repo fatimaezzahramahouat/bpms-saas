@@ -106,9 +106,19 @@ export function DashboardLayout() {
                     <img src="/assets/nexflow.png" alt="NexFlow" className="h-8 shrink-0 hidden dark:block" />
                     <img src="/assets/nexflow1.png" alt="NexFlow" className="h-8 shrink-0 dark:hidden" />
                     <div className="w-[1px] bg-zinc-700 h-8 shrink-0 mx-3" />
-                    <div className="w-9 h-9 bg-h1-blue rounded-lg flex items-center justify-center font-black shrink-0 text-white text-sm">
-                        {orgData?.name?.charAt(0).toUpperCase() || 'O'}
-                    </div>
+                    {orgData?.orgInfo?.logo ? (
+                        <div className="w-14 h-14 flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white p-1 shrink-0">
+                            <img
+                                src={orgData.orgInfo.logo}
+                                alt="Organisation Logo"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                    ) : (
+                        <div className="w-14 h-14 rounded-xl flex items-center justify-center font-bold text-white text-lg bg-h1-blue shrink-0">
+                            {orgData?.name?.charAt(0).toUpperCase() || "O"}
+                        </div>
+                    )}
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2 mt-4">
@@ -184,6 +194,14 @@ export function DashboardLayout() {
                             {item.label}
                         </button>
                     ))}
+                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 text-left">
+                        <FileText className="w-5 h-5" />
+                        Documents
+                    </button>
+                    <NavLink to="/dashboard/settings" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                        <Settings className="w-5 h-5" />
+                        Paramètres
+                    </NavLink>
                 </nav>
 
                 <div className="p-4 border-t border-zinc-200 dark:border-zinc-800">
@@ -219,7 +237,7 @@ export function DashboardLayout() {
                 </header>
 
                 <div className="flex-1 overflow-auto p-8">
-                    <Outlet context={{ orgData, isAdmin: hasElevatedAccess, userData }} />
+                    <Outlet context={{ orgData, isAdmin: isUserAdmin, isHR: isUserHR, userData }} />
                 </div>
             </main>
 
