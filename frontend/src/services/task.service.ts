@@ -1,0 +1,19 @@
+import api from './api';
+
+export const taskService = {
+    /**
+     * Fetches pending tasks for the logged-in user.
+     */
+    async getTasks() {
+        const response = await api.get('/tasks');
+        return response.data;
+    },
+
+    /**
+     * Approves or Rejects a task.
+     */
+    async updateTaskStatus(taskId: string, action: 'APPROVE' | 'REJECT') {
+        const response = await api.patch(`/tasks/${taskId}`, { action });
+        return response.data;
+    },
+};

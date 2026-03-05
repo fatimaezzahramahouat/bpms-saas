@@ -223,8 +223,42 @@ export function DashboardLayout() {
                         <RHJobOffersButton />
                     </div>
 
+                    {/* Manager Approvals - Only visible to Managers or Admins */}
+                    {(userRole === 'Manager' || isAdmin) && (
+                        <NavLink
+                            to="/dashboard/approvals"
+                            className={({ isActive }) =>
+                                `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                                    ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20'
+                                    : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white'
+                                }`
+                            }
+                        >
+                            <FileText className="w-5 h-5" />
+                            Mes Approbations
+                        </NavLink>
+                    )}
+
+                    {/* Employee Tasks - Only visible to Employees or Admins */}
+                    {(userRole === 'Employé' || isAdmin) && (
+                        <NavLink
+                            to="/dashboard/tasks"
+                            className={({ isActive }) =>
+                                `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                                    ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20'
+                                    : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white'
+                                }`
+                            }
+                        >
+                            <div className="relative">
+                                <FileText className="w-5 h-5" />
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                            </div>
+                            Mes Tâches
+                        </NavLink>
+                    )}
+
                     {[
-                        { icon: FileText, label: 'Documents', href: '#' },
                         { icon: Settings, label: 'Paramètres', href: '#' },
                     ].map((item) => (
                         <button

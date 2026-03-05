@@ -21,6 +21,9 @@ import TurboNode from '../features/workflow/components/turbo/TurboNode';
 import { AIFlowDesigner } from '../features/workflow/components/AIFlowDesigner';
 import '../features/workflow/styles/workflow.css';
 import { Lock, Eye, Save, ChevronLeft, ShieldCheck } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { workflowService } from '../services/workflow.service';
 
 // RBAC Configuration
 type Role = 'ADMIN' | 'MANAGER' | 'RH';
@@ -51,9 +54,47 @@ const EditorContent: React.FC = () => {
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowData>>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const { screenToFlowPosition } = useReactFlow();
+    const { screenToFlowPosition, getNodes, getEdges } = useReactFlow();
+    const { id } = useParams<{ id: string }>();
 
     const isAdmin = USER_ROLE === 'ADMIN';
+
+    const onSave = async () => {
+        console.log('--- Workflow Save Attempt ---');
+        console.log('Workflow ID:', id);
+
+        if (!id) {
+            toast.error("ID du workflow introuvable. Impossible de sauvegarder.");
+            return;
+        }
+
+        const payload = {
+            nodes: getNodes(),
+            edges: getEdges(),
+        };
+
+        console.log('Payload:', payload);
+
+        const loadingToast = toast.loading("Sauvegarde du workflow en cours...");
+        try {
+            await workflowService.updateWorkflow(id, payload);
+            toast.update(loadingToast, {
+                render: "Workflow sauvegardé avec succès !",
+                type: "success",
+                isLoading: false,
+                autoClose: 3000
+            });
+        } catch (error: any) {
+            console.error('Save Error:', error);
+            const msg = error.response?.data?.error || error.response?.data?.errors || error.message;
+            toast.update(loadingToast, {
+                render: `Échec de la sauvegarde: ${typeof msg === 'object' ? JSON.stringify(msg) : msg}`,
+                type: "error",
+                isLoading: false,
+                autoClose: 5000
+            });
+        }
+    };
 
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -132,7 +173,7 @@ const EditorContent: React.FC = () => {
 
                     {isAdmin && (
                         <div className="flex items-center gap-3 ml-4">
-                            <button className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-lg shadow-purple-500/20 transition-all">
+                            <button onClick={onSave} className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg shadow-lg shadow-purple-500/20 transition-all">
                                 <Save className="w-3.5 h-3.5" />
                                 Sauvegarder
                             </button>

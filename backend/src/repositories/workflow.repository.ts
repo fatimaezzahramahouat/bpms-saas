@@ -5,19 +5,19 @@ import { StepInput } from "../schemas/workflow.schema";
 
 interface CreateWorkflowData {
     name: string;
-    description?: string;
+    description?: string | undefined;
     nodes?: any;
     edges?: any;
     steps: StepInput[];
 }
 
 interface UpdateWorkflowData {
-    name?: string;
-    description?: string;
+    name?: string | undefined;
+    description?: string | undefined;
     nodes?: any;
     edges?: any;
-    status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
-    version?: number;
+    status?: "DRAFT" | "ACTIVE" | "ARCHIVED" | undefined;
+    version?: number | undefined;
 }
 
 interface AddStepData {
@@ -113,8 +113,8 @@ export const workflowRepository = {
         organisationId: string,
         data: UpdateWorkflowData
     ) {
-        return prisma.workflow.updateMany({
-            where: { id, organisationId },
+        return prisma.workflow.update({
+            where: { id },
             data: {
                 ...(data.name && { name: data.name }),
                 ...(data.description !== undefined && { description: data.description }),
