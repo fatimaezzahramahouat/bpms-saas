@@ -184,7 +184,7 @@ export function DashboardLayout() {
                     )}
 
                     {[
-                        { icon: Settings, label: 'Paramètres', href: '#' },
+                        
                     ].map((item) => (
                         <button
                             key={item.label}
