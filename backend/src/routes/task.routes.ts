@@ -7,6 +7,7 @@ const taskRouter = Router();
 taskRouter.use(authMiddleware);
 
 taskRouter.get("/", taskController.getTasks);
+taskRouter.get("/approvals", taskController.getApprovals);
 taskRouter.patch("/:id", taskController.updateTaskStatus);
 taskRouter.patch("/:id/approve", taskController.approveTask);
 

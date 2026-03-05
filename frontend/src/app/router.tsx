@@ -46,28 +46,20 @@ export function AppRouter() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
         <Route path="equipe" element={<UsersManagement />} />
-        <Route path="workflow" element={<WorkflowPage />} />
-        <Route path="mes-demandes" element={<EmployeeDashboard />} />
-      </Route>
-
-
-      {/* Recruitment Route */}
-      <Route path="/recrutement" element={<RecruitmentPage />} />
-
-      {/* Team Route */}
-      <Route path="/our-team" element={<TeamPage />} />
-
-      {/* Dashboard Routes - Protected */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardHome />} />
-        <Route path="equipe" element={<UsersManagement />} />
         <Route path="workflow/:id?" element={<WorkflowPage />} />
+        <Route path="mes-demandes" element={<EmployeeDashboard />} />
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
         <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
         <Route path="approvals" element={<MyApprovals />} />
         <Route path="tasks" element={<EmployeeTasks />} />
       </Route>
+
+      {/* Recruitment Route */}
+      <Route path="/recrutement" element={<RecruitmentPage />} />
+
+      {/* Team Route */}
+      <Route path="/our-team" element={<TeamPage />} />
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />

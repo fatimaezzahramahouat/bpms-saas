@@ -38,7 +38,7 @@ export function MyRequests() {
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/requests');
+            const response = await api.get('/process/my-requests');
             setRequests(response.data);
         } catch (error) {
             console.error('Error fetching requests:', error);
@@ -51,7 +51,29 @@ export function MyRequests() {
         e.preventDefault();
         try {
             setSubmitting(true);
-            await api.post('/requests/submit', formData);
+
+            // Find a suitable workflow ID (e.g. searching for one that contains "Congé")
+            // For now, if we don't have a selection, we might need to fetch them first or use a hardcoded fallback if known
+            // But let's assume the user selects from a list or we have a default for this demo
+            const workflowResponse = await api.get('/workflows');
+            const workflows = workflowResponse.data;
+            const leaveWorkflow = workflows.find((w: any) =>
+                w.name.toUpperCase().includes('CONGE') ||
+                w.name.toUpperCase().includes('CONGÉ')
+            );
+
+            if (!leaveWorkflow) {
+                alert("Workflow de congé non trouvé.");
+                return;
+            }
+
+            await api.post('/process/start', {
+                workflowId: leaveWorkflow.id,
+                startDate: formData.startDate,
+                endDate: formData.endDate,
+                reason: formData.comment
+            });
+
             setIsModalOpen(false);
             setFormData({ type: 'Congé', startDate: '', endDate: '', comment: '' });
             fetchRequests();
@@ -75,13 +97,19 @@ export function MyRequests() {
             case 'COMPLETED':
                 return (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                        <CheckCircle className="w-3 h-3" /> Terminé
+                        <CheckCircle className="w-3 h-3" /> Validé
                     </span>
                 );
             case 'IN_PROGRESS':
                 return (
                     <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                         <Clock className="w-3 h-3" /> En cours
+                    </span>
+                );
+            case 'REJECTED':
+                return (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        <X className="w-3 h-3" /> Refusé
                     </span>
                 );
             default:
@@ -108,13 +136,22 @@ export function MyRequests() {
                         Suivez l'état de vos demandes en temps réel.
                     </p>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="group relative flex items-center gap-2 bg-h1-blue hover:bg-h1-blue/90 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-h1-blue/20 hover:scale-105 active:scale-95 overflow-hidden"
-                >
-                    <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
-                    Nouvelle Demande
-                </button>
+                <div className="flex gap-4">
+                    <button
+                        onClick={fetchRequests}
+                        className="flex items-center gap-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-6 py-4 rounded-2xl font-bold transition-all hover:bg-zinc-50 dark:hover:bg-zinc-700 shadow-sm"
+                    >
+                        <Clock className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                        Rafraîchir
+                    </button>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="group relative flex items-center gap-2 bg-h1-blue hover:bg-h1-blue/90 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-h1-blue/20 hover:scale-105 active:scale-95 overflow-hidden"
+                    >
+                        <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
+                        Nouvelle Demande
+                    </button>
+                </div>
             </div>
 
             {/* List */}

@@ -69,7 +69,7 @@ const WorkflowEditor: React.FC = () => {
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowData>>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-    const [isAdmin, setIsAdmin] = useState(false);
+    const { isAdmin, canEditWorkflow: canEdit } = usePermission();
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [workflowName, setWorkflowName] = useState('Nouveau Workflow');
 
@@ -78,11 +78,6 @@ const WorkflowEditor: React.FC = () => {
         [nodes, selectedNodeId]
     );
 
-    // Initial check for Admin role
-    useEffect(() => {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        setIsAdmin(userData.role === 'ADMIN' || userData.isAdmin || userData.admin);
-    }, []);
 
     // Load existing workflow if ID is present
     useEffect(() => {

@@ -138,7 +138,7 @@ export function DashboardLayout() {
                     )}
 
                     {/* Manager Approvals - Only visible to Managers or Admins */}
-                    {(userRole === 'Manager' || isAdmin) && (
+                    {(userRole === 'Manager' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/approvals"
                             className={({ isActive }) =>
@@ -154,7 +154,7 @@ export function DashboardLayout() {
                     )}
 
                     {/* Employee Tasks - Only visible to Employees or Admins */}
-                    {(userRole === 'Employé' || isAdmin) && (
+                    {(userRole === 'Employé' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/tasks"
                             className={({ isActive }) =>

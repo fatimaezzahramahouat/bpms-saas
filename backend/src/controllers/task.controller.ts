@@ -79,10 +79,10 @@ export const taskController = {
      * Approves the task and moves to next step.
      */
     approveTask: catchAsync(async (req: AuthRequest, res: Response) => {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const userId = req.user?.userId;
 
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
 
         const result = await workflowEngineService.approveTask(id, userId);
 
@@ -90,5 +90,43 @@ export const taskController = {
             message: "Task approved successfully",
             data: result
         });
+    }),
+
+    /**
+     * GET /api/tasks/approvals
+     * Gets all pending tasks assigned to the manager for review.
+     */
+    getApprovals: catchAsync(async (req: AuthRequest, res: Response) => {
+        const userId = req.user?.userId;
+        const organisationId = req.user?.organisationId;
+
+        if (!userId || !organisationId) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const tasks = await prisma.task.findMany({
+            where: {
+                userId: userId, // Tasks specifically assigned to this manager
+                status: "PENDING"
+            },
+            include: {
+                processInstance: {
+                    include: {
+                        workflow: true,
+                        user: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                email: true
+                            }
+                        }
+                    }
+                },
+                step: true
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        res.status(200).json(tasks);
     })
 };

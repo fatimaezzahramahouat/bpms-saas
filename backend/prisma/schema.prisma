@@ -59,6 +59,7 @@ model User {
   rh             RH?
   tasks          Task[]
   organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  processInstances ProcessInstance[]
 
   @@index([organisationId])
 }
@@ -181,7 +182,6 @@ model Workflow {
   status         WorkflowStatus    @default(DRAFT)
   updatedAt      DateTime          @updatedAt
   version        Int               @default(1)
-  JobOffer       JobOffer[]
   instances      ProcessInstance[]
   steps          Step[]
   jobOffers      JobOffer[]
@@ -232,6 +232,7 @@ model ProcessInstance {
   id          String       @id @default(uuid())
   status      String       @default("IN_PROGRESS")
   workflowId  String
+  userId      String?
   context     Json?
   createdAt   DateTime     @default(now())
   aiAnalyses  AIAnalysis[]
@@ -239,6 +240,7 @@ model ProcessInstance {
   logs        EventLog[]
   workflow    Workflow     @relation(fields: [workflowId], references: [id])
   tasks       Task[]
+  user        User?        @relation(fields: [userId], references: [id])
 }
 
 model AIAnalysis {
@@ -309,16 +311,3 @@ enum CandidateStatus {
   REJECTED
 }
 
-enum JobOfferStatus {
-  DRAFT
-  PUBLISHED
-  PAUSED
-  CLOSED
-  FILLED
-  CANCELLED
-}
-
-enum StatusSource {
-  MANUAL
-  AUTOMATIC
-}

@@ -211,6 +211,13 @@ export const workflowEngineService = {
                 throw new Error(`Workflow not found or unauthorized for your organisation.`);
             }
 
+            // Fetch Initiator Name
+            const initiator = await tx.user.findUnique({
+                where: { id: userId },
+                select: { firstName: true, lastName: true, email: true }
+            });
+            const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Inconnu";
+
             // Specialized Logic for DEMANDE DE CONGE
             if (workflow.name.toUpperCase().includes("CONGE") || workflow.name.toUpperCase().includes("CONGÉ")) {
                 console.log("[WorkflowEngine] Executing specialized Leave Request logic...");
@@ -232,11 +239,14 @@ export const workflowEngineService = {
                 const instance = await tx.processInstance.create({
                     data: {
                         workflowId: workflow.id,
+                        userId, // Added userId to track initiator
                         status: "IN_PROGRESS",
                         context: {
                             startDate: metadata?.startDate,
                             endDate: metadata?.endDate,
-                            reason: metadata?.reason
+                            reason: metadata?.reason,
+                            initiatorName,
+                            initiatorEmail: initiator?.email || ""
                         }
                     }
                 });
@@ -278,7 +288,12 @@ export const workflowEngineService = {
             const instance = await tx.processInstance.create({
                 data: {
                     workflowId: workflow.id,
-                    status: "IN_PROGRESS"
+                    userId, // Added userId to track initiator
+                    status: "IN_PROGRESS",
+                    context: {
+                        initiatorName,
+                        initiatorEmail: initiator?.email || ""
+                    }
                 }
             });
 
@@ -452,6 +467,13 @@ export const workflowEngineService = {
                 assignedTo: managerUser?.email || 'Unassigned'
             };
         });
+    },
+
+    /**
+     * Approves a task (alias for completeTaskAndMoveToNext with 'APPROVE')
+     */
+    async approveTask(taskId: string, userId: string) {
+        return this.completeTaskAndMoveToNext(taskId, 'APPROVE', userId);
     }
 };
 

@@ -9,5 +9,6 @@ const processRouter = Router();
 processRouter.use(authMiddleware);
 
 processRouter.post("/start", upload.single("document"), processController.startProcess);
+processRouter.get("/my-requests", processController.getMyRequests);
 
 export default processRouter;
