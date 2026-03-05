@@ -70,7 +70,7 @@ const WorkflowEditor: React.FC = () => {
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [isAdmin, setIsAdmin] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-    const [workflowTitle, setWorkflowTitle] = useState('Nouveau Workflow');
+    const [workflowName, setWorkflowName] = useState('Nouveau Workflow');
 
     const selectedNode = useMemo(
         () => nodes.find((n) => n.id === selectedNodeId) || null,
@@ -93,7 +93,7 @@ const WorkflowEditor: React.FC = () => {
                     if (wf) {
                         setNodes(wf.nodes || initialNodes);
                         setEdges(wf.edges || initialEdges);
-                        setWorkflowTitle(wf.name || 'Workflow Sans Titre');
+                        setWorkflowName(wf.name || 'Workflow Sans Titre');
                     }
                 } catch (err) {
                     console.error('Error loading workflow:', err);
@@ -193,6 +193,12 @@ const WorkflowEditor: React.FC = () => {
     const saveWorkflow = async () => {
         const flow = toObject();
 
+        if (!workflowName || workflowName.trim() === '') {
+            toast.error("Veuillez donner un nom à votre workflow avant de sauvegarder.");
+            alert("Veuillez donner un nom à votre workflow avant de sauvegarder.");
+            return;
+        }
+
         // Validation logic
         const startNode = flow.nodes.find(n => n.data.variant === 'trigger');
         const endNode = flow.nodes.find(n => n.data.variant === 'end');
@@ -218,7 +224,7 @@ const WorkflowEditor: React.FC = () => {
         }));
 
         const payload = {
-            name: workflowTitle,
+            name: workflowName,
             nodes: flow.nodes,
             edges: flow.edges,
             steps: steps,
@@ -264,7 +270,8 @@ const WorkflowEditor: React.FC = () => {
 
                 <div className="z-40 relative">
                     <WorkflowHeader
-                        title={workflowTitle}
+                        title={workflowName}
+                        setName={setWorkflowName}
                         subtitle={isAdmin ? 'Mode Éditeur (Admin)' : 'Mode Visionneuse'}
                         onSave={saveWorkflow}
                         onReset={resetWorkflow}
