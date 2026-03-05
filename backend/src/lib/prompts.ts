@@ -1,24 +1,24 @@
 
 // Types
 interface CVData {
-  name?: string;
-  skills?: string[];
-  experience?: string;
-  education?: string;
-  projects?: string[];
-  languages?: string[];
+  name?: string | undefined;
+  skills?: string[] | undefined;
+  experience?: string | undefined;
+  education?: string | undefined;
+  projects?: string[] | undefined;
+  languages?: string[] | undefined;
   [key: string]: unknown;
 }
 
 interface JobOfferData {
-  title?: string;
-  company?: string;
-  requiredSkills?: string[];
-  experienceRequired?: string;
-  educationRequired?: string;
-  responsibilities?: string[];
-  location?: string;
-  salary?: string;
+  title?: string | undefined;
+  company?: string | undefined;
+  requiredSkills?: string[] | undefined;
+  experienceRequired?: string | undefined;
+  educationRequired?: string | undefined;
+  responsibilities?: string[] | undefined;
+  location?: string | undefined;
+  salary?: string | undefined;
   [key: string]: unknown;
 }
 

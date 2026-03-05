@@ -1,5 +1,5 @@
 // frontend/src/components/CandidateAnalysis.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -53,12 +53,14 @@ interface Analysis {
 
 interface CandidateAnalysisProps {
   candidateId?: string;
+  cvUrl?: string | null;  // Add CV URL for PDF extraction
   cvData: CVData;
   jobOfferData: JobOfferData;
 }
 
 const CandidateAnalysis: React.FC<CandidateAnalysisProps> = ({ 
   candidateId, 
+  cvUrl,  // Add cvUrl to props
   cvData, 
   jobOfferData 
 }) => {
@@ -66,6 +68,16 @@ const CandidateAnalysis: React.FC<CandidateAnalysisProps> = ({
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Log props on mount for debugging
+  useEffect(() => {
+    console.log('[CandidateAnalysis] Component mounted with props:', {
+      candidateId,
+      cvUrl,
+      cvData,
+      jobOfferData
+    });
+  }, [candidateId, cvUrl, cvData, jobOfferData]);
 
   const handleToggleAnalysis = async () => {
     if (!showAnalysis) {
@@ -76,37 +88,107 @@ const CandidateAnalysis: React.FC<CandidateAnalysisProps> = ({
     setShowAnalysis(!showAnalysis);
   };
 
-  const fetchAnalysis = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch('http://localhost:5000/api/analyze-candidate', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          candidateId,
-          cvData,
-          jobOfferData
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setAnalysis(result.data.analysis);
-      } else {
-        setError(result.error || 'Analysis failed');
-      }
-    } catch (err) {
-      setError('Connection error to backend');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  // Helper: Check if cvData has meaningful content
+  const hasValidCvData = (data: CVData): boolean => {
+    return !!(data?.skills?.length || data?.experience || data?.education);
   };
+
+  // داخل مكون CandidateAnalysis.tsx
+
+const fetchAnalysis = async () => {
+  setLoading(true);
+  setError(null);
+  
+  console.log('[CandidateAnalysis] Starting analysis with:', { candidateId, cvUrl, cvData, jobOfferData });
+  
+  // Determine what to send to API
+  // Use cvUrl if available and cvData is empty (no extracted skills/experience)
+  const hasCvData = hasValidCvData(cvData);
+  
+  const requestBody: Record<string, unknown> = {
+    candidateId,
+    jobOfferData
+  };
+  
+  // Only include cvUrl or cvData based on what's available
+  if (cvUrl && !hasCvData) {
+    // If we have CV URL but no extracted data, let backend extract from PDF
+    requestBody.cvUrl = cvUrl;
+    console.log('[CandidateAnalysis] Using cvUrl for extraction:', cvUrl);
+  } else if (hasCvData) {
+    // If we have extracted data, use it directly
+    requestBody.cvData = cvData;
+    console.log('[CandidateAnalysis] Using provided cvData');
+  } else {
+    // Neither available - will get error from backend
+    console.warn('[CandidateAnalysis] No cvData or cvUrl available!');
+  }
+  
+  try {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch('http://localhost:5000/api/analyze-candidate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    });
+    
+    const result = await response.json();
+    console.log('[CandidateAnalysis] API response:', result);
+    
+    if (result.success) {
+      // ✅ تحويل بنية الرد الفرنسي إلى البنية المتوقعة بالإنجليزية
+      const raw = result.data.analysis;
+      console.log('[CandidateAnalysis] Raw analysis data:', raw);
+      
+      const normalizedAnalysis = {
+        // تطابق الدرجات
+        overallScore: raw.scoreGlobal ?? raw.overallScore ?? 0,
+        
+        // تطابق درجات الفئات
+        categoryScores: {
+          skills: raw.scoresParCategorie?.competences ?? raw.categoryScores?.skills ?? 0,
+          experience: raw.scoresParCategorie?.experience ?? raw.categoryScores?.experience ?? 0,
+          education: raw.scoresParCategorie?.formation ?? raw.categoryScores?.education ?? 0,
+          technicalFit: raw.scoresParCategorie?.adéquationTechnique ?? raw.categoryScores?.technicalFit ?? 0
+        },
+        
+        // تطابق المتطلبات
+        matchedRequirements: raw.exigencesCorrespondantes ?? raw.matchedRequirements ?? [],
+        missingRequirements: raw.exigencesManquantes ?? raw.missingRequirements ?? [],
+        
+        // تطابق النقاط
+        strengths: raw.forces ?? raw.strengths ?? [],
+        weaknesses: raw.faiblesses ?? raw.weaknesses ?? [],
+        
+        // تطابق التوصية
+        recommendation: {
+          decision: raw.recommandation?.décision ?? raw.recommendation?.decision ?? 'Maybe',
+          priority: raw.recommandation?.priorité ?? raw.recommendation?.priority ?? 'Medium',
+          interviewQuestions: raw.recommandation?.questionsDentretien ?? raw.recommendation?.interviewQuestions ?? [],
+          notes: raw.recommandation?.notes ?? raw.recommendation?.notes ?? ''
+        }
+      };
+      
+      console.log('[CandidateAnalysis] Normalized analysis:', normalizedAnalysis);
+      
+      setAnalysis(normalizedAnalysis);
+    } else {
+      setError(result.error || 'Analysis failed');
+    }
+  } catch (err) {
+    setError('Connection error to backend');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Helper functions
   const getScoreColor = (score: number): string => {

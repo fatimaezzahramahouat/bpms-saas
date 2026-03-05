@@ -1,51 +1,20 @@
-// frontend/src/pages/candidates/CandidateDetail.tsx
-import React, { useEffect, useState } from 'react';
+// /home/manal/projet_final_BPMS/frontend/src/pages/candidates/CandidateDetail.tsx
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import CandidateAnalysis from '../../components/CandidateAnalysis';
+import { AIAnalysisPanel } from '../../features/rh/components/AIAnalysisPanel';import { getCandidate, getJobOffer, CVData, JobOfferData } from '../../lib/api';
+import { ArrowLeft, Mail, Phone, GraduationCap, Briefcase } from 'lucide-react';
 
-// Types
-interface CVData {
-  name?: string;
-  skills?: string[];
-  experience?: string;
-  education?: string;
-  projects?: string[];
-  languages?: string[];
-  [key: string]: unknown;
-}
-
-interface JobOfferData {
-  title?: string;
-  company?: string;
-  requiredSkills?: string[];
-  experienceRequired?: string;
-  educationRequired?: string;
-  responsibilities?: string[];
-  location?: string;
-  salary?: string;
-  [key: string]: unknown;
-}
-
-interface Candidate {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  cvData?: CVData;
-  jobOfferId?: string;
-  [key: string]: unknown;
-}
-
-const CandidateDetail: React.FC = () => {
+export function CandidateDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const [candidate, setCandidate] = useState<Candidate | null>(null);
-  const [jobOffer, setJobOffer] = useState<JobOfferData | null>(null);
+  const [candidate, setCandidate] = useState<any>(null);
+  const [jobOffer, setJobOffer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+
     const fetchData = async () => {
       if (!id) return;
       
@@ -53,58 +22,20 @@ const CandidateDetail: React.FC = () => {
       setError(null);
       
       try {
-        const candidateRes = await fetch(`http://localhost:5000/api/candidates/${id}`);
+        console.log('📥 Fetching candidate:', id);
+        const candData = await getCandidate(id);
+        console.log('✅ Candidate data:', candData);
+        setCandidate(candData);
         
-        if (!candidateRes.ok) {
-          throw new Error('Candidat non trouvé');
+        if (candData.jobOfferId) {
+          console.log('📥 Fetching job offer:', candData.jobOfferId);
+          const jobData = await getJobOffer(candData.jobOfferId);
+          console.log('✅ Job offer data:', jobData);
+          setJobOffer(jobData);
         }
-        
-        const candidateData = await candidateRes.json();
-        setCandidate(candidateData);
-        
-        if (candidateData.jobOfferId) {
-          const jobRes = await fetch(`http://localhost:5000/api/joboffers/${candidateData.jobOfferId}`);
-          if (jobRes.ok) {
-            const jobData = await jobRes.json();
-            setJobOffer(jobData);
-          }
-        }
-        
       } catch (err) {
-        console.error('❌ Error fetching ', err);
-        setError('Impossible de charger les données du candidat');
-        
-        // test information delete again
-        setCandidate({
-          id: id,
-          name: 'Elharirimanal',
-          email: 'Elharirimanal6@gmail.com',
-          phone: '0699149589',
-          cvData: {
-            name: 'Elharirimanal',
-            skills: ['React', 'Node.js', 'TypeScript', 'Git', 'Python'],
-            experience: '3 ans',
-            education: 'Licence Informatique',
-            projects: ['Application e-commerce', 'API REST', 'Dashboard analytique'],
-            languages: ['Français', 'Anglais', 'Arabe']
-          }
-        });
-        setJobOffer({
-          title: 'Développeur Full Stack',
-          company: 'Tech Company',
-          requiredSkills: ['React', 'Node.js', 'MongoDB', 'Git', 'TypeScript'],
-          experienceRequired: '2-5 ans',
-          educationRequired: 'Bac+3 minimum en Informatique',
-          responsibilities: [
-            'Développement frontend avec React',
-            'Développement backend avec Node.js',
-            'Gestion de base de données MongoDB',
-            'Travail en équipe Agile'
-          ],
-          location: 'Paris, France',
-          salary: '45k-55k €'
-        });
-        
+        console.error('❌ Error fetching data:', err);
+        setError('Erreur lors du chargement des données');
       } finally {
         setLoading(false);
       }
@@ -113,106 +44,110 @@ const CandidateDetail: React.FC = () => {
     fetchData();
   }, [id]);
 
-  // Loading State
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement du candidat...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4" />
+          <p className="text-gray-600">Chargement...</p>
         </div>
       </div>
     );
   }
 
-  // Error State
-  if (error && !candidate) {
+  if (error || !candidate) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center p-8 bg-white rounded-2xl shadow-lg">
-          <p className="text-red-600 font-semibold mb-4">⚠️ {error}</p>
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Candidat non trouvé'}</p>
           <button
-            onClick={() => navigate('/candidates')}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
           >
-            Retour à la liste
+            Retour
           </button>
         </div>
       </div>
     );
   }
 
+  const cvData: CVData = {
+    name: candidate.fullName || candidate.name,
+    skills: candidate.skills || [],
+    experience: candidate.experience || '',
+    education: candidate.education || '',
+  };
+
+  const jobOfferData: JobOfferData = {
+    title: jobOffer?.title || '',
+    requiredSkills: jobOffer?.skills || [],
+    experienceRequired: jobOffer?.level || jobOffer?.experienceRequired || '',
+    educationRequired: jobOffer?.educationRequired || '',
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50 py-10">
+    <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-6">
-        
-        {/* Header + back button*/}
-        <div className="flex items-center justify-between mb-8">
+        {/* Header */}
+        <div className="mb-8">
           <button
-            onClick={() => navigate('/candidates')}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4"
           >
-            <span>←</span>
-            <span>Retour</span>
+            <ArrowLeft className="w-4 h-4" />
+            Retour
           </button>
-          
-          <div className="text-right">
-            <h1 className="text-2xl font-bold text-gray-800">
-              Fiche Candidat
-            </h1>
-            <p className="text-gray-500 text-sm">
-              Analyse AI des compétences
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-800">Fiche Candidat</h1>
+          <p className="text-gray-600">Analyse IA des compétences</p>
         </div>
 
-        {/* information condidats */}
-        <div className="bg-white rounded-3xl shadow-xl p-8 mb-8 border-2 border-purple-100">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-6">
-            {/* Avatar */}
-            <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-violet-600 rounded-full flex items-center justify-center text-white text-4xl font-bold shadow-lg flex-shrink-0">
-              {candidate?.name?.charAt(0) || 'C'}
+        {/* Candidate Info */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex items-start gap-6 mb-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-white text-2xl font-bold">
+              {candidate.fullName?.charAt(0) || candidate.name?.charAt(0) || 'C'}
             </div>
-            
-            <div className="flex-1">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                {candidate?.name || 'Candidat'}
-              </h2>
-              <p className="text-xl text-purple-600 font-semibold">
-                {jobOffer?.title || 'Poste non spécifié'}
-              </p>
-              {jobOffer?.company && (
-                <p className="text-gray-500 mt-1">🏢 {jobOffer.company}</p>
-              )}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">{candidate.fullName || candidate.name}</h2>
+              <p className="text-purple-600">{jobOffer?.title || 'Poste non spécifié'}</p>
             </div>
           </div>
 
-          {/* Contacts*/}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6 border-t-2 border-gray-100">
-            <div className="bg-gray-50 p-4 rounded-2xl">
-              <p className="text-gray-500 text-sm mb-1">📧 Email</p>
-              <p className="text-gray-800 font-medium break-all">{candidate?.email}</p>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <Mail className="w-4 h-4" />
+                <span className="text-sm font-medium">Email</span>
+              </div>
+              <p className="text-gray-800">{candidate.email}</p>
             </div>
-            <div className="bg-gray-50 p-4 rounded-2xl">
-              <p className="text-gray-500 text-sm mb-1">📱 Téléphone</p>
-              <p className="text-gray-800 font-medium">{candidate?.phone}</p>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <Phone className="w-4 h-4" />
+                <span className="text-sm font-medium">Téléphone</span>
+              </div>
+              <p className="text-gray-800">{candidate.phone || 'Non spécifié'}</p>
             </div>
-            <div className="bg-gray-50 p-4 rounded-2xl">
-              <p className="text-gray-500 text-sm mb-1">🎓 Formation</p>
-              <p className="text-gray-800 font-medium">{candidate?.cvData?.education || 'Non spécifié'}</p>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 text-gray-600 mb-2">
+                <GraduationCap className="w-4 h-4" />
+                <span className="text-sm font-medium">Formation</span>
+              </div>
+              <p className="text-gray-800">{candidate.education || 'Non spécifié'}</p>
             </div>
           </div>
 
-          {/* SKILLS*/}
-          {candidate?.cvData?.skills && candidate.cvData.skills.length > 0 && (
-            <div className="mt-6">
-              <p className="text-gray-700 font-semibold mb-3">💼 Compétences:</p>
+          {cvData.skills && cvData.skills.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                Compétences
+              </h3>
               <div className="flex flex-wrap gap-2">
-                {candidate.cvData.skills.map((skill: string, index: number) => (
-                  <span 
-                    key={index}
-                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium"
-                  >
+                {cvData.skills.map((skill, i) => (
+                  <span key={i} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
                     {skill}
                   </span>
                 ))}
@@ -221,16 +156,16 @@ const CandidateDetail: React.FC = () => {
           )}
         </div>
 
-        {/* ✅ ✅ ✅ COMPONANT AI ✅ ✅ ✅ */}
-        <CandidateAnalysis
-          candidateId={candidate?.id}
-          cvData={candidate?.cvData || {}}
-          jobOfferData={jobOffer || {}}
+        {/* AI Analysis Panel */}
+        <AIAnalysisPanel
+          candidateId={candidate.id}
+          jobOfferId={jobOffer?.id || ''}
+          cvData={cvData}
+          jobOfferData={jobOfferData}
         />
-
       </div>
     </div>
   );
-};
+}
 
 export default CandidateDetail;

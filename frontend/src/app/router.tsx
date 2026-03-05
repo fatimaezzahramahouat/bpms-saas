@@ -12,7 +12,7 @@ import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
-import CandidateDetail from '../pages/candidates/CandidateDetail'; 
+import { CandidateProfilePage } from '../features/rh/pages/CandidateProfilePage';
 
 
 /**
@@ -51,8 +51,7 @@ export function AppRouter() {
         <Route path="workflow" element={<WorkflowPage />} />
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
-        <Route path="rh/candidates/:id" element={<CandidateDetail />} />
-        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
+        <Route path="rh/candidates/:id" element={<CandidateProfilePage />} />        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
       </Route>
 
       {/* 404 Catch-all - Must be last */}

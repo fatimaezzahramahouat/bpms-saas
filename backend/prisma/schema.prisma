@@ -121,6 +121,9 @@ model Candidate {
   updatedAt    DateTime        @updatedAt
   status       CandidateStatus @default(CANDIDATE)
   applications Application[]
+  skills         String[]   @default([])
+  experience     String?
+  education      String?
 }
 
 model Application {
@@ -247,15 +250,51 @@ model ProcessInstance {
 }
 
 model AIAnalysis {
-  id                String           @id @default(uuid())
-  type              String
-  result            Json
-  confidence        Float?
-  processInstanceId String?
-  applicationId     String?
-  createdAt         DateTime         @default(now())
-  application       Application?     @relation(fields: [applicationId], references: [id])
-  processInstance   ProcessInstance? @relation(fields: [processInstanceId], references: [id])
+  id                    String           @id @default(uuid())
+  type                  String
+  
+  candidateId           String?          @db.VarChar(255)
+  jobOfferId            String?          @db.VarChar(255)
+  
+  overallScore          Float            @default(0)
+  skillsScore           Float?
+  experienceScore       Float?
+  educationScore        Float?
+  technicalFitScore     Float?
+  
+  matchedSkills         String[]
+  missingSkills         String[]
+  
+  
+  strengths             String[]
+  weaknesses            String[]
+  
+  
+  recommendation        String?
+  priority              String?
+  interviewQuestions    String[]
+  
+  
+  result                Json
+  confidence            Float?
+  processInstanceId     String?
+  applicationId         String?
+  
+
+
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  
+  
+  application           Application?     @relation(fields: [applicationId], references: [id])
+  processInstance       ProcessInstance? @relation(fields: [processInstanceId], references: [id])
+
+  
+  @@index([candidateId])
+  @@index([jobOfferId])
+  @@index([applicationId])
+  @@index([type])
+  @@index([overallScore])
 }
 
 model Notification {

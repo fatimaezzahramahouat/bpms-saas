@@ -143,100 +143,93 @@ Fournis l'analyse en français car l'interface est en français. Retourne unique
 `;
 };
 
-// Call Gemini API
-async function callGeminiAPI(prompt: string): Promise<GeminiAnalysis> {
+// Call Backend API (Groq-powered)
+async function callBackendAPI(prompt: string): Promise<GeminiAnalysis> {
   try {
-    const response = await fetch(GEMINI_API_URL, {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Get job requirements and candidate from global variables (set by analyzeCandidate)
+    const response = await fetch('http://localhost:5000/api/analyze-candidate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
+        candidateId: candidateProfile.email, // Use email as temporary ID
+        cvData: {
+          name: candidateProfile.name,
+          skills: candidateProfile.skills,
+          experience: candidateProfile.experience,
+          education: candidateProfile.education
         },
-      }),
+        jobOfferData: {
+          title: jobRequirements.title,
+          requiredSkills: jobRequirements.requiredSkills,
+          experienceRequired: jobRequirements.requiredExperience,
+          educationRequired: jobRequirements.requiredEducation
+        }
+      })
     });
-
+    
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
+      throw new Error(`Backend API Error: ${response.status}`);
     }
-
-    const data = await response.json();
     
-    // Parse the response
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const result = await response.json();
     
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Invalid response format');
+    if (!result.success) {
+      throw new Error(result.error || 'Analysis failed');
     }
-
-    const analysis = JSON.parse(jsonMatch[0]);
     
-    // Validate and set defaults - handle both old and new format
-    const recommendationObj = analysis.recommendation || { decision: 'À évaluer', priority: 'Moyenne', interviewQuestions: [], notes: '' };
-    const categoryScoresObj = analysis.categoryScores || { skills: 0, experience: 0, education: 0, technicalFit: 0 };
+    const raw = result.data.analysis;
     
-    // Build backward compatibility properties for CandidateProfilePage
-    const competencies: { nom: string; niveau: number }[] = analysis.competences || 
-      (analysis.skillsMatch?.matched || []).map((skill: string) => ({
-        nom: skill,
-        niveau: analysis.skillsMatch?.percentage || 70
-      }));
-    
+    // Transform backend response to GeminiAnalysis format
     return {
-      overallScore: Math.min(100, Math.max(0, analysis.overallScore || 0)),
+      overallScore: raw.scoreGlobal ?? raw.overallScore ?? 0,
       categoryScores: {
-        skills: Math.min(100, Math.max(0, categoryScoresObj.skills || 0)),
-        experience: Math.min(100, Math.max(0, categoryScoresObj.experience || 0)),
-        education: Math.min(100, Math.max(0, categoryScoresObj.education || 0)),
-        technicalFit: Math.min(100, Math.max(0, categoryScoresObj.technicalFit || 0)),
+        skills: raw.scoresParCategorie?.competences ?? raw.categoryScores?.skills ?? 0,
+        experience: raw.scoresParCategorie?.experience ?? raw.categoryScores?.experience ?? 0,
+        education: raw.scoresParCategorie?.formation ?? raw.categoryScores?.education ?? 0,
+        technicalFit: raw.scoresParCategorie?.adéquationTechnique ?? raw.categoryScores?.technicalFit ?? 0
       },
-      matchedRequirements: analysis.matchedRequirements || analysis.skillsMatch?.matched || [],
-      missingRequirements: analysis.missingRequirements || analysis.skillsMatch?.missing || [],
+      matchedRequirements: raw.exigencesCorrespondantes ?? raw.matchedRequirements ?? [],
+      missingRequirements: raw.exigencesManquantes ?? raw.missingRequirements ?? [],
       skillsMatch: {
-        matched: analysis.skillsMatch?.matched || analysis.matchedRequirements || [],
-        missing: analysis.skillsMatch?.missing || analysis.missingRequirements || [],
-        percentage: Math.min(100, Math.max(0, analysis.skillsMatch?.percentage || categoryScoresObj.skills || 0)),
+        matched: raw.exigencesCorrespondantes ?? raw.matchedRequirements ?? [],
+        missing: raw.exigencesManquantes ?? raw.missingRequirements ?? [],
+        percentage: raw.scoreGlobal ?? raw.overallScore ?? 0
       },
       experienceMatch: {
-        required: analysis.experienceMatch?.required || jobRequirements.requiredExperience,
-        candidate: analysis.experienceMatch?.candidate || candidateProfile.experience,
-        percentage: Math.min(100, Math.max(0, analysis.experienceMatch?.percentage || categoryScoresObj.experience || 0)),
+        required: jobRequirements.requiredExperience,
+        candidate: candidateProfile.experience,
+        percentage: raw.scoresParCategorie?.experience ?? raw.categoryScores?.experience ?? 0
       },
-      strengths: analysis.strengths || [],
-      weaknesses: analysis.weaknesses || [],
-      recommendation: typeof recommendationObj === 'string' ? recommendationObj : recommendationObj.decision || 'À évaluer',
-      detailedAnalysis: analysis.detailedAnalysis || 'Analyse non disponible',
-      linguisticAnalysis: analysis.linguisticAnalysis || {
+      strengths: raw.forces ?? raw.strengths ?? [],
+      weaknesses: raw.faiblesses ?? raw.weaknesses ?? [],
+      recommendation: raw.recommandation?.décision ?? raw.recommendation?.decision ?? 'À évaluer',
+      detailedAnalysis: raw.recommandation?.notes ?? raw.recommendation?.notes ?? 'Analyse générée par IA',
+      linguisticAnalysis: {
         writingQuality: 'Non évalué',
         professionalTone: 'Non évalué',
-        communicationSkills: 'Non évalué',
+        communicationSkills: 'Non évalué'
       },
-      // Backward compatibility properties
-      score: Math.min(100, Math.max(0, analysis.overallScore || 0)),
-      competences: competencies,
-      pointsForts: analysis.pointsForts || analysis.strengths || [],
-      pointsFaibles: analysis.pointsFaibles || analysis.weaknesses || [],
-      experience: analysis.experience || analysis.experienceMatch?.candidate || '',
-      formation: analysis.formation || [],
+      // Backward compatibility
+      score: raw.scoreGlobal ?? raw.overallScore ?? 0,
+      competences: (raw.exigencesCorrespondantes ?? raw.matchedRequirements ?? []).map((skill: string) => ({
+        nom: skill,
+        niveau: 70
+      })),
+      pointsForts: raw.forces ?? raw.strengths ?? [],
+      pointsFaibles: raw.faiblesses ?? raw.weaknesses ?? [],
+      experience: candidateProfile.experience,
+      formation: []
     };
   } catch (error) {
-    console.error('Gemini API Error:', error);
-    // Return mock data on error for demo purposes
-    return getMockAnalysis();
+    console.error('Backend API Error:', error);
+    throw error; // Don't return mock data, throw error instead
   }
 }
 
@@ -302,17 +295,21 @@ export function getMockAnalysis(): GeminiAnalysis {
   };
 }
 
-// Main analysis function
+// Main analysis function - uses backend API (Groq-powered)
 export async function analyzeCandidate(
   candidate: CandidateProfile,
   job: JobRequirements
 ): Promise<GeminiAnalysis> {
-  // Update global variables for mock fallback
+  // Update global variables for API call
   jobRequirements = job;
   candidateProfile = candidate;
   
+  // Generate prompt for logging purposes (actual analysis done by backend)
   const prompt = generateCVAnalysisPrompt(candidate, job);
-  return callGeminiAPI(prompt);
+  console.log('[geminiService] Calling backend API with prompt generated');
+  
+  // Use backend API instead of direct Gemini call
+  return callBackendAPI(prompt);
 }
 
 // Quick match calculation (offline fallback)
@@ -378,14 +375,14 @@ export async function extractTextFromPDF(file: File): Promise<string> {
   }
 }
 
-// Analyze CV with Gemini (standalone function for PDF analysis)
+// Analyze CV with Gemini (standalone function for PDF analysis) - now uses backend API
 export async function analyzeCVWithGemini(
   cvText: string,
   jobRequirements?: JobRequirements
 ): Promise<GeminiAnalysis> {
   // Create a minimal candidate profile from extracted text
   const candidate: CandidateProfile = {
-    name: 'Candidat (CV анализ)',
+    name: 'Candidat (CV analysé)',
     email: '',
     skills: [],
     experience: '',
@@ -401,7 +398,12 @@ export async function analyzeCVWithGemini(
     requiredEducation: '',
   };
 
-  return analyzeCandidate(candidate, job);
+  // Use backend API instead of direct Gemini call
+  jobRequirements = job;
+  candidateProfile = candidate;
+  
+  console.log('[geminiService] analyzeCVWithGemini calling backend API');
+  return callBackendAPI('');
 }
 
 // Type alias for backwards compatibility

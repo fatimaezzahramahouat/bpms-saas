@@ -1,270 +1,282 @@
+// /home/manal/projet_final_BPMS/frontend/src/features/rh/components/AIAnalysisPanel.tsx
 import { useState, useEffect } from 'react';
-import { Sparkles, Brain, Target, ThumbsUp, ThumbsDown, AlertTriangle, Loader2, RefreshCw, ChevronDown, ChevronUp, BarChart3, TrendingUp, Award } from 'lucide-react';
-import { GeminiAnalysis, analyzeCandidate, calculateQuickMatch, getMockAnalysis, CandidateProfile, JobRequirements } from '../../../shared/services/geminiService';
-import { MatchingPercentage } from './MatchingPercentage';
-import { SkillsRadarChart, ExperienceTimeline, CompetencyBars, AIAnalysisText, ScoreBreakdown } from './AIVisualizations';
+import { Sparkles, Loader2, AlertCircle, CheckCircle, ThumbsUp, TrendingUp, Award, BookOpen } from 'lucide-react';
+
+interface CVData {
+  name?: string;
+  skills?: string[];
+  experience?: string;
+  education?: string;
+  [key: string]: unknown;
+}
+
+interface JobOfferData {
+  title?: string;
+  requiredSkills?: string[];
+  experienceRequired?: string;
+  educationRequired?: string;
+  [key: string]: unknown;
+}
+
+interface AnalysisState {
+  overallScore: number;
+  categoryScores: {
+    skills: number;
+    experience: number;
+    education: number;
+    technicalFit: number;
+  };
+  matchedRequirements: string[];
+  missingRequirements: string[];
+  strengths: string[];
+  weaknesses: string[];
+  recommendation?: string;
+  priority?: string;
+}
 
 interface AIAnalysisPanelProps {
-  candidate: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    skills: string[];
-    experienceLevel: string;
-    education: string;
-    coverLetter?: string;
-  };
-  jobRequirements: {
-    title: string;
-    requiredSkills: string[];
-    requiredExperience: string;
-    requiredEducation: string;
-  };
-  onAnalysisComplete?: (analysis: GeminiAnalysis) => void;
+  candidateId: string;
+  jobOfferId: string;
+  cvData: CVData;
+  jobOfferData: JobOfferData;
 }
 
 export function AIAnalysisPanel({ 
-  candidate, 
-  jobRequirements,
-  onAnalysisComplete 
+  candidateId, 
+  jobOfferId, 
+  cvData, 
+  jobOfferData 
 }: AIAnalysisPanelProps) {
-  const [analysis, setAnalysis] = useState<GeminiAnalysis | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDetails, setShowDetails] = useState(true);
+
+  useEffect(() => {
+    console.log('📥 AIAnalysisPanel props:', {
+      candidateId,
+      jobOfferId,
+      cvData,
+      jobOfferData
+    });
+  }, [candidateId, jobOfferId, cvData, jobOfferData]);
 
   const runAnalysis = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Create candidate profile
-      const candidateProfile: CandidateProfile = {
-        name: `${candidate.firstName} ${candidate.lastName}`,
-        email: candidate.email,
-        skills: candidate.skills,
-        experience: candidate.experienceLevel,
-        education: candidate.education,
-        coverLetter: candidate.coverLetter,
-      };
-
-      const job: JobRequirements = {
-        title: jobRequirements.title,
-        requiredSkills: jobRequirements.requiredSkills,
-        requiredExperience: jobRequirements.requiredExperience,
-        requiredEducation: jobRequirements.requiredEducation,
-      };
-
-      // Call Gemini API (with fallback to mock)
-      const result = await analyzeCandidate(candidateProfile, job);
-      setAnalysis(result);
+      console.log('🚀 Calling analysis API...');
       
-      if (onAnalysisComplete) {
-        onAnalysisComplete(result);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('http://localhost:5000/api/analyze-candidate', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token || ''}`
+        },
+        body: JSON.stringify({
+          candidateId,
+          jobOfferId,
+          cvData,
+          jobOfferData
+        })
+      });
+
+      console.log('📡 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ API Response:', result);
+      
+      if (result.success && result.data) {
+        const backendData = result.data;
+        
+        const formattedAnalysis: AnalysisState = {
+          overallScore: backendData.overallScore || 0,
+          categoryScores: {
+            skills: backendData.categoryScores?.skills || 0,
+            experience: backendData.categoryScores?.experience || 0,
+            education: backendData.categoryScores?.education || 0,
+            technicalFit: backendData.categoryScores?.technicalFit || 0,
+          },
+          matchedRequirements: backendData.matchedRequirements || [],
+          missingRequirements: backendData.missingRequirements || [],
+          strengths: backendData.strengths || [],
+          weaknesses: backendData.weaknesses || [],
+          recommendation: backendData.recommendation,
+          priority: backendData.priority,
+        };
+
+        console.log('📊 Formatted analysis:', formattedAnalysis);
+        setAnalysis(formattedAnalysis);
       }
     } catch (err) {
-      setError('Erreur lors de l\'analyse IA');
-      console.error(err);
+      console.error('❌ Analysis error:', err);
+      setError(`Erreur: ${(err as Error).message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Run quick offline analysis as fallback
-  const runQuickAnalysis = () => {
-    const quickResult = calculateQuickMatch(
-      candidate.skills,
-      jobRequirements.requiredSkills,
-      candidate.experienceLevel,
-      jobRequirements.requiredExperience
-    );
-
-    const result: GeminiAnalysis = {
-      overallScore: quickResult.percentage,
-      categoryScores: {
-        skills: quickResult.percentage,
-        experience: quickResult.percentage,
-        education: 70,
-        technicalFit: quickResult.percentage,
-      },
-      matchedRequirements: quickResult.matched,
-      missingRequirements: quickResult.missing,
-      skillsMatch: {
-        matched: quickResult.matched,
-        missing: quickResult.missing,
-        percentage: quickResult.percentage,
-      },
-      experienceMatch: {
-        required: jobRequirements.requiredExperience,
-        candidate: candidate.experienceLevel,
-        percentage: quickResult.percentage,
-      },
-      strengths: quickResult.matched.map(s => `Compétence en ${s}`),
-      weaknesses: quickResult.missing.map(s => `Manque de ${s}`),
-      recommendation: quickResult.percentage >= 70 ? 'À retenir' : quickResult.percentage >= 40 ? 'À évaluer' : 'Non recommandé',
-      detailedAnalysis: `Analyse rapide basée sur la correspondance des compétences et de l'expérience.`,
-      linguisticAnalysis: {
-        writingQuality: 'Non évalué (analyse rapide)',
-        professionalTone: 'Non évalué (analyse rapide)',
-        communicationSkills: 'Non évalué (analyse rapide)',
-      },
-    };
-
-    setAnalysis(result);
-    if (onAnalysisComplete) {
-      onAnalysisComplete(result);
-    }
+  const getScoreColor = (score: number): string => {
+    if (score >= 70) return 'text-green-500';
+    if (score >= 40) return 'text-yellow-500';
+    return 'text-red-500';
   };
 
-  // Get recommendation color
-  const getRecommendationColor = (recommendation: string): string => {
-    switch (recommendation) {
-      case 'À retenir':
-        return 'text-green-500';
-      case 'À évaluer':
-        return 'text-yellow-500';
-      case 'Non recommandé':
-        return 'text-red-500';
-      default:
-        return 'text-gray-500';
-    }
-  };
-
-  // Get recommendation icon
-  const getRecommendationIcon = (recommendation: string) => {
-    switch (recommendation) {
-      case 'À retenir':
-        return <ThumbsUp className="w-5 h-5" />;
-      case 'À évaluer':
-        return <AlertTriangle className="w-5 h-5" />;
-      case 'Non recommandé':
-        return <ThumbsDown className="w-5 h-5" />;
-      default:
-        return null;
-    }
+  const getBarColor = (score: number): string => {
+    if (score >= 70) return 'bg-green-500';
+    if (score >= 40) return 'bg-yellow-500';
+    return 'bg-red-500';
   };
 
   return (
-    <div className="bg-[var(--card-bg)] border border-purple-500/20 rounded-xl p-5">
+    <div className="bg-white rounded-xl shadow-lg p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <h3 className="font-semibold text-[var(--text-primary)]">Analyse IA</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Analyse IA des compétences</h3>
         </div>
         
-        <div className="flex items-center gap-2">
-          <button
-            onClick={runQuickAnalysis}
-            disabled={isLoading}
-            className="px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] bg-[var(--input-bg)] hover:bg-purple-500/10 hover:text-purple-400 rounded-lg transition-colors"
-          >
-            Analyse rapide
-          </button>
+        {!analysis && !isLoading && (
           <button
             onClick={runAnalysis}
-            disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Analyse...
-              </>
-            ) : (
-              <>
-                <Brain className="w-3 h-3" />
-                Analyser
-              </>
-            )}
+            Lancer l'analyse
           </button>
-        </div>
+        )}
       </div>
 
       {/* Loading State */}
       {isLoading && (
-        <div className="flex flex-col items-center justify-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-3" />
-          <p className="text-sm text-[var(--text-secondary)]">
-            L'IA analyse le profil du candidat...
-          </p>
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="w-12 h-12 animate-spin text-purple-500 mb-4" />
+          <p className="text-gray-600">L'IA analyse le CV...</p>
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 text-red-600">
+            <AlertCircle className="w-5 h-5" />
+            <p className="font-medium">{error}</p>
+          </div>
           <button
-            onClick={runQuickAnalysis}
-            className="mt-2 text-xs text-purple-400 hover:text-purple-300"
+            onClick={runAnalysis}
+            className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
-            Essayer l'analyse rapide
+            Réessayer
           </button>
         </div>
       )}
 
       {/* Analysis Results */}
       {analysis && !isLoading && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Overall Score */}
-          <div className="p-4 bg-[var(--bg-main)] rounded-lg">
-            <MatchingPercentage percentage={analysis.overallScore} showCircular={true} size="sm" />
+          <div className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">Score de Compatibilité Globale</h4>
+                <div className={`text-4xl font-bold ${getScoreColor(analysis.overallScore)}`}>
+                  {analysis.overallScore}%
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Recommendation */}
-          <div className={`flex items-center gap-2 p-3 rounded-lg ${
-            analysis.recommendation === 'À retainer' ? 'bg-green-500/10' :
-            analysis.recommendation === 'À évaluer' ? 'bg-yellow-500/10' :
-            'bg-red-500/10'
-          }`}>
-            <span className={getRecommendationColor(analysis.recommendation)}>
-              {getRecommendationIcon(analysis.recommendation)}
-            </span>
-            <span className={`font-medium ${getRecommendationColor(analysis.recommendation)}`}>
-              {analysis.recommendation}
-            </span>
+          {/* Category Scores */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-medium text-gray-700">Compétences</span>
+              </div>
+              <div className={`text-2xl font-bold ${getScoreColor(analysis.categoryScores.skills)}`}>
+                {analysis.categoryScores.skills}%
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Award className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-medium text-gray-700">Expérience</span>
+              </div>
+              <div className={`text-2xl font-bold ${getScoreColor(analysis.categoryScores.experience)}`}>
+                {analysis.categoryScores.experience}%
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-medium text-gray-700">Formation</span>
+              </div>
+              <div className={`text-2xl font-bold ${getScoreColor(analysis.categoryScores.education)}`}>
+                {analysis.categoryScores.education}%
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-medium text-gray-700">Compétences Techniques</span>
+              </div>
+              <div className={`text-2xl font-bold ${getScoreColor(analysis.categoryScores.technicalFit)}`}>
+                {analysis.categoryScores.technicalFit}%
+              </div>
+            </div>
           </div>
 
-          {/* Skills Match */}
-          <div>
-            <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2 flex items-center gap-2">
-              <Target className="w-4 h-4 text-purple-500" />
-              Compétences
-            </h4>
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-1">
-                {analysis.skillsMatch.matched.map((skill, i) => (
-                  <span key={i} className="px-2 py-1 text-xs bg-green-500/10 text-green-400 rounded-md">
+          {/* Matched Skills */}
+          {analysis.matchedRequirements.length > 0 && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-green-800 mb-3">Compétences Matchées</h4>
+              <div className="flex flex-wrap gap-2">
+                {analysis.matchedRequirements.map((skill, i) => (
+                  <span key={i} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
                     ✓ {skill}
                   </span>
                 ))}
               </div>
-              {analysis.skillsMatch.missing.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {analysis.skillsMatch.missing.map((skill, i) => (
-                    <span key={i} className="px-2 py-1 text-xs bg-red-500/10 text-red-400 rounded-md">
-                      ✗ {skill}
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
+          )}
+
+          {/* Missing Skills */}
+          {analysis.missingRequirements.length > 0 && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-red-800 mb-3">Compétences Manquantes</h4>
+              <div className="flex flex-wrap gap-2">
+                {analysis.missingRequirements.map((skill, i) => (
+                  <span key={i} className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
+                    ✗ {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Strengths */}
           {analysis.strengths.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                <ThumbsUp className="w-4 h-4 text-green-500" />
-                Points forts
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
+                <ThumbsUp className="w-4 h-4" />
+                Points Forts
               </h4>
-              <ul className="space-y-1">
+              <ul className="space-y-2">
                 {analysis.strengths.map((strength, i) => (
-                  <li key={i} className="text-sm text-green-400 flex items-start gap-2">
-                    <span className="mt-1 w-1 h-1 rounded-full bg-green-400 flex-shrink-0" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-green-700">
+                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     {strength}
                   </li>
                 ))}
@@ -274,93 +286,16 @@ export function AIAnalysisPanel({
 
           {/* Weaknesses */}
           {analysis.weaknesses.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                Points à améliorer
-              </h4>
-              <ul className="space-y-1">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-yellow-800 mb-3">Points à Améliorer</h4>
+              <ul className="space-y-2">
                 {analysis.weaknesses.map((weakness, i) => (
-                  <li key={i} className="text-sm text-yellow-400 flex items-start gap-2">
-                    <span className="mt-1 w-1 h-1 rounded-full bg-yellow-400 flex-shrink-0" />
+                  <li key={i} className="flex items-start gap-2 text-sm text-yellow-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-2 flex-shrink-0" />
                     {weakness}
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {/* Detailed Analysis Toggle */}
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="w-full flex items-center justify-between p-2 text-sm text-[var(--text-secondary)] hover:text-purple-400 transition-colors"
-          >
-            <span>Analyse détaillée avec graphiques</span>
-            {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-
-          {/* Detailed Analysis Content with Visualizations */}
-          {showDetails && analysis && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-              {/* Score Breakdown */}
-              <div className="p-4 bg-[var(--bg-main)] rounded-lg border border-[var(--border-color)]">
-                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-purple-500" />
-                  Répartition du score
-                </h4>
-                <ScoreBreakdown
-                  overallScore={analysis.overallScore}
-                  skillsScore={analysis.skillsMatch.percentage}
-                  experienceScore={analysis.experienceMatch.percentage}
-                  educationScore={70}
-                  linguisticScore={75}
-                />
-              </div>
-
-              {/* Skills Radar Chart */}
-              <div className="p-4 bg-[var(--bg-main)] rounded-lg border border-[var(--border-color)]">
-                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                  <Target className="w-4 h-4 text-purple-500" />
-                  Comparaison des compétences
-                </h4>
-                <SkillsRadarChart
-                  requiredSkills={jobRequirements.requiredSkills}
-                  candidateSkills={candidate.skills}
-                />
-              </div>
-
-              {/* Experience Timeline */}
-              <div className="p-4 bg-[var(--bg-main)] rounded-lg border border-[var(--border-color)]">
-                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-purple-500" />
-                  Timeline d'expérience
-                </h4>
-                <ExperienceTimeline
-                  requiredYears={jobRequirements.requiredExperience}
-                  candidateYears={candidate.experienceLevel}
-                />
-              </div>
-
-              {/* Competency Bars */}
-              <div className="p-4 bg-[var(--bg-main)] rounded-lg border border-[var(--border-color)]">
-                <h4 className="text-sm font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-purple-500" />
-                  Compétences
-                </h4>
-                <CompetencyBars
-                  technicalSkills={analysis.skillsMatch.percentage}
-                  softSkills={75}
-                  education={70}
-                  languages={80}
-                />
-              </div>
-
-              {/* AI Written Analysis */}
-              <AIAnalysisText
-                analysis={analysis.detailedAnalysis}
-                strengths={analysis.strengths}
-                weaknesses={analysis.weaknesses}
-              />
             </div>
           )}
         </div>
@@ -368,11 +303,9 @@ export function AIAnalysisPanel({
 
       {/* Empty State */}
       {!analysis && !isLoading && !error && (
-        <div className="text-center py-6">
-          <Brain className="w-12 h-12 text-purple-500/30 mx-auto mb-3" />
-          <p className="text-sm text-[var(--text-secondary)] mb-4">
-            Cliquez sur "Analyser" pour obtenir une analyse IA du candidat
-          </p>
+        <div className="text-center py-12">
+          <Sparkles className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+          <p className="text-gray-600">Cliquez sur "Lancer l'analyse" pour obtenir une analyse IA</p>
         </div>
       )}
     </div>
