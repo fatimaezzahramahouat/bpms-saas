@@ -5,19 +5,19 @@ import { StepInput } from "../schemas/workflow.schema";
 
 interface CreateWorkflowData {
     name: string;
-    description?: string;
+    description?: string | undefined;
     nodes?: any;
     edges?: any;
     steps: StepInput[];
 }
 
 interface UpdateWorkflowData {
-    name?: string;
-    description?: string;
+    name?: string | undefined;
+    description?: string | undefined;
     nodes?: any;
     edges?: any;
-    status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
-    version?: number;
+    status?: "DRAFT" | "ACTIVE" | "ARCHIVED" | undefined;
+    version?: number | undefined;
 }
 
 interface AddStepData {
@@ -37,39 +37,26 @@ export const workflowRepository = {
         organisationId: string,
         data: CreateWorkflowData
     ) {
-        return prisma.$transaction(async (tx: any) => {
-            // 1. Create the workflow
-            const workflow = await tx.workflow.create({
-                data: {
-                    name: data.name,
-                    description: data.description,
-                    nodes: data.nodes || [],
-                    edges: data.edges || [],
-                    organisationId,
-                },
-            });
-
-            // 2. Create all steps linked to the workflow
-            if (data.steps.length > 0) {
-                await tx.step.createMany({
-                    data: data.steps.map((step) => ({
+        return prisma.workflow.create({
+            data: {
+                name: data.name,
+                description: data.description ?? null,
+                nodes: data.nodes || [],
+                edges: data.edges || [],
+                organisationId,
+                steps: {
+                    create: data.steps.map((step) => ({
                         name: step.name,
                         order: step.order,
-                        workflowId: workflow.id,
                         metadata: step.metadata || null,
                     })),
-                });
-            }
-
-            // 3. Return the workflow with its newly created steps
-            return tx.workflow.findUnique({
-                where: { id: workflow.id },
-                include: {
-                    steps: {
-                        orderBy: { order: "asc" },
-                    },
                 },
-            });
+            },
+            include: {
+                steps: {
+                    orderBy: { order: "asc" },
+                },
+            },
         });
     },
 
@@ -113,8 +100,8 @@ export const workflowRepository = {
         organisationId: string,
         data: UpdateWorkflowData
     ) {
-        return prisma.workflow.updateMany({
-            where: { id, organisationId },
+        return prisma.workflow.update({
+            where: { id },
             data: {
                 ...(data.name && { name: data.name }),
                 ...(data.description !== undefined && { description: data.description }),

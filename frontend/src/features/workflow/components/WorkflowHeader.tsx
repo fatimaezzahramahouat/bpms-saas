@@ -4,14 +4,16 @@ import { Save, RotateCcw, CheckCircle2, Loader2, Workflow } from 'lucide-react';
 interface WorkflowHeaderProps {
     onSave: () => Promise<void>;
     onReset: () => void;
-    title?: string;
+    title: string;
+    setName: (name: string) => void;
     subtitle?: string;
 }
 
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     onSave,
     onReset,
-    title = 'Workflow Editor',
+    title,
+    setName,
     subtitle = 'Design your automated process',
 }) => {
     const [saveState, setSaveState] = useState<'idle' | 'loading' | 'success'>('idle');
@@ -61,14 +63,24 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                     Réinitialiser
                 </button>
 
+                <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-2" />
+
+                <input
+                    type="text"
+                    placeholder="Nom du workflow..."
+                    value={title}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium w-64 transition-all"
+                />
+
                 <button
                     onClick={handleSaveClick}
                     disabled={saveState !== 'idle'}
                     className={`flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${saveState === 'idle'
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
-                            : saveState === 'loading'
-                                ? 'bg-blue-400 text-white cursor-not-allowed opacity-80'
-                                : 'bg-emerald-500 text-white shadow-emerald-500/20'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+                        : saveState === 'loading'
+                            ? 'bg-blue-400 text-white cursor-not-allowed opacity-80'
+                            : 'bg-emerald-500 text-white shadow-emerald-500/20'
                         }`}
                 >
                     {saveState === 'idle' && (

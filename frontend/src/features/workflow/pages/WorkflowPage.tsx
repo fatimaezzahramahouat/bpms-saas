@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
-import { Lock, Eye, Save, ChevronLeft, ShieldCheck, Play, Zap, Split, Square, AlertCircle, Mail } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
     ReactFlow,
     addEdge,
@@ -13,11 +13,12 @@ import {
     useEdgesState,
     Panel,
     BackgroundVariant,
+    useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import TurboNode from '../components/turbo/TurboNode';
-import { WorkflowData, ActionNodeData, TriggerNodeData, EndNodeData } from '../types';
+import { WorkflowData, ActionNodeData, TriggerNodeData } from '../types';
 import TurboEdge from '../components/turbo/TurboEdge';
 import { WorkflowSidebar } from '../components/WorkflowSidebar';
 import { AIFlowDesigner } from '../components/AIFlowDesigner';
@@ -44,7 +45,7 @@ const initialNodes: Node<WorkflowData>[] = [
         type: 'turbo',
         position: { x: 250, y: 250 },
         data: {
-            title: 'Start Workflow',
+            title: 'Début du Workflow',
             variant: 'trigger',
             role: 'ADMIN',
             assigneeType: 'ALL',
@@ -61,39 +62,56 @@ let nodeId = 0;
 const getNewId = () => `node_ai_${nodeId++}_${Date.now()}`;
 
 const WorkflowEditor: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
+    const { screenToFlowPosition, fitView, toObject } = useReactFlow();
+
     const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowData>>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-    const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-
-    // Permission Hook
-    const { role: rawRole, canEditWorkflow } = usePermission();
-
-    // DEBUG LOG FOR DEMO
-    console.log("DEBUG ROLE:", rawRole);
-
-    const roleString = (rawRole || '').toUpperCase();
-    const canEdit = canEditWorkflow;
-
+    const { isAdmin, canEditWorkflow: canEdit } = usePermission();
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [workflowName, setWorkflowName] = useState('Nouveau Workflow');
 
     const selectedNode = useMemo(
         () => nodes.find((n) => n.id === selectedNodeId) || null,
         [nodes, selectedNodeId]
     );
 
+
+    // Load existing workflow if ID is present
+    useEffect(() => {
+        if (id && id !== 'new') {
+            const fetchWf = async () => {
+                try {
+                    const response = await workflowService.getWorkflowById(id);
+                    const wf = response.data;
+                    if (wf) {
+                        setNodes(wf.nodes || initialNodes);
+                        setEdges(wf.edges || initialEdges);
+                        setWorkflowName(wf.name || 'Workflow Sans Titre');
+                    }
+                } catch (err) {
+                    console.error('Error loading workflow:', err);
+                    toast.error("Erreur de chargement du workflow");
+                }
+            };
+            fetchWf();
+        }
+    }, [id, setNodes, setEdges]);
+
     const onConnect = useCallback(
         (params: Connection) => {
             const sourceNode = nodes.find((n) => n.id === params.source);
             const isCondition = sourceNode?.data.variant === 'condition' || sourceNode?.data.variant === 'decision';
-
             const color = isCondition ? '#22c55e' : '#3b82f6';
 
             setEdges((eds) => addEdge({
                 ...params,
                 type: 'turbo',
                 animated: true,
-                style: { stroke: color, strokeWidth: 3 }
+                style: { stroke: color, strokeWidth: 3 },
+                data: { color }
             }, eds));
         },
         [nodes, setEdges]
@@ -128,7 +146,7 @@ const WorkflowEditor: React.FC = () => {
         setNodes(initialNodes);
         setEdges(initialEdges);
         setSelectedNodeId(null);
-        toast.info("Le canvas a été réinitialisé.");
+        toast.info("Canvas réinitialisé.");
     }, [setNodes, setEdges]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
@@ -139,20 +157,18 @@ const WorkflowEditor: React.FC = () => {
     const onDrop = useCallback(
         (event: React.DragEvent) => {
             event.preventDefault();
-            if (!reactFlowWrapper.current || !reactFlowInstance) return;
-
             const dataStr = event.dataTransfer.getData('application/reactflow');
             if (!dataStr) return;
 
             const parsed = JSON.parse(dataStr);
-            const position = reactFlowInstance.screenToFlowPosition({
+            const position = screenToFlowPosition({
                 x: event.clientX,
                 y: event.clientY,
             });
 
             const newNode: Node<WorkflowData> = {
                 id: getNewId(),
-                type: parsed.nodeType,
+                type: parsed.nodeType || 'turbo',
                 position,
                 data: {
                     title: parsed.label,
@@ -162,22 +178,33 @@ const WorkflowEditor: React.FC = () => {
                     slaDuration: 24,
                     requiredDocuments: [],
                     autoEmail: { enabled: false }
-                } as ActionNodeData,
+                } as any,
             };
 
             setNodes((nds) => nds.concat(newNode));
         },
-        [reactFlowInstance, setNodes]
+        [screenToFlowPosition, setNodes]
     );
 
     const saveWorkflow = async () => {
-        const startNode = nodes.find(n => n.data.variant === 'trigger');
+        const flow = toObject();
+
+        if (!workflowName || workflowName.trim() === '') {
+            toast.error("Veuillez donner un nom à votre workflow avant de sauvegarder.");
+            alert("Veuillez donner un nom à votre workflow avant de sauvegarder.");
+            return;
+        }
+
+        // Validation logic
+        const startNode = flow.nodes.find(n => n.data.variant === 'trigger');
+        const endNode = flow.nodes.find(n => n.data.variant === 'end');
+
         if (!startNode) {
             toast.error("Erreur : Aucun nœud 'Début' (Trigger) trouvé !");
             return;
         }
 
-        const steps = nodes.map((node, index) => ({
+        const steps = flow.nodes.map((node, index) => ({
             name: node.data.title || 'Étape sans titre',
             order: index + 1,
             metadata: {
@@ -193,31 +220,41 @@ const WorkflowEditor: React.FC = () => {
         }));
 
         const payload = {
-            name: 'Nouveau Workflow',
-            nodes: nodes,
-            edges: edges,
+            name: workflowName,
+            nodes: flow.nodes,
+            edges: flow.edges,
             steps: steps,
         };
 
-        const loadingToast = toast.loading("Sauvegarde du workflow...");
+        const loadingToast = toast.loading("Création du workflow...");
         try {
-            await workflowService.createWorkflow(payload);
-            toast.update(loadingToast, { render: "Workflow sauvegardé dans la base de données !", type: "success", isLoading: false, autoClose: 3000 });
+            console.log("[WorkflowPage] Création d'un nouveau workflow...");
+            const response = await workflowService.createWorkflow(payload);
+            const newWf = response.data;
+
+            console.log("[WorkflowPage] Succès ! Nouvel ID :", newWf?.id);
+            alert('Workflow créé avec succès !');
+
+            toast.update(loadingToast, { render: "Workflow créé !", type: "success", isLoading: false, autoClose: 3000 });
+
+            if (newWf?.id) {
+                navigate(`/dashboard/workflow/${newWf.id}`, { replace: true });
+            }
         } catch (error: any) {
             console.error('Save Error:', error);
-            toast.update(loadingToast, { render: `Échec de la sauvegarde : ${error.message}`, type: "error", isLoading: false, autoClose: 5000 });
+            const msg = error.response?.data?.message || error.message;
+            toast.update(loadingToast, { render: `Échec : ${msg}`, type: "error", isLoading: false, autoClose: 5000 });
         }
     };
 
     const handleAIGeneration = (newNodes: Node<WorkflowData>[], newEdges: Edge[]) => {
         setNodes((nds) => nds.concat(newNodes));
         setEdges((eds) => eds.concat(newEdges));
-
-        setTimeout(() => reactFlowInstance?.fitView({ duration: 800 }), 100);
+        setTimeout(() => fitView({ duration: 800 }), 100);
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050507] transition-colors duration-300 overflow-hidden">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050507] transition-colors duration-300 overflow-hidden relative">
             <div className="flex-1 relative turbo-flow z-0" ref={reactFlowWrapper}>
                 {canEdit && (
                     <div className="pt-20 absolute inset-y-0 left-0 z-30 pointer-events-none">
@@ -226,10 +263,12 @@ const WorkflowEditor: React.FC = () => {
                         </div>
                     </div>
                 )}
+
                 <div className="z-40 relative">
                     <WorkflowHeader
-                        title="Workflow Designer"
-                        subtitle={canEdit ? `Editor Mode (${roleString})` : 'Viewer Mode'}
+                        title={workflowName}
+                        setName={setWorkflowName}
+                        subtitle={isAdmin ? 'Mode Éditeur (Admin)' : 'Mode Visionneuse'}
                         onSave={saveWorkflow}
                         onReset={resetWorkflow}
                     />
@@ -243,7 +282,6 @@ const WorkflowEditor: React.FC = () => {
                     onConnect={onConnect}
                     onNodeClick={onNodeClick}
                     onPaneClick={onPaneClick}
-                    onInit={setReactFlowInstance}
                     onDrop={onDrop}
                     onDragOver={onDragOver}
                     nodeTypes={nodeTypes}
@@ -264,19 +302,6 @@ const WorkflowEditor: React.FC = () => {
                         className="!bg-white dark:!bg-[#0d0d12] !border-zinc-200 dark:!border-white/5 !fill-zinc-600 dark:!fill-white/70"
                         showInteractive={canEdit}
                     />
-
-                    <svg style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
-                        <defs>
-                            <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#3b82f6" />
-                                <stop offset="100%" stopColor="#9333ea" />
-                            </linearGradient>
-                            <linearGradient id="edge-gradient-selected" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#60a5fa" />
-                                <stop offset="100%" stopColor="#a855f7" />
-                            </linearGradient>
-                        </defs>
-                    </svg>
                 </ReactFlow>
 
                 {canEdit && <AIFlowDesigner onGenerate={handleAIGeneration} />}
@@ -303,3 +328,5 @@ export const WorkflowPage: React.FC = () => {
         </ReactFlowProvider>
     );
 };
+
+export default WorkflowPage;

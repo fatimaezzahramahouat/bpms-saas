@@ -6,6 +6,7 @@ import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
 import { usePermission } from '@shared/hooks/usePermission';
 import { RHJobOffersButton } from '@/features/rh/components';
+import { NotificationBell } from '../components/NotificationBell';
 
 export function DashboardLayout() {
     const { role: currentRole, isAdmin: isUserAdmin, isHR: isUserHR, isEmployee } = usePermission();
@@ -147,12 +148,52 @@ export function DashboardLayout() {
                         </NavLink>
                     )}
 
-                    {isUserHR && (
-                        <div className="mt-4 px-2">
-                            <RHJobOffersButton />
-                        </div>
+                    {/* Manager Approvals - Only visible to Managers or Admins */}
+                    {(userRole === 'Manager' || isUserAdmin) && (
+                        <NavLink
+                            to="/dashboard/approvals"
+                            className={({ isActive }) =>
+                                `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                                    ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20'
+                                    : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white'
+                                }`
+                            }
+                        >
+                            <FileText className="w-5 h-5" />
+                            Mes Approbations
+                        </NavLink>
                     )}
 
+                    {/* Employee Tasks - Only visible to Employees or Admins */}
+                    {(userRole === 'Employé' || isUserAdmin) && (
+                        <NavLink
+                            to="/dashboard/tasks"
+                            className={({ isActive }) =>
+                                `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive
+                                    ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20'
+                                    : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white'
+                                }`
+                            }
+                        >
+                            <div className="relative">
+                                <FileText className="w-5 h-5" />
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                            </div>
+                            Mes Tâches
+                        </NavLink>
+                    )}
+
+                    {[
+                        { icon: Settings, label: 'Paramètres', href: '#' },
+                    ].map((item) => (
+                        <button
+                            key={item.label}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white transition-all"
+                        >
+                            <item.icon className="w-5 h-5" />
+                            {item.label}
+                        </button>
+                    ))}
                     <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 text-left">
                         <FileText className="w-5 h-5" />
                         Documents
@@ -181,10 +222,7 @@ export function DashboardLayout() {
 
                     <div className="flex items-center gap-4">
                         <ThemeSwitcher />
-                        <button className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-h1-blue rounded-full"></span>
-                        </button>
+                        <NotificationBell />
                         <div className="h-10 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
                         <div className="flex items-center gap-3 border-l border-zinc-200 dark:border-zinc-800 pl-6 ml-2">
                             <div className="text-right min-w-[100px]">

@@ -6,13 +6,15 @@ import { RegisterOrg } from '../features/auth/pages/RegisterOrg';
 import { DashboardLayout } from '../features/dashboard/layouts/DashboardLayout';
 import { DashboardHome } from '../features/dashboard/pages/DashboardHome';
 import { Dashboard } from '../features/dashboard/pages/Dashboard';
-import { RecruitmentPage } from '../pages/RecruitmentPage';
-import TeamPage from '../pages/TeamPage';
+import { RecruitmentPage } from '@/pages/RecruitmentPage';
+import TeamPage from '@/pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
+import { MyApprovals } from '@/pages/MyApprovals';
+import { EmployeeTasks } from '@/pages/EmployeeTasks';
 import { SettingsPage } from '../features/dashboard/pages/SettingsPage';
 
 
@@ -45,10 +47,14 @@ export function AppRouter() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
         <Route path="equipe" element={<UsersManagement />} />
-        <Route path="workflow" element={<WorkflowPage />} />
+        <Route path="workflow/:id?" element={<WorkflowPage />} />
         <Route path="mes-demandes" element={<EmployeeDashboard />} />
+        <Route path="rh/job-offers" element={<JobOffersManagement />} />
+        <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
+        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
+        <Route path="approvals" element={<MyApprovals />} />
+        <Route path="tasks" element={<EmployeeTasks />} />
       </Route>
-
 
       {/* Recruitment Route */}
       <Route path="/recrutement" element={<RecruitmentPage />} />

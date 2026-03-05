@@ -66,6 +66,7 @@ model User {
   sessions       Session[]
   tasks          Task[]
   organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  processInstances ProcessInstance[]
 
   @@index([organisationId])
 }
@@ -92,7 +93,7 @@ model JobOffer {
   applications     Application[]
   createdBy        User           @relation(fields: [createdById], references: [id])
   organisation     Organisation   @relation(fields: [organisationId], references: [id])
-  workflow         Workflow?      @relation(fields: [workflowId], references: [id])
+  Workflow         Workflow?      @relation(fields: [workflowId], references: [id])
 
   @@index([organisationId])
   @@index([status])
@@ -228,12 +229,15 @@ model ProcessInstance {
   id          String       @id @default(uuid())
   status      String       @default("IN_PROGRESS")
   workflowId  String
+  userId      String?
+  context     Json?
   createdAt   DateTime     @default(now())
   aiAnalyses  AIAnalysis[]
   application Application?
   logs        EventLog[]
   workflow    Workflow     @relation(fields: [workflowId], references: [id])
   tasks       Task[]
+  user        User?        @relation(fields: [userId], references: [id])
 }
 
 model AIAnalysis {
@@ -351,3 +355,4 @@ enum CandidateStatus {
   ACCEPTED
   REJECTED
 }
+
