@@ -92,7 +92,7 @@ export function Dashboard() {
                         >
                             {orgData?.orgInfo?.logo ? (
                                 <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden shrink-0">
-                                    <img src={orgData.orgInfo.logo} alt="Logo" className="w-full h-full object-cover" />
+                                    <img src={orgData.orgInfo.logo} alt="Logo"   className="w-full h-full object-cover" />
                                 </div>
                             ) : (
                                 <div className="w-9 h-9 bg-h1-blue rounded-lg flex items-center justify-center font-black shrink-0 text-white text-sm">

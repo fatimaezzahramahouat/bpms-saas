@@ -71,19 +71,25 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
             formattedWebsite = `https://${formattedWebsite}`;
         }
 
-        const submissionData = {
-            ...formData,
-            website: formattedWebsite
-        };
+        const formDataToSend = new FormData();
+        formDataToSend.append('website', formattedWebsite);
+        formDataToSend.append('city', formData.city);
+        formDataToSend.append('domaine', formData.domaine);
+        formDataToSend.append('address', formData.address);
+        
+        if (logoFile) {
+            formDataToSend.append('logo', logoFile);
+        } else if (formData.logo) {
+            // This case handles existing logo if we ever add an "edit" mode
+            formDataToSend.append('logo', formData.logo);
+        }
 
         try {
             const response = await fetch('http://localhost:5000/api/organisation/onboarding', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(submissionData),
+                body: formDataToSend,
                 credentials: 'include'
+                // browser automatically sets Content-Type to multipart/form-data with boundary
             });
 
             if (response.ok) {

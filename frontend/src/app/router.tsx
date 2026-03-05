@@ -13,6 +13,7 @@ import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
+import { SettingsPage } from '../features/dashboard/pages/SettingsPage';
 
 
 
@@ -63,6 +64,7 @@ export function AppRouter() {
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
         <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       {/* 404 Catch-all - Must be last */}

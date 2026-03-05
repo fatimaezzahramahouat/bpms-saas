@@ -44,31 +44,85 @@ export const storageService = {
   },
 
   /**
+   * Upload an Organisation Logo to Supabase Storage.
+   * @param file - Multer file object
+   * @param organisationId - Organisation ID for the filename
+   * @returns Public URL of the uploaded logo
+   */
+  async uploadLogo(file: Express.Multer.File, organisationId: string): Promise<string> {
+    console.log(`Starting logo upload for organisation: ${organisationId}`);
+    // 1. Validate image mimetype (backup check)
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error("Only image files (png, jpg, jpeg, webp) are allowed.");
+    }
+
+    // 2. Generate filename: organisationId + timestamp + extension
+    const extension = file.originalname.split('.').pop() || 'png';
+    const fileName = `logo_${organisationId}_${Date.now()}.${extension}`;
+    // Simplified path: directly in the "logos" bucket
+    const filePath = fileName;
+
+    console.log(`Uploading to bucket 'logos' at path: ${filePath}`);
+
+    // 3. Upload to "logos" bucket
+    const { data, error } = await supabase.storage
+      .from('logos')
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error);
+      throw new Error(`Failed to upload logo: ${error.message}`);
+    }
+
+    // 4. Return public file URL
+    const { data: publicUrlData } = supabase.storage
+      .from('logos')
+      .getPublicUrl(filePath);
+
+    console.log(`Logo upload finished. Public URL: ${publicUrlData.publicUrl}`);
+    return publicUrlData.publicUrl;
+  },
+
+  /**
    * Delete a file from Supabase Storage.
    * @param fileUrl - The full public URL of the file
    */
   async deleteFileFromStorage(fileUrl: string): Promise<void> {
     try {
-      // Extract the path from the URL
-      // URL format: https://[project].supabase.co/storage/v1/object/public/cv/cv/[filename].pdf
-      // We need the path relative to the bucket: cv/[filename].pdf
+      // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
       const url = new URL(fileUrl);
-      const pathParts = url.pathname.split('/public/cv/');
+      const pathParts = url.pathname.split('/public/');
       
       if (pathParts.length < 2) {
         throw new Error('Invalid Supabase storage URL');
       }
 
-      const filePart = pathParts[1];
-      if (!filePart) throw new Error('Invalid Supabase storage URL: file path not found');
-      const filePath = decodeURIComponent(filePart);
+      const fullPath = pathParts[1];
+      if (!fullPath) {
+        throw new Error('Invalid Supabase storage URL: path not found');
+      }
+
+      const bucket = fullPath.split('/')[0];
+      if (!bucket) {
+        throw new Error('Could not parse bucket from URL');
+      }
+
+      const filePath = fullPath.substring(bucket.length + 1);
+
+      if (!filePath) {
+        throw new Error('Could not parse file path from URL');
+      }
 
       const { error } = await supabase.storage
-        .from('cv')
-        .remove([filePath]);
+        .from(bucket)
+        .remove([decodeURIComponent(filePath)]);
 
       if (error) {
-        throw new Error(`Failed to delete file: ${error.message}`);
+        throw new Error(`Failed to delete file from bucket ${bucket}: ${error.message}`);
       }
     } catch (err) {
       console.error('Error deleting file from storage:', err);

@@ -9,6 +9,7 @@ import candidateRouter from "./routes/candidate.routes";
 import { errorMiddleware } from "./middleware/error.middleware";
 import workflowRouter from "./routes/workflow.routes";
 import applicationRouter from "./routes/application.routes";
+import settingsRouter from "./routes/settings.routes";
 const app = express();
 
 // Middleware
@@ -28,6 +29,7 @@ app.use("/api/joboffers", jobOfferRouter);
 app.use("/api/workflows", workflowRouter);
 app.use("/api/applications", applicationRouter);
 app.use("/api/candidates", candidateRouter);
+app.use("/api/settings", settingsRouter);
 
 // Global Error Handler
 app.use(errorMiddleware);
