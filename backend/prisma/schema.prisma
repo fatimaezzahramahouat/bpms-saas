@@ -64,24 +64,31 @@ model User {
 }
 
 model JobOffer {
-  id               String        @id @default(uuid())
+  id               String         @id @default(uuid())
   title            String
   organisationId   String
   createdById      String
   budget           Float?
   contractType     ContractType
-  createdAt        DateTime      @default(now())
+  createdAt        DateTime       @default(now())
   description      String
   level            JobLevel
-  responsibilities String[]      @default([])
+  responsibilities String[]       @default([])
   skills           String[]
-  updatedAt        DateTime      @updatedAt
+  updatedAt        DateTime       @updatedAt
   workMode         WorkMode
+  closedAt         DateTime?
+  publishedAt      DateTime?
+  status           JobOfferStatus @default(PUBLISHED)
+  workflowId       String?
+  statusSource     StatusSource   @default(MANUAL)
   applications     Application[]
-  createdBy        User          @relation(fields: [createdById], references: [id])
-  organisation     Organisation  @relation(fields: [organisationId], references: [id])
+  createdBy        User           @relation(fields: [createdById], references: [id])
+  organisation     Organisation   @relation(fields: [organisationId], references: [id])
+  Workflow         Workflow?      @relation(fields: [workflowId], references: [id])
 
   @@index([organisationId])
+  @@index([status])
 }
 
 model Candidate {
@@ -161,6 +168,7 @@ model Workflow {
   status         WorkflowStatus    @default(DRAFT)
   updatedAt      DateTime          @updatedAt
   version        Int               @default(1)
+  JobOffer       JobOffer[]
   instances      ProcessInstance[]
   steps          Step[]
   organisation   Organisation      @relation(fields: [organisationId], references: [id])
@@ -284,4 +292,18 @@ enum CandidateStatus {
   INTERVIEW
   ACCEPTED
   REJECTED
+}
+
+enum JobOfferStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  CLOSED
+  FILLED
+  CANCELLED
+}
+
+enum StatusSource {
+  MANUAL
+  AUTOMATIC
 }
