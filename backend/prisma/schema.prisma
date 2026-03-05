@@ -63,6 +63,19 @@ model User {
   @@index([organisationId])
 }
 
+enum JobOfferStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  CLOSED
+  FILLED
+  CANCELLED
+}
+enum StatusSource {
+  MANUAL
+  AUTOMATIC
+}
+
 model JobOffer {
   id               String         @id @default(uuid())
   title            String
@@ -171,6 +184,7 @@ model Workflow {
   JobOffer       JobOffer[]
   instances      ProcessInstance[]
   steps          Step[]
+  jobOffers      JobOffer[]
   organisation   Organisation      @relation(fields: [organisationId], references: [id])
 
   @@index([status])
