@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, Send, Loader2, X, UploadCloud } from 'lucide-react';
 import { processService } from '../../../services/process.service';
+import { workflowService } from '../../../services/workflow.service';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -16,6 +17,34 @@ export const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({ onSuccess, o
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
 
+    const [workflowId, setWorkflowId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchWorkflow = async () => {
+            try {
+                const response = await workflowService.getAllWorkflows();
+                const workflows = response.data || [];
+                // Look for a workflow named "Congé" or "Leave"
+                const leaveWorkflow = workflows.find((w: any) =>
+                    w.name.toUpperCase().includes("CONGÉ") ||
+                    w.name.toUpperCase().includes("CONGE") ||
+                    w.name.toUpperCase().includes("LEAVE")
+                );
+
+                if (leaveWorkflow) {
+                    setWorkflowId(leaveWorkflow.id);
+                } else {
+                    console.error("Leave workflow not found in the list of workflows");
+                    toast.error("Le workflow 'Demande de Congé' n'a pas été trouvé. Veuillez contacter l'administrateur.");
+                }
+            } catch (err) {
+                console.error("Error fetching workflows:", err);
+            }
+        };
+
+        fetchWorkflow();
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -25,7 +54,10 @@ export const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({ onSuccess, o
             return;
         }
 
-        const workflowId = 'DEMANDE-CONGE-ID'; // In a real app, this would be the ID from the list
+        if (!workflowId) {
+            toast.error('ID de workflow non trouvé. Impossible de soumettre.');
+            return;
+        }
 
         setLoading(true);
         try {

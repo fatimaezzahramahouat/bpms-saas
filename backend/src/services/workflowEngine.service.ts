@@ -207,7 +207,8 @@ export const workflowEngineService = {
             });
 
             if (!workflow || workflow.organisationId !== organisationId) {
-                throw new Error(`Workflow not found or unauthorized.`);
+                console.error(`[WorkflowEngine] Workflow start failed. ID: ${workflowId}, Org: ${organisationId}, Found: ${!!workflow}, OwnerOrg: ${workflow?.organisationId}`);
+                throw new Error(`Workflow not found or unauthorized for your organisation.`);
             }
 
             // Specialized Logic for DEMANDE DE CONGE
