@@ -12,6 +12,7 @@ import workflowRouter from "./routes/workflow.routes";
 import applicationRouter from "./routes/application.routes";
 import taskRouter from "./routes/task.routes";
 import processRouter from "./routes/process.routes";
+import notificationRouter from "./routes/notification.routes";
 const app = express();
 
 // Security Middleware
@@ -46,6 +47,7 @@ app.use("/api/applications", applicationRouter);
 app.use("/api/candidates", candidateRouter);
 app.use("/api/tasks", taskRouter);
 app.use("/api/process", processRouter);
+app.use("/api/notifications", notificationRouter);
 
 // Global Error Handler
 app.use(errorMiddleware);

@@ -10,6 +10,14 @@ export const taskService = {
     },
 
     /**
+     * Fetches tasks specifically for manager approvals.
+     */
+    async getApprovals() {
+        const response = await api.get('/tasks/approvals');
+        return response.data;
+    },
+
+    /**
      * Approves or Rejects a task.
      */
     async updateTaskStatus(taskId: string, action: 'APPROVE' | 'REJECT') {

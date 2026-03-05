@@ -28,12 +28,10 @@ export function MyRequests() {
     });
 
     useEffect(() => {
-        if (userData && !userData.employee) {
-            navigate('/dashboard');
-        } else if (userData) {
+        if (userData) {
             fetchRequests();
         }
-    }, [userData, navigate]);
+    }, [userData]);
 
     const fetchRequests = async () => {
         try {
@@ -52,33 +50,41 @@ export function MyRequests() {
         try {
             setSubmitting(true);
 
-            // Find a suitable workflow ID (e.g. searching for one that contains "Congé")
-            // For now, if we don't have a selection, we might need to fetch them first or use a hardcoded fallback if known
-            // But let's assume the user selects from a list or we have a default for this demo
+            // Fetch workflows to find one that matches the type
             const workflowResponse = await api.get('/workflows');
-            const workflows = workflowResponse.data;
-            const leaveWorkflow = workflows.find((w: any) =>
-                w.name.toUpperCase().includes('CONGE') ||
-                w.name.toUpperCase().includes('CONGÉ')
+            // Backend returns { data: workflows[] }
+            const workflows = workflowResponse.data.data || [];
+
+            let targetWorkflow = workflows.find((w: any) =>
+                w.name.toUpperCase().includes(formData.type.toUpperCase())
             );
 
-            if (!leaveWorkflow) {
-                alert("Workflow de congé non trouvé.");
+            // Fallback to the first workflow if no name match (e.g. any active workflow)
+            if (!targetWorkflow && workflows.length > 0) {
+                targetWorkflow = workflows[0];
+            }
+
+            if (!targetWorkflow) {
+                alert("Aucun workflow n'est configuré pour cette organisation.");
                 return;
             }
 
             await api.post('/process/start', {
-                workflowId: leaveWorkflow.id,
+                workflowId: targetWorkflow.id,
                 startDate: formData.startDate,
                 endDate: formData.endDate,
                 reason: formData.comment
             });
 
             setIsModalOpen(false);
-            setFormData({ type: 'Congé', startDate: '', endDate: '', comment: '' });
+            // Reset dates and comment, but keep type for the next one
+            setFormData(prev => ({ ...prev, startDate: '', endDate: '', comment: '' }));
             fetchRequests();
-        } catch (error) {
+            alert("Demande soumise avec succès !");
+        } catch (error: any) {
             console.error('Error submitting request:', error);
+            const msg = error.response?.data?.error || "Une erreur est survenue lors de la soumission.";
+            alert(msg);
         } finally {
             setSubmitting(false);
         }
@@ -121,7 +127,7 @@ export function MyRequests() {
         }
     };
 
-    if (!userData || !userData.employee) return null;
+    if (!userData) return null;
 
     return (
         <div className="p-8 space-y-8 max-w-7xl mx-auto">

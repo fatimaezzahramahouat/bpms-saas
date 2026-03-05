@@ -6,6 +6,7 @@ import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
 import { usePermission } from '@shared/hooks/usePermission';
 import { RHJobOffersButton } from '@/features/rh/components';
+import { NotificationBell } from '../components/NotificationBell';
 
 export function DashboardLayout() {
     const { role: currentRole, isAdmin: isUserAdmin, isHR: isUserHR, isEmployee } = usePermission();
@@ -203,10 +204,7 @@ export function DashboardLayout() {
 
                     <div className="flex items-center gap-4">
                         <ThemeSwitcher />
-                        <button className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-h1-blue rounded-full"></span>
-                        </button>
+                        <NotificationBell />
                         <div className="h-10 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
                         <div className="flex items-center gap-3 border-l border-zinc-200 dark:border-zinc-800 pl-6 ml-2">
                             <div className="text-right min-w-[100px]">

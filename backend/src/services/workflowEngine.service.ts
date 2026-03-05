@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma";
+import { notificationService } from "./notification.service";
 
 /**
  * Workflow Engine Service
@@ -281,6 +282,15 @@ export const workflowEngineService = {
                     }
                 });
 
+                // Notify Manager
+                if (manager?.id) {
+                    await notificationService.createNotification(
+                        manager.id,
+                        `Nouvelle demande de congé à valider (${initiatorName})`,
+                        'TASK_CREATED'
+                    );
+                }
+
                 return { instanceId: instance.id, taskId: task.id, assignedTo: "MANAGER" };
             }
 
@@ -348,6 +358,15 @@ export const workflowEngineService = {
                     completedAt: new Date(),
                 }
             });
+
+            // Notify Initiator (Employee) if approved
+            if (action === 'APPROVE' && processInstance.userId) {
+                await notificationService.createNotification(
+                    processInstance.userId,
+                    `Votre demande de ${workflow.name} a été approuvée`,
+                    'PROCESS_APPROVED'
+                );
+            }
 
             // 3. Handle REJECTION
             if (action === 'REJECT') {
