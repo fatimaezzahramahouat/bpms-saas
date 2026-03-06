@@ -94,7 +94,7 @@ export const authRepository = {
       },
     });
   },
-
+  
   async findOrganisationById(id: string) {
     return prisma.organisation.findUnique({
       where: { id },
@@ -157,6 +157,16 @@ export const authRepository = {
         password: hashedPassword,
         resetToken: null,
         resetExpires: null,
+      },
+    });
+  },
+  
+  async createSession(userId: string, userAgent?: string, ipAddress?: string) {
+    return prisma.session.create({
+      data: {
+        userId,
+        userAgent: userAgent ?? null,
+        ipAddress: ipAddress ?? null,
       },
     });
   },

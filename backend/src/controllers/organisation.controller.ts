@@ -1,14 +1,15 @@
 import { Response } from "express";
 import { z } from "zod";
+import { storageService } from "../services/storage.service";
 import { authService } from "../services/auth.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 
 const onboardingSchema = z.object({
-    logo: z.string().optional().default(""),
     website: z.string().min(1, "Website is required"),
     city: z.string().min(1, "City is required"),
     domaine: z.string().min(1, "Domaine is required"),
     address: z.string().min(1, "Address is required"),
+    logo: z.string().optional(),
 });
 
 export const organisationController = {
@@ -26,13 +27,28 @@ export const organisationController = {
                 return;
             }
 
-            const orgInfo = await authService.completeOrganisationInfo(organisationId, parsed.data);
+            let logoUrl = parsed.data.logo || "";
+
+            // If a file was uploaded, upload it to Supabase and get the public URL
+            if (req.file) {
+                console.log('File detected in request:', req.file.originalname);
+                logoUrl = await storageService.uploadLogo(req.file, organisationId);
+                console.log('Logo uploaded successfully, URL:', logoUrl);
+            } else {
+                console.log('No file detected in request');
+            }
+
+            const orgInfo = await authService.completeOrganisationInfo(organisationId, {
+                ...parsed.data,
+                logo: logoUrl
+            });
 
             res.status(201).json({
                 message: "Onboarding completed successfully",
                 data: orgInfo,
             });
         } catch (error: any) {
+            console.error('Onboarding Error:', error);
             if (error.code === "P2002") {
                 res.status(409).json({ error: "Organisation info already exists" });
                 return;

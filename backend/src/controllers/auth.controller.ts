@@ -156,7 +156,14 @@ export const authController = {
         JWT_SECRET,
         { expiresIn: "24h" }
       );
-
+     
+      // 5. Create Session record
+      await authRepository.createSession(
+        user.id,
+        req.headers["user-agent"] as string,
+        req.ip
+      );
+     
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -212,7 +219,19 @@ export const authController = {
         return;
       }
 
-      res.status(200).json({ data: user });
+      // Role Identification (consistent with login logic)
+      let role = "EMPLOYEE";
+      if (user.admin) role = "ADMIN";
+      else if (user.rh) role = "RH";
+      else if (user.manager) role = "MANAGER";
+      else if (user.employee) role = "EMPLOYEE";
+
+      res.status(200).json({
+        data: {
+          ...user,
+          role
+        }
+      });
     } catch (error) {
       console.error("GET_CURRENT_USER_ERROR:", error);
       res.status(500).json({ error: "Erreur interne du serveur" });

@@ -38,6 +38,7 @@ export function Login() {
         localStorage.setItem('token', result.data.token);
         localStorage.setItem('user', JSON.stringify(result.data.user));
         localStorage.setItem('isAuthenticated', 'true');
+        window.dispatchEvent(new CustomEvent('user-data-updated'));
         navigate('/dashboard');
       } else {
         const error = await response.json();

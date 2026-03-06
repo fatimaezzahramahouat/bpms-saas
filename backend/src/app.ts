@@ -1,84 +1,101 @@
-// /home/manal/projet_final_BPMS/backend/src/app.ts
-import express from 'express';
-import cors from 'cors';
-import path from 'path';
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import path from "path";
 
-// ✅ Import Routes 
+import authRouter from "./routes/auth.routes";
+import organisationRouter from "./routes/organisation.routes";
+import userManagementRouter from "./routes/userManagement.routes";
+import jobOfferRouter from "./routes/jobOffer.routes";
+import candidateRouter from "./routes/candidate.routes";
+import workflowRouter from "./routes/workflow.routes";
+import applicationRouter from "./routes/application.routes";
+import taskRouter from "./routes/task.routes";
+import processRouter from "./routes/process.routes";
+import notificationRouter from "./routes/notification.routes";
+import settingsRouter from "./routes/settings.routes";
+import analyzeRoutes from "./routes/analyze-candidate";
 
-import analyzeRoutes from './routes/analyze-candidate';
-import authRoutes from './routes/auth.routes';
-import jobOfferRoutes from './routes/jobOffer.routes';
-import applicationRoutes from './routes/application.routes';
-import candidateRoutes from './routes/candidate.routes';
-import workflowRoutes from './routes/workflow.routes';
+import { errorMiddleware } from "./middleware/error.middleware";
 
 const app = express();
 
-// ============================================================================
-// Middleware Configuration
-// ============================================================================
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Security
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        "connect-src": [
+          "'self'",
+          "https://pxiqzcbdugmvgpwoagoo.supabase.co",
+          "http://localhost:5000",
+          "http://localhost:3000",
+        ],
+        "img-src": ["'self'", "data:", "https://pxiqzcbdugmvgpwoagoo.supabase.co"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+      },
+    },
+  })
+);
 
-// ============================================================================
-// Register Routes (الترتيب مهم!)
-// ============================================================================
-app.use('/api/auth', authRoutes);
-app.use('/api/joboffers', jobOfferRoutes);
-app.use('/api/applications', applicationRoutes);
-app.use('/api/candidates', candidateRoutes);
-app.use('/api/analyze-candidate', analyzeRoutes);
-app.use('/api/workflows', workflowRoutes);
+// Middleware
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
 
-// ============================================================================
-// Health Check & Default Route
-// ============================================================================
-app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'NexFlow API is running 🚀',
-    timestamp: new Date().toISOString()
+app.use(cookieParser());
+
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }));
+
+// uploads
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+// Routes
+app.use("/api/auth", authRouter);
+app.use("/api/organisation", organisationRouter);
+app.use("/api/users", userManagementRouter);
+app.use("/api/joboffers", jobOfferRouter);
+app.use("/api/workflows", workflowRouter);
+app.use("/api/applications", applicationRouter);
+app.use("/api/candidates", candidateRouter);
+app.use("/api/analyze-candidate", analyzeRoutes);
+app.use("/api/tasks", taskRouter);
+app.use("/api/process", processRouter);
+app.use("/api/notifications", notificationRouter);
+app.use("/api/settings", settingsRouter);
+
+// Health check
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "NexFlow API running 🚀",
+    timestamp: new Date().toISOString(),
   });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy',
-    timestamp: new Date().toISOString()
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
   });
 });
 
-// ============================================================================
-// 404 Handler - Must be after all routes
-// ============================================================================
+// 404
 app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Not Found', 
+  res.status(404).json({
+    error: "Not Found",
     message: `Route ${req.method} ${req.originalUrl} not found`,
-    timestamp: new Date().toISOString()
   });
 });
 
-// ============================================================================
-// Global Error Handler - Must be last
-// ============================================================================
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('❌ Global Error:', err);
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ 
-      error: 'File too large', 
-      message: 'Maximum file size is 5MB' 
-    });
-  }
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
+// Error handler
+app.use(errorMiddleware);
 
 export default app;

@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { workflowService, IWorkflow, WorkflowStatus } from '../../../services/workflow.service';
 import { Plus, Edit2, Trash2, Rocket, Search, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { usePermission } from '../../../shared/hooks/usePermission';
 
 export const WorkflowList: React.FC = () => {
     const [workflows, setWorkflows] = useState<IWorkflow[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const { canEditWorkflow } = usePermission();
 
     useEffect(() => {
         fetchWorkflows();
@@ -65,10 +67,12 @@ export const WorkflowList: React.FC = () => {
                     <h1 className="text-3xl font-bold text-white mb-2">Workflows</h1>
                     <p className="text-slate-400">Manage and deploy your automated processes</p>
                 </div>
-                <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition-all shadow-lg shadow-blue-500/20">
-                    <Plus size={20} />
-                    Create New
-                </button>
+                {canEditWorkflow && (
+                    <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition-all shadow-lg shadow-blue-500/20">
+                        <Plus size={20} />
+                        Create New
+                    </button>
+                )}
             </div>
 
             <div className="relative mb-6">
@@ -119,25 +123,29 @@ export const WorkflowList: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {workflow.status === WorkflowStatus.DRAFT && (
-                                        <button
-                                            onClick={() => handlePublish(workflow.id)}
-                                            className="p-2 text-green-400 hover:bg-green-400/10 rounded-lg transition-colors"
-                                            title="Publish"
-                                        >
-                                            <Rocket size={20} />
-                                        </button>
+                                    {canEditWorkflow && (
+                                        <>
+                                            {workflow.status === WorkflowStatus.DRAFT && (
+                                                <button
+                                                    onClick={() => handlePublish(workflow.id)}
+                                                    className="p-2 text-green-400 hover:bg-green-400/10 rounded-lg transition-colors"
+                                                    title="Publish"
+                                                >
+                                                    <Rocket size={20} />
+                                                </button>
+                                            )}
+                                            <button className="p-2 text-slate-400 hover:bg-slate-700 rounded-lg transition-colors" title="Edit">
+                                                <Edit2 size={20} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(workflow.id)}
+                                                className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        </>
                                     )}
-                                    <button className="p-2 text-slate-400 hover:bg-slate-700 rounded-lg transition-colors" title="Edit">
-                                        <Edit2 size={20} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(workflow.id)}
-                                        className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                                        title="Delete"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
                                 </div>
                             </div>
                         </div>

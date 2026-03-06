@@ -31,6 +31,7 @@ export interface JobOfferFilters {
   limit?: number;
   search?: string;
   contractType?: string;
+  status?: string;
   city?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
