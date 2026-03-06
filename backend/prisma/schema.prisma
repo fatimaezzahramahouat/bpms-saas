@@ -36,6 +36,7 @@ model OrgInfo {
   website        String?
   organisationId String       @unique
   createdAt      DateTime     @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
   organisation   Organisation @relation(fields: [organisationId], references: [id])
 }
 
@@ -46,66 +47,53 @@ model User {
   firstName      String
   lastName       String
   organisationId String
-  createdAt      DateTime       @default(now())
   resetExpires   DateTime?
   resetToken     String?        @unique
   admin          Admin?
-  documents      Document[]
+  manager        Manager?
+  rh             RH?
   employee       Employee?
+  theme                String?   @default("light")
+  emailNotifications   Boolean   @default(true)
+  inAppNotifications   Boolean   @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  documents      Document[]
   eventLogs      EventLog[]
   jobOffers      JobOffer[]
-  manager        Manager?
   notifications  Notification[]
-  rh             RH?
+  sessions       Session[]
   tasks          Task[]
   organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  processInstances ProcessInstance[]
 
   @@index([organisationId])
 }
 
-enum JobOfferStatus {
-  DRAFT
-  PUBLISHED
-  PAUSED
-  CLOSED
-  FILLED
-  CANCELLED
-}
-enum StatusSource {
-  MANUAL
-  AUTOMATIC
-}
-
 model JobOffer {
-  id          String @id @default(uuid())
-  title       String
-  description String
-
-  organisationId String
-  createdById    String
-  workflowId     String?
-
-  budget       Float?
-  contractType ContractType
-  level        JobLevel
-  workMode     WorkMode
-
-  responsibilities String[] @default([])
+  id               String         @id @default(uuid())
+  title            String
+  organisationId   String
+  createdById      String
+  budget           Float?
+  contractType     ContractType
+  createdAt        DateTime       @default(now())
+  description      String
+  level            JobLevel
+  responsibilities String[]       @default([])
   skills           String[]
-
-  status      JobOfferStatus @default(PUBLISHED)
-  statusSource StatusSource  @default(MANUAL)  
-
-  publishedAt DateTime?
-  closedAt    DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  applications Application[]
-  createdBy    User          @relation(fields: [createdById], references: [id])
-  organisation Organisation  @relation(fields: [organisationId], references: [id])
-  workflow     Workflow?     @relation(fields: [workflowId], references: [id])
+  updatedAt        DateTime       @updatedAt
+  workMode         WorkMode
+  closedAt         DateTime?
+  publishedAt      DateTime?
+  status           JobOfferStatus @default(PUBLISHED)
+  workflowId       String?
+  statusSource     StatusSource   @default(MANUAL)
+  applications     Application[]
+  createdBy        User           @relation(fields: [createdById], references: [id])
+  organisation     Organisation   @relation(fields: [organisationId], references: [id])
+  Workflow         Workflow?      @relation(fields: [workflowId], references: [id])
 
   @@index([organisationId])
   @@index([status])
@@ -120,6 +108,9 @@ model Candidate {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   status       CandidateStatus @default(CANDIDATE)
+  skills         String[]   @default([])
+  experience     String?
+  education      String?
   applications Application[]
   skills         String[]   @default([])
   experience     String?
@@ -191,9 +182,9 @@ model Workflow {
   status         WorkflowStatus    @default(DRAFT)
   updatedAt      DateTime          @updatedAt
   version        Int               @default(1)
+  jobOffers      JobOffer[]
   instances      ProcessInstance[]
   steps          Step[]
-  jobOffers      JobOffer[]
   organisation   Organisation      @relation(fields: [organisationId], references: [id])
 
   @@index([status])
@@ -241,54 +232,43 @@ model ProcessInstance {
   id          String       @id @default(uuid())
   status      String       @default("IN_PROGRESS")
   workflowId  String
+  userId      String?
+  context     Json?
   createdAt   DateTime     @default(now())
   aiAnalyses  AIAnalysis[]
   application Application?
   logs        EventLog[]
   workflow    Workflow     @relation(fields: [workflowId], references: [id])
   tasks       Task[]
+  user        User?        @relation(fields: [userId], references: [id])
 }
 
 model AIAnalysis {
-  id                    String           @id @default(uuid())
-  type                  String
-  
-  candidateId           String?          @db.VarChar(255)
-  jobOfferId            String?          @db.VarChar(255)
-  
-  overallScore          Float            @default(0)
-  skillsScore           Float?
-  experienceScore       Float?
-  educationScore        Float?
-  technicalFitScore     Float?
-  
-  matchedSkills         String[]
-  missingSkills         String[]
-  
-  
-  strengths             String[]
-  weaknesses            String[]
-  
-  
-  recommendation        String?
-  priority              String?
-  interviewQuestions    String[]
-  
-  
-  result                Json
-  confidence            Float?
-  processInstanceId     String?
-  applicationId         String?
-  
+  id                 String           @id @default(uuid())
+  type               String
+  result             Json
+  confidence         Float?
+  processInstanceId  String?
+  applicationId      String?
+  createdAt          DateTime         @default(now())
+  candidateId        String?          @db.VarChar(255)
+  educationScore     Float?
+  experienceScore    Float?
+  interviewQuestions String[]
+  jobOfferId         String?          @db.VarChar(255)
+  matchedSkills      String[]
+  missingSkills      String[]
+  overallScore       Float            @default(0)
+  priority           String?
+  recommendation     String?
+  skillsScore        Float?
+  strengths          String[]
+  technicalFitScore  Float?
+  updatedAt          DateTime         @updatedAt
+  weaknesses         String[]
+  application        Application?     @relation(fields: [applicationId], references: [id])
+  processInstance    ProcessInstance? @relation(fields: [processInstanceId], references: [id])
 
-
-  createdAt             DateTime         @default(now())
-updatedAt             DateTime         @updatedAt @default(now())  
-  
-  application           Application?     @relation(fields: [applicationId], references: [id])
-  processInstance       ProcessInstance? @relation(fields: [processInstanceId], references: [id])
-
-  
   @@index([candidateId])
   @@index([jobOfferId])
   @@index([applicationId])
@@ -314,6 +294,33 @@ model EventLog {
   createdAt         DateTime        @default(now())
   processInstance   ProcessInstance @relation(fields: [processInstanceId], references: [id])
   user              User?           @relation(fields: [userId], references: [id])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+
+enum JobOfferStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  CLOSED
+  FILLED
+  CANCELLED
+}
+
+enum StatusSource {
+  MANUAL
+  AUTOMATIC
 }
 
 enum WorkflowStatus {
@@ -351,3 +358,4 @@ enum CandidateStatus {
   ACCEPTED
   REJECTED
 }
+

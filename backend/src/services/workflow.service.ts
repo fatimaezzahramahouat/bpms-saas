@@ -56,14 +56,27 @@ export const workflowService = {
             version += 1;
         }
 
+        // Validation for nodes when saving (must contain Trigger and End)
+        // Note: Removed strict enforcement here to allow partial saves during design.
+        // Publication still enforces this.
+        if (input.nodes) {
+            const nodes = Array.isArray(input.nodes) ? input.nodes : [];
+            const hasTrigger = nodes.some((n: any) => n.data?.variant === 'trigger');
+            const hasEnd = nodes.some((n: any) => n.data?.variant === 'end');
+
+            if (!hasTrigger || !hasEnd) {
+                console.warn(`[WorkflowService] Warning: Workflow ${id} saved without Trigger/End node.`);
+            }
+        }
+
         const result = await workflowRepository.updateWorkflow(id, organisationId, {
             ...input,
             version,
         });
 
-        if (result.count === 0) return null;
+        if (!result) return null;
 
-        return workflowRepository.findByIdAfterUpdate(id, organisationId);
+        return result;
     },
 
     /**

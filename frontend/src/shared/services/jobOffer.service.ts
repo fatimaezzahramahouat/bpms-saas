@@ -128,7 +128,7 @@ export const jobOfferService = {
         page: result.page,
         limit: result.limit,
         totalPages: result.totalPages,
-      }
+      },
     };
   }
 };

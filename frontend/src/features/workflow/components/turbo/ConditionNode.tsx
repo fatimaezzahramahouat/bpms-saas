@@ -16,9 +16,11 @@ const ConditionNode = ({ data, selected }: NodeProps<Node<DecisionNodeData>>) =>
             </div>
 
             <div className="mt-2 space-y-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2 mb-2">
                     <Split className="w-4 h-4 text-amber-500" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condition Logic</span>
+                    <span className="text-xs font-bold text-amber-500 text-center uppercase tracking-widest leading-tight">
+                        {(data as any).label || data.title || 'Condition'}
+                    </span>
                 </div>
 
                 <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">

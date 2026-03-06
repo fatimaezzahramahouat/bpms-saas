@@ -33,15 +33,25 @@ export const workflowController = {
             return;
         }
 
-        const workflow = await workflowService.createWorkflow(
-            organisationId,
-            parsed.data
-        );
+        try {
+            console.log(`[WorkflowController] Creating new workflow for org ${organisationId}`);
+            const workflow = await workflowService.createWorkflow(
+                organisationId,
+                parsed.data
+            );
 
-        res.status(201).json({
-            message: "Workflow created successfully",
-            data: workflow,
-        });
+            res.status(201).json({
+                message: "Workflow created successfully",
+                data: workflow, // Full object returned
+            });
+        } catch (error: any) {
+            console.error('Workflow creation error:', error);
+            const statusCode = error.message.includes("Validation failed") ? 400 : 500;
+            res.status(statusCode).json({
+                error: statusCode === 400 ? "Validation Error" : "Internal Server Error",
+                message: error.message
+            });
+        }
     }),
 
     /**
@@ -80,29 +90,58 @@ export const workflowController = {
      * Returns 404 if not found or belongs to another org.
      */
     updateWorkflow: catchAsync(async (req: AuthRequest, res: Response) => {
-        const organisationId = getOrgId(req);
         const id = req.params.id as string;
+        console.log(`[WorkflowController] Updating workflow ${id}`);
+        console.log("Request Body:", JSON.stringify(req.body, null, 2));
 
+        const organisationId = getOrgId(req);
+
+        // We use safeParse to validate the basic structure
         const parsed = updateWorkflowSchema.safeParse(req.body);
         if (!parsed.success) {
-            res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
+            console.error("Validation failed:", parsed.error.flatten().fieldErrors);
+            res.status(400).json({
+                error: "Validation Error",
+                errors: parsed.error.flatten().fieldErrors
+            });
             return;
         }
 
-        const workflow = await workflowService.updateWorkflow(
-            id,
-            organisationId,
-            parsed.data
-        );
-        if (!workflow) {
-            res.status(404).json({ error: "Workflow not found" });
-            return;
-        }
+        try {
+            const { nodes, edges, name, description, status } = parsed.data;
 
-        res.status(200).json({
-            message: "Workflow updated successfully",
-            data: workflow,
-        });
+            // Directly updating using prisma for convenience as requested
+            // while still respecting the org isolation
+            console.log(`[WorkflowController] Attempting UPDATE for workflow ${id} (Org: ${organisationId})`);
+            const workflow = await workflowService.updateWorkflow(
+                id,
+                organisationId,
+                {
+                    nodes,
+                    edges,
+                    name,
+                    description,
+                    status
+                }
+            );
+
+            if (!workflow) {
+                console.error(`[WorkflowController] Workflow ${id} non trouvé ou n'appartient pas à l'organisation ${organisationId}`);
+                res.status(404).json({ error: "Workflow not found or unauthorized" });
+                return;
+            }
+
+            res.status(200).json({
+                message: "Workflow updated successfully",
+                data: workflow,
+            });
+        } catch (error: any) {
+            console.error('Workflow update error:', error);
+            res.status(500).json({
+                error: "Internal Server Error",
+                message: error.message
+            });
+        }
     }),
 
     /**

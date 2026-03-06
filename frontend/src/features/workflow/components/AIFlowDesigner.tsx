@@ -12,54 +12,84 @@ export const AIFlowDesigner: React.FC<AIFlowDesignerProps> = ({ onGenerate }) =>
     const [isOpen, setIsOpen] = useState(false);
     const [prompt, setPrompt] = useState('');
 
+    const normalizeString = (str: string) => {
+        return str
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // Supprime les accents
+            .toLowerCase()
+            .trim();
+    };
+
     const generateMockWorkflow = (prompt: string): { nodes: Node<WorkflowData>[], edges: Edge[] } => {
-        const p = prompt.toLowerCase();
+        const p = normalizeString(prompt);
         const nodes: Node<WorkflowData>[] = [];
         const edges: Edge[] = [];
         const timestamp = Date.now();
 
-        if (p.includes('recrutement') || p.includes('candidat')) {
-            // [Start -> IA Filter CV -> Condition (Score > 80?) -> (Yes: Interview) / (No: Email Reject)]
+        // --- SCENARIO 1: RECRUTEMENT ---
+        if (p.includes('recrut') || p.includes('candidat') || p.includes('embauche')) {
             nodes.push(
-                { id: `start-${timestamp}`, type: 'turbo', position: { x: 100, y: 100 }, data: { title: 'Début Recrutement', variant: 'trigger' } as any },
-                { id: `ai-filter-${timestamp}`, type: 'turbo', position: { x: 400, y: 100 }, data: { title: 'IA Filter CV', variant: 'ai', model: 'gpt-4', systemRole: 'Expert RH', userPrompt: 'Analyse le CV', temperature: 0.3 } as any },
-                { id: `cond-${timestamp}`, type: 'conditionNode', position: { x: 700, y: 100 }, data: { title: 'Score > 80?', variant: 'condition', condition: { variable: 'cv.score', operator: '>', value: '80' } } as any },
-                { id: `interview-${timestamp}`, type: 'turbo', position: { x: 1000, y: 0 }, data: { title: 'Entretien', variant: 'action', assignmentType: 'ROLE', assignedTo: 'RH' } as any },
-                { id: `reject-${timestamp}`, type: 'turbo', position: { x: 1000, y: 200 }, data: { title: 'Email Refus', variant: 'action', assignmentType: 'DYNAMIC', assignedTo: 'MANAGER_INITIATEUR' } as any }
+                { id: `start-${timestamp}`, type: 'turbo', position: { x: 250, y: 0 }, data: { title: 'Nouvelle Candidature', variant: 'trigger' } as any },
+                { id: `ai-filter-${timestamp}`, type: 'turbo', position: { x: 250, y: 150 }, data: { title: 'IA Analyse CV', variant: 'ai', model: 'gpt-4', systemRole: 'Expert RH', userPrompt: 'Analyse le CV', temperature: 0.3 } as any },
+                { id: `cond-${timestamp}`, type: 'conditionNode', position: { x: 250, y: 300 }, data: { title: 'Score > 80?', variant: 'condition', condition: { variable: 'cv.score', operator: '>', value: '80' } } as any },
+                { id: `interview-${timestamp}`, type: 'turbo', position: { x: 500, y: 450 }, data: { title: 'Entretien RH', variant: 'action', assignmentType: 'ROLE', assignedTo: 'RH' } as any },
+                { id: `reject-${timestamp}`, type: 'turbo', position: { x: 0, y: 450 }, data: { title: 'Email Refus', variant: 'action', assignmentType: 'DYNAMIC', assignedTo: 'AUTO' } as any }
             );
+
             edges.push(
                 { id: `e1-${timestamp}`, source: `start-${timestamp}`, target: `ai-filter-${timestamp}`, type: 'turbo', animated: true },
                 { id: `e2-${timestamp}`, source: `ai-filter-${timestamp}`, target: `cond-${timestamp}`, type: 'turbo', animated: true },
                 { id: `e3-${timestamp}`, source: `cond-${timestamp}`, target: `interview-${timestamp}`, sourceHandle: 'true', type: 'turbo', animated: true, label: 'Vrai', style: { stroke: '#22c55e' } },
                 { id: `e4-${timestamp}`, source: `cond-${timestamp}`, target: `reject-${timestamp}`, sourceHandle: 'false', type: 'turbo', animated: true, label: 'Faux', style: { stroke: '#ef4444' } }
             );
-        } else if (p.includes('congé') || p.includes('vacances')) {
-            // [Start -> Check Balance -> Condition (Days < 5) -> Manager Approval]
+        }
+
+        // --- SCENARIO 2: CONGÉ ---
+        else if (p.includes('cong') || p.includes('vacance') || p.includes('absent')) {
             nodes.push(
-                { id: `start-${timestamp}`, type: 'turbo', position: { x: 100, y: 100 }, data: { title: 'Start', variant: 'trigger' } as any },
-                { id: `check-${timestamp}`, type: 'turbo', position: { x: 400, y: 100 }, data: { title: 'Check Balance', variant: 'api', url: '/api/hr/balance', method: 'GET' } as any },
-                { id: `cond-${timestamp}`, type: 'conditionNode', position: { x: 700, y: 100 }, data: { title: 'Condition (Days < 5)', variant: 'condition', condition: { variable: 'leave.days', operator: '<', value: '5' } } as any },
-                { id: `manager-${timestamp}`, type: 'turbo', position: { x: 1000, y: 100 }, data: { title: 'Manager Approval', variant: 'action', assignmentType: 'ROLE', assignedTo: 'Manager' } as any }
+                { id: `start-${timestamp}`, type: 'turbo', position: { x: 250, y: 0 }, data: { title: 'Demande Congé', variant: 'trigger' } as any },
+                { id: `check-${timestamp}`, type: 'turbo', position: { x: 250, y: 150 }, data: { title: 'Vérif Solde API', variant: 'api', url: '/api/hr/balance', method: 'GET' } as any },
+                { id: `cond-${timestamp}`, type: 'conditionNode', position: { x: 250, y: 300 }, data: { title: 'Solde < 5j?', variant: 'condition', condition: { variable: 'leave.days', operator: '<', value: '5' } } as any },
+                { id: `manager-${timestamp}`, type: 'turbo', position: { x: 500, y: 450 }, data: { title: 'Validation Manager', variant: 'action', assignmentType: 'ROLE', assignedTo: 'Manager' } as any },
+                { id: `reject-leave-${timestamp}`, type: 'turbo', position: { x: 0, y: 450 }, data: { title: 'Refus Solde', variant: 'action', assignmentType: 'System', assignedTo: 'System' } as any }
             );
+
             edges.push(
                 { id: `e1-${timestamp}`, source: `start-${timestamp}`, target: `check-${timestamp}`, type: 'turbo', animated: true },
                 { id: `e2-${timestamp}`, source: `check-${timestamp}`, target: `cond-${timestamp}`, type: 'turbo', animated: true },
-                { id: `e3-${timestamp}`, source: `cond-${timestamp}`, target: `manager-${timestamp}`, sourceHandle: 'true', type: 'turbo', animated: true, style: { stroke: '#22c55e' } }
+                { id: `e3-${timestamp}`, source: `cond-${timestamp}`, target: `manager-${timestamp}`, sourceHandle: 'true', type: 'turbo', animated: true, label: 'Vrai', style: { stroke: '#22c55e' } },
+                { id: `e4-${timestamp}`, source: `cond-${timestamp}`, target: `reject-leave-${timestamp}`, sourceHandle: 'false', type: 'turbo', animated: true, label: 'Faux', style: { stroke: '#ef4444' } }
             );
-        } else if (p.includes('frais') || p.includes('remboursement')) {
-            // [Start -> Scan Receipt -> Condition (Amount < 500?) -> (Yes: Pay) / (No: Audit)]
+        }
+
+        // --- SCENARIO 3: FRAIS / ACHAT ---
+        else if (p.includes('frais') || p.includes('remboursement') || p.includes('achat') || p.includes('depense')) {
             nodes.push(
-                { id: `start-${timestamp}`, type: 'turbo', position: { x: 100, y: 100 }, data: { title: 'Note de Frais', variant: 'trigger' } as any },
-                { id: `scan-${timestamp}`, type: 'turbo', position: { x: 400, y: 100 }, data: { title: 'Scan Receipt', variant: 'ai', model: 'gpt-4', systemRole: 'Comptable IA', userPrompt: 'Extrait le montant', temperature: 0.1 } as any },
-                { id: `cond-${timestamp}`, type: 'conditionNode', position: { x: 700, y: 100 }, data: { title: 'Montant < 500?', variant: 'condition', condition: { variable: 'expense.amount', operator: '<', value: '500' } } as any },
-                { id: `pay-${timestamp}`, type: 'turbo', position: { x: 1000, y: 0 }, data: { title: 'Paiement Auto', variant: 'api', url: '/api/finance/pay', method: 'POST' } as any },
-                { id: `audit-${timestamp}`, type: 'turbo', position: { x: 1000, y: 200 }, data: { title: 'Audit Manuel', variant: 'action', assignmentType: 'ROLE', assignedTo: 'Finance' } as any }
+                { id: `start-${timestamp}`, type: 'turbo', position: { x: 250, y: 0 }, data: { title: 'Reçu/Achat Initié', variant: 'trigger' } as any },
+                { id: `scan-${timestamp}`, type: 'turbo', position: { x: 250, y: 150 }, data: { title: 'Scan/Analyse IA', variant: 'ai', model: 'gpt-4', systemRole: 'Contrôleur IA', userPrompt: 'Extrait le montant', temperature: 0.1 } as any },
+                { id: `cond-${timestamp}`, type: 'conditionNode', position: { x: 250, y: 300 }, data: { title: 'Montant < 500?', variant: 'condition', condition: { variable: 'amount', operator: '<', value: '500' } } as any },
+                { id: `pay-${timestamp}`, type: 'turbo', position: { x: 500, y: 450 }, data: { title: 'Approbation Auto', variant: 'api', url: '/api/finance/approve', method: 'POST' } as any },
+                { id: `audit-${timestamp}`, type: 'turbo', position: { x: 0, y: 450 }, data: { title: 'Audit Manuel', variant: 'action', assignmentType: 'ROLE', assignedTo: 'Finance' } as any }
             );
+
             edges.push(
                 { id: `e1-${timestamp}`, source: `start-${timestamp}`, target: `scan-${timestamp}`, type: 'turbo', animated: true },
                 { id: `e2-${timestamp}`, source: `scan-${timestamp}`, target: `cond-${timestamp}`, type: 'turbo', animated: true },
-                { id: `e3-${timestamp}`, source: `cond-${timestamp}`, target: `pay-${timestamp}`, sourceHandle: 'true', type: 'turbo', animated: true, style: { stroke: '#22c55e' } },
-                { id: `e4-${timestamp}`, source: `cond-${timestamp}`, target: `audit-${timestamp}`, sourceHandle: 'false', type: 'turbo', animated: true, style: { stroke: '#ef4444' } }
+                { id: `e3-${timestamp}`, source: `cond-${timestamp}`, target: `pay-${timestamp}`, sourceHandle: 'true', type: 'turbo', animated: true, label: 'Oui', style: { stroke: '#22c55e' } },
+                { id: `e4-${timestamp}`, source: `cond-${timestamp}`, target: `audit-${timestamp}`, sourceHandle: 'false', type: 'turbo', animated: true, label: 'Non', style: { stroke: '#ef4444' } }
+            );
+        }
+
+        // --- FALLBACK: APPROVAL WORKFLOW ---
+        else {
+            nodes.push(
+                { id: `start-${timestamp}`, type: 'turbo', position: { x: 250, y: 0 }, data: { title: 'Déclencheur Generic', variant: 'trigger' } as any },
+                { id: `action-${timestamp}`, type: 'turbo', position: { x: 250, y: 150 }, data: { title: 'Action Requise', variant: 'action', assignmentType: 'ROLE', assignedTo: 'Manager' } as any },
+                { id: `end-${timestamp}`, type: 'turbo', position: { x: 250, y: 300 }, data: { title: 'Workflow Terminé', variant: 'action' } as any }
+            );
+            edges.push(
+                { id: `e1-${timestamp}`, source: `start-${timestamp}`, target: `action-${timestamp}`, type: 'turbo', animated: true },
+                { id: `e2-${timestamp}`, source: `action-${timestamp}`, target: `end-${timestamp}`, type: 'turbo', animated: true }
             );
         }
 
@@ -76,7 +106,7 @@ export const AIFlowDesigner: React.FC<AIFlowDesignerProps> = ({ onGenerate }) =>
             // Simulation logic
             setTimeout(() => {
                 const { nodes, edges } = generateMockWorkflow(prompt);
-                onGenerate(nodes, edges);
+                onGenerate(nodes, edges); // Call parent to update canvas
                 setPrompt('');
                 setIsGenerating(false);
                 setIsOpen(false);
@@ -166,8 +196,8 @@ export const AIFlowDesigner: React.FC<AIFlowDesignerProps> = ({ onGenerate }) =>
                                     "Flux de recrutement"
                                 </div>
                                 <div className="p-3 bg-zinc-50 dark:bg-white/5 rounded-xl border border-zinc-100 dark:border-white/5 text-[10px] text-zinc-500 dark:text-gray-400 italic cursor-pointer hover:border-purple-500/50 transition-colors"
-                                    onClick={() => setPrompt('Congé')}>
-                                    "Demande de congé"
+                                    onClick={() => setPrompt('Frais')}>
+                                    "Note de frais"
                                 </div>
                             </div>
                         </motion.div>
