@@ -54,8 +54,8 @@ export const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({ onSuccess, o
             return;
         }
 
-        if (!workflowId) {
-            toast.error('ID de workflow non trouvé. Impossible de soumettre.');
+        if (!workflowId || workflowId === "null") {
+            toast.error('Le workflow "Demande de Congé" n\'a pas été trouvé. Veuillez le créer dans l\'administration.');
             return;
         }
 
