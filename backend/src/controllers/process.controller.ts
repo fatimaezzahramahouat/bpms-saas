@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { workflowEngineService } from "../services/workflowEngine.service";
-import prisma from "../lib/prisma";
+import { prisma } from "../lib/prisma";
 import { catchAsync } from "../utils/catchAsync";
 
 export const processController = {

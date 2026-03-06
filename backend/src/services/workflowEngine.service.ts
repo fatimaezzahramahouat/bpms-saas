@@ -1,4 +1,4 @@
-import prisma from "../lib/prisma";
+import { prisma } from "../lib/prisma";
 import { notificationService } from "./notification.service";
 
 /**
@@ -134,7 +134,7 @@ export const workflowEngineService = {
                 firstTaskId: task.id,
                 assignedTo: rhUser?.email || "Unassigned"
             };
-        });
+        }, { maxWait: 10000, timeout: 20000 });
 
         // Trigger AI Analysis asynchronously after transaction success
         import("./ai.service").then(({ aiService }) => {
@@ -322,7 +322,7 @@ export const workflowEngineService = {
                 taskId: task.id,
                 assignedTo: "MANAGER"
             };
-        });
+        }, { maxWait: 10000, timeout: 20000 });
     },
 
     /**
@@ -485,7 +485,7 @@ export const workflowEngineService = {
                 nextTaskId: nextTask.id,
                 assignedTo: managerUser?.email || 'Unassigned'
             };
-        });
+        }, { maxWait: 10000, timeout: 20000 });
     },
 
     /**
