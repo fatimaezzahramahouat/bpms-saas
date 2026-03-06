@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Mail, ShieldCheck, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
+import { X, User, Mail, Phone,ShieldCheck, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface EditUserModalProps {
     isOpen: boolean;
@@ -14,6 +14,7 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
         firstName: '',
         lastName: '',
         email: '',
+        phone: '',
         password: ''
     });
     const [showPassword, setShowPassword] = useState(false);
@@ -26,6 +27,7 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
                 firstName: user.firstName || '',
                 lastName: user.lastName || '',
                 email: user.email || '',
+                phone: user.phone || '',
                 password: ''
             });
         }
@@ -130,22 +132,36 @@ export function EditUserModal({ isOpen, onClose, onSuccess, user }: EditUserModa
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Email Professionnel</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                                    <input
-                                        type="email"
-                                        required
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Email </label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                        <input
+                                            type="email"
+                                            required
                                         className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-11 pr-4 py-3 placeholder:text-zinc-400 focus:border-h1-blue outline-none transition-all text-sm"
                                         placeholder="jean.dupont@organisation.com"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    />
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Téléphone</label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                        <input
+                                            type="text"
+                                            required
+                                            className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-11 pr-4 py-3 placeholder:text-zinc-400 focus:border-h1-blue outline-none transition-all text-sm"
+                                            placeholder="Ex: Dupont"
+                                            value={formData.phone}
+                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-4">Nouveau mot de passe (optionnel)</label>
                                 <div className="relative">

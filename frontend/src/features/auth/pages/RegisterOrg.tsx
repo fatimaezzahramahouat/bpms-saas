@@ -165,7 +165,7 @@ export function RegisterOrg() {
               <div className="gov-row-compact mb-4">
                 <div className="gov-label-box-compact">
                   <Mail className="w-5 h-5 mr-4" />
-                  Email Professionnel
+                  Email 
                 </div>
                 <input
                   type="email"

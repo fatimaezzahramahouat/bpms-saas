@@ -8,6 +8,7 @@ const createUserSchema = z.object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
+    phone: z.string().min(1, "Phone number is required"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     role: z.enum(["RH", "Manager", "Employee"]),
 });
@@ -16,6 +17,7 @@ const updateUserSchema = z.object({
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
     email: z.string().email().optional(),
+    phone: z.string().min(1).optional(),
     password: z.string().min(6).optional(),
 });
 
@@ -99,7 +101,7 @@ export const userManagementController = {
 
             const updateData = Object.fromEntries(
                 Object.entries(parsed.data).filter(([_, v]) => v !== undefined)
-            ) as { firstName?: string; lastName?: string; email?: string; password?: string };
+            ) as { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string };
 
             const updatedUser = await userManagementService.updateUser(id, updateData, organisationId);
 

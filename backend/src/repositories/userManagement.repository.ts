@@ -5,6 +5,7 @@ export interface CreateUserData {
     password: string;
     firstName: string;
     lastName: string;
+    phone?: string;
     role: 'RH' | 'Manager' | 'Employee';
 }
 
@@ -17,6 +18,7 @@ export const userManagementRepository = {
                 email: true,
                 firstName: true,
                 lastName: true,
+                phone: true,
                 createdAt: true,
                 admin: true,
                 rh: true,
@@ -65,7 +67,7 @@ export const userManagementRepository = {
         });
     },
 
-    async updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string; password?: string }) {
+    async updateUser(id: string, data: { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string }) {
         return prisma.user.update({
             where: { id },
             data,
