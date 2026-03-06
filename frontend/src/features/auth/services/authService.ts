@@ -22,14 +22,31 @@ import type { LoginCredentials, OrganizationRegistration, AuthUser } from '../ty
 export async function login(credentials: LoginCredentials): Promise<AuthUser> {
   // Simulate API call
   console.log('Login attempt:', credentials);
-  
-  // Mock response
-  return {
+
+  // Mock response - determine role based on email for testing
+  // In production, this would come from the backend
+  const emailLower = credentials.email.toLowerCase();
+  let role: AuthUser['role'] = 'EMPLOYEE';
+
+  if (emailLower.includes('rh') || emailLower.includes('hr')) {
+    role = 'RH';
+  } else if (emailLower.includes('admin')) {
+    role = 'ADMIN';
+  } else if (emailLower.includes('manager')) {
+    role = 'MANAGER';
+  }
+
+  const mockUser: AuthUser = {
     id: '1',
     email: credentials.email,
-    role: 'user',
+    role,
     token: 'mock-jwt-token',
   };
+
+  localStorage.setItem('user', JSON.stringify(mockUser));
+  localStorage.setItem('isAuthenticated', 'true');
+
+  return mockUser;
 }
 
 /**
@@ -63,7 +80,7 @@ export async function registerOrganization(data: OrganizationRegistration): Prom
 
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Erreur lors de l\'inscription');
-    
+
     localStorage.setItem('user', JSON.stringify(result.data.user));
     localStorage.setItem('isAuthenticated', 'true');
     return { success: true };

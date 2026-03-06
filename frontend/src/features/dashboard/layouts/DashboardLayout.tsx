@@ -186,8 +186,8 @@ const fetchProfile = async () => {
                         </NavLink>
                     )}
 
-                    {/* Manager Approvals - Only visible to Managers or Admins */}
-                    {(userRole === 'Manager' || isUserAdmin) && (
+                    {/* Manager/RH Approvals - Only visible to Managers, RH or Admins */}
+                    {(userRole === 'Manager' || userRole === 'Responsable RH' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/approvals"
                             className={({ isActive }) =>
