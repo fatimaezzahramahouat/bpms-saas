@@ -148,8 +148,8 @@ export function DashboardLayout() {
                         </NavLink>
                     )}
 
-                    {/* Manager Approvals - Only visible to Managers or Admins */}
-                    {(userRole === 'Manager' || isUserAdmin) && (
+                    {/* Manager/RH Approvals - Only visible to Managers, RH or Admins */}
+                    {(userRole === 'Manager' || userRole === 'Responsable RH' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/approvals"
                             className={({ isActive }) =>
@@ -182,18 +182,6 @@ export function DashboardLayout() {
                             Mes Tâches
                         </NavLink>
                     )}
-
-                    {[
-                        { icon: Settings, label: 'Paramètres', href: '#' },
-                    ].map((item) => (
-                        <button
-                            key={item.label}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white transition-all"
-                        >
-                            <item.icon className="w-5 h-5" />
-                            {item.label}
-                        </button>
-                    ))}
 
                     <NavLink to="/dashboard/settings" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
                         <Settings className="w-5 h-5" />
