@@ -5,6 +5,14 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 // Analysis Result Interface
 export interface GeminiAnalysis {
   overallScore: number;
+  categoryScores: {
+    skills: number;
+    experience: number;
+    education: number;
+    technicalFit: number;
+  };
+  matchedRequirements: string[];
+  missingRequirements: string[];
   skillsMatch: {
     matched: string[];
     missing: string[];
@@ -24,6 +32,13 @@ export interface GeminiAnalysis {
     professionalTone: string;
     communicationSkills: string;
   };
+  // Backward compatibility properties for CandidateProfilePage
+  score?: number;
+  competences?: { nom: string; niveau: number }[];
+  pointsForts?: string[];
+  pointsFaibles?: string[];
+  experience?: string;
+  formation?: string[];
 }
 
 // Job Requirements Interface
@@ -48,131 +63,185 @@ export interface CandidateProfile {
 // Generate prompt for CV analysis
 const generateCVAnalysisPrompt = (candidate: CandidateProfile, job: JobRequirements): string => {
   return `
-Tu es un expert en recrutement RH. Analyse le profil candidat suivant et fournis une analyse détaillée.
+Tu es un expert en recrutement RH et analyste de talents. Analyse le CV du candidat et compare-le avec les exigences de l'offre d'emploi.
 
-### Informations du Poste
+**DONNÉES DU CV DU CANDIDAT:**
+${candidate.cvText || `Nom: ${candidate.name}\nEmail: ${candidate.email}\nCompétences: ${candidate.skills.join(', ')}\nExpérience: ${candidate.experience}\nFormation: ${candidate.education}${candidate.coverLetter ? `\nLettre de motivation: ${candidate.coverLetter}` : ''}`}
+
+**EXIGENCES DE L'OFFRE D'EMPLOI:**
 - Titre: ${job.title}
 - Compétences requises: ${job.requiredSkills.join(', ')}
 - Expérience requise: ${job.requiredExperience}
 - Formation requise: ${job.requiredEducation}
 
-### Profil du Candidat
-- Nom: ${candidate.name}
-- Email: ${candidate.email}
-- Compétences: ${candidate.skills.join(', ')}
-- Expérience: ${candidate.experience}
-- Formation: ${candidate.education}
-${candidate.coverLetter ? `- Lettre de motivation: ${candidate.coverLetter}` : ''}
-${candidate.cvText ? `- Contenu CV: ${candidate.cvText}` : ''}
+**TÂCHES D'ANALYSE:**
 
-### Format de Réponse JSON (strict)
-Tu dois retourner uniquement un objet JSON valide, sans aucun texte supplémentaire:
+1. **SCORE DE COMPATIBILITÉ (0-100%)**
+   - Calcule le pourcentage de correspondance global
+   - Considère: compétences, niveau d'expérience, formation, exigences
+
+2. **ANALYSE DÉTAILLÉE:**
+   a) **Correspondance des compétences:**
+      - Compétences requises présentes dans le CV
+      - Compétences critiques manquantes
+      - Compétences supplémentaires valuables
+   
+   b) **Analyse de l'expérience:**
+      - Années d'expérience vs requis
+      - Expérience industrielle pertinente
+      - Progression de carrière
+   
+   c) **Formation et Certifications:**
+      - Correspondance des diplômes
+      - Certifications pertinentes
+      - Qualifications supplémentaires
+   
+   d) **Compétences transversales et Adéquation culturelle:**
+      - Capacités de leadership
+      - Collaboration en équipe
+      - Compétences en communication
+   
+   e) **Compétences techniques:**
+      - Outils et technologies maîtrisés
+      - Pertinence des projets techniques
+   
+   f) **Points forts:**
+      - Top 5 des points forts du candidat pour ce poste
+   
+   g) **Lacunes:**
+      - Exigences critiques manquantes
+      - Domaines d'amélioration
+   
+   h) **Recommandations:**
+      - Ce candidat devrait-il être interviewé? (Oui/Non/Peut-être)
+      - Niveau de priorité (Haute/Moyenne/Basse)
+      - Domaines d'entretien spécifiques
+      - Questions suggérées pour l'entretien
+
+3. **SORTIE STRUCTURÉE (format JSON):**
 {
-  "overallScore": number (0-100),
-  "skillsMatch": {
-    "matched": string[] (compétences matchées),
-    "missing": string[] (compétences manquantes),
-    "percentage": number (0-100)
+  "overallScore": number,
+  "categoryScores": {
+    "skills": number,
+    "experience": number,
+    "education": number,
+    "technicalFit": number
   },
-  "experienceMatch": {
-    "required": string,
-    "candidate": string,
-    "percentage": number (0-100)
-  },
-  "strengths": string[] (points forts du candidat),
-  "weaknesses": string[] (points faibles/gaps),
-  "recommendation": string (recommandation finale: "À retenir", "À évaluer", "Non recommandé"),
-  "detailedAnalysis": string (analyse détaillée en français),
-  "linguisticAnalysis": {
-    "writingQuality": string,
-    "professionalTone": string,
-    "communicationSkills": string
+  "matchedRequirements": ["array"],
+  "missingRequirements": ["array"],
+  "strengths": ["array"],
+  "weaknesses": ["array"],
+  "recommendation": {
+    "decision": "string",
+    "priority": "string",
+    "interviewQuestions": ["array"],
+    "notes": "string"
   }
 }
+
+Fournis l'analyse en français car l'interface est en français. Retourne uniquement un objet JSON valide sans texte supplémentaire.
 `;
 };
 
-// Call Gemini API
-async function callGeminiAPI(prompt: string): Promise<GeminiAnalysis> {
+// Call Backend API (Groq-powered)
+async function callBackendAPI(prompt: string): Promise<GeminiAnalysis> {
   try {
-    const response = await fetch(GEMINI_API_URL, {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Get job requirements and candidate from global variables (set by analyzeCandidate)
+    const response = await fetch('http://localhost:5000/api/analyze-candidate', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
+        candidateId: candidateProfile.email, // Use email as temporary ID
+        cvData: {
+          name: candidateProfile.name,
+          skills: candidateProfile.skills,
+          experience: candidateProfile.experience,
+          education: candidateProfile.education
         },
-      }),
+        jobOfferData: {
+          title: jobRequirements.title,
+          requiredSkills: jobRequirements.requiredSkills,
+          experienceRequired: jobRequirements.requiredExperience,
+          educationRequired: jobRequirements.requiredEducation
+        }
+      })
     });
-
+    
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
+      throw new Error(`Backend API Error: ${response.status}`);
     }
-
-    const data = await response.json();
     
-    // Parse the response
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const result = await response.json();
     
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Invalid response format');
+    if (!result.success) {
+      throw new Error(result.error || 'Analysis failed');
     }
-
-    const analysis = JSON.parse(jsonMatch[0]);
     
-    // Validate and set defaults
+    const raw = result.data.analysis;
+    
+    // Transform backend response to GeminiAnalysis format
     return {
-      overallScore: Math.min(100, Math.max(0, analysis.overallScore || 0)),
+      overallScore: raw.scoreGlobal ?? raw.overallScore ?? 0,
+      categoryScores: {
+        skills: raw.scoresParCategorie?.competences ?? raw.categoryScores?.skills ?? 0,
+        experience: raw.scoresParCategorie?.experience ?? raw.categoryScores?.experience ?? 0,
+        education: raw.scoresParCategorie?.formation ?? raw.categoryScores?.education ?? 0,
+        technicalFit: raw.scoresParCategorie?.adéquationTechnique ?? raw.categoryScores?.technicalFit ?? 0
+      },
+      matchedRequirements: raw.exigencesCorrespondantes ?? raw.matchedRequirements ?? [],
+      missingRequirements: raw.exigencesManquantes ?? raw.missingRequirements ?? [],
       skillsMatch: {
-        matched: analysis.skillsMatch?.matched || [],
-        missing: analysis.skillsMatch?.missing || [],
-        percentage: Math.min(100, Math.max(0, analysis.skillsMatch?.percentage || 0)),
+        matched: raw.exigencesCorrespondantes ?? raw.matchedRequirements ?? [],
+        missing: raw.exigencesManquantes ?? raw.missingRequirements ?? [],
+        percentage: raw.scoreGlobal ?? raw.overallScore ?? 0
       },
       experienceMatch: {
-        required: analysis.experienceMatch?.required || jobRequirements.requiredExperience,
-        candidate: analysis.experienceMatch?.candidate || candidateProfile.experience,
-        percentage: Math.min(100, Math.max(0, analysis.experienceMatch?.percentage || 0)),
+        required: jobRequirements.requiredExperience,
+        candidate: candidateProfile.experience,
+        percentage: raw.scoresParCategorie?.experience ?? raw.categoryScores?.experience ?? 0
       },
-      strengths: analysis.strengths || [],
-      weaknesses: analysis.weaknesses || [],
-      recommendation: analysis.recommendation || 'À évaluer',
-      detailedAnalysis: analysis.detailedAnalysis || 'Analyse non disponible',
-      linguisticAnalysis: analysis.linguisticAnalysis || {
+      strengths: raw.forces ?? raw.strengths ?? [],
+      weaknesses: raw.faiblesses ?? raw.weaknesses ?? [],
+      recommendation: raw.recommandation?.décision ?? raw.recommendation?.decision ?? 'À évaluer',
+      detailedAnalysis: raw.recommandation?.notes ?? raw.recommendation?.notes ?? 'Analyse générée par IA',
+      linguisticAnalysis: {
         writingQuality: 'Non évalué',
         professionalTone: 'Non évalué',
-        communicationSkills: 'Non évalué',
+        communicationSkills: 'Non évalué'
       },
+      // Backward compatibility
+      score: raw.scoreGlobal ?? raw.overallScore ?? 0,
+      competences: (raw.exigencesCorrespondantes ?? raw.matchedRequirements ?? []).map((skill: string) => ({
+        nom: skill,
+        niveau: 70
+      })),
+      pointsForts: raw.forces ?? raw.strengths ?? [],
+      pointsFaibles: raw.faiblesses ?? raw.weaknesses ?? [],
+      experience: candidateProfile.experience,
+      formation: []
     };
   } catch (error) {
-    console.error('Gemini API Error:', error);
-    // Return mock data on error for demo purposes
-    return getMockAnalysis();
+    console.error('Backend API Error:', error);
+    throw error; // Don't return mock data, throw error instead
   }
 }
 
 // Helper variables for mock (used in error fallback)
-const jobRequirements = {
+let jobRequirements: JobRequirements = {
   title: '',
   requiredSkills: [],
   requiredExperience: '',
   requiredEducation: '',
 };
 
-const candidateProfile = {
+let candidateProfile: CandidateProfile = {
   name: '',
   email: '',
   skills: [],
@@ -184,6 +253,14 @@ const candidateProfile = {
 export function getMockAnalysis(): GeminiAnalysis {
   return {
     overallScore: 72,
+    categoryScores: {
+      skills: 67,
+      experience: 60,
+      education: 80,
+      technicalFit: 75,
+    },
+    matchedRequirements: ['React', 'TypeScript', 'Node.js', 'JavaScript', 'APIs REST'],
+    missingRequirements: ['AWS', 'MongoDB', 'Microservices'],
     skillsMatch: {
       matched: ['React', 'TypeScript', 'Node.js', 'JavaScript'],
       missing: ['AWS', 'MongoDB'],
@@ -199,16 +276,17 @@ export function getMockAnalysis(): GeminiAnalysis {
       'Expérience avec les APIs REST',
       'Bonne compréhension des principes SOLID',
       'Capacité à travailler en équipe',
+      'Autonomie dans le développement front-end',
     ],
     weaknesses: [
       'Expérience limitée avec AWS',
       'Pas de connaissance en MongoDB',
-      'Manque d\'expérience sur les microservices',
+      "Manque d'expérience sur les microservices",
     ],
     recommendation: 'À évaluer',
     detailedAnalysis: `Le candidat présente un profil technique intéressant avec une bonne maîtrise des technologies front-end. 
     Cependant, il manque d'expérience avec les technologies cloud (AWS) et les bases de données NoSQL. 
-    Nous recommandons une entretien technique approfondi pour évaluer sa capacité à apprendre rapidement ces technologies.`,
+    Nous recommandons un entretien technique approfondi pour évaluer sa capacité à apprendre rapidement ces technologies.`,
     linguisticAnalysis: {
       writingQuality: 'Bonne',
       professionalTone: 'Professionnel',
@@ -217,13 +295,21 @@ export function getMockAnalysis(): GeminiAnalysis {
   };
 }
 
-// Main analysis function
+// Main analysis function - uses backend API (Groq-powered)
 export async function analyzeCandidate(
   candidate: CandidateProfile,
   job: JobRequirements
 ): Promise<GeminiAnalysis> {
+  // Update global variables for API call
+  jobRequirements = job;
+  candidateProfile = candidate;
+  
+  // Generate prompt for logging purposes (actual analysis done by backend)
   const prompt = generateCVAnalysisPrompt(candidate, job);
-  return callGeminiAPI(prompt);
+  console.log('[geminiService] Calling backend API with prompt generated');
+  
+  // Use backend API instead of direct Gemini call
+  return callBackendAPI(prompt);
 }
 
 // Quick match calculation (offline fallback)
@@ -272,8 +358,53 @@ export function calculateQuickMatch(
   };
 }
 
-export default {
-  analyzeCandidate,
-  calculateQuickMatch,
-  getMockAnalysis,
-};
+// PDF text extraction (basic implementation - for more robust extraction, consider using pdf-parse)
+export async function extractTextFromPDF(file: File): Promise<string> {
+  // This is a placeholder - in production, use a proper PDF parsing library
+  // For now, we'll read the file as text (works for text-based PDFs)
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const text = decoder.decode(arrayBuffer);
+    
+    // Clean up the text (remove null characters and excessive whitespace)
+    return text.replace(/\x00/g, '').replace(/\s+/g, ' ').trim();
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    throw new Error('Failed to extract text from PDF');
+  }
+}
+
+// Analyze CV with Gemini (standalone function for PDF analysis) - now uses backend API
+export async function analyzeCVWithGemini(
+  cvText: string,
+  jobRequirements?: JobRequirements
+): Promise<GeminiAnalysis> {
+  // Create a minimal candidate profile from extracted text
+  const candidate: CandidateProfile = {
+    name: 'Candidat (CV analysé)',
+    email: '',
+    skills: [],
+    experience: '',
+    education: '',
+    cvText: cvText,
+  };
+
+  // Use provided job requirements or default
+  const job: JobRequirements = jobRequirements || {
+    title: 'Poste à pourvoir',
+    requiredSkills: [],
+    requiredExperience: '',
+    requiredEducation: '',
+  };
+
+  // Use backend API instead of direct Gemini call
+  jobRequirements = job;
+  candidateProfile = candidate;
+  
+  console.log('[geminiService] analyzeCVWithGemini calling backend API');
+  return callBackendAPI('');
+}
+
+// Type alias for backwards compatibility
+export type CandidateAnalysis = GeminiAnalysis;

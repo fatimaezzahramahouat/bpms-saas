@@ -1,3 +1,4 @@
+// /home/manal/projet_final_BPMS/frontend/src/shared/services/jobOffer.service.ts
 import { API_BASE_URL } from '../constants';
 
 export interface BackendJobOffer {
@@ -88,13 +89,38 @@ export const jobOfferService = {
     if (params.contractType) query.append('contractType', params.contractType);
     if (params.city) query.append('city', params.city);
 
-    const response = await fetch(`${API_BASE_URL}/joboffers?${query.toString()}`);
+    // ✅ Get token from localStorage
+    const token = localStorage.getItem('token');
     
+    console.log('🔍 [getPublicOffers] Token:', token ? token.substring(0, 30) + '...' : 'NULL');
+
+    // ✅ Send request with Authorization header if token exists
+    const response = await fetch(`${API_BASE_URL}/joboffers?${query.toString()}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      }
+    });
+    
+    console.log('📡 [getPublicOffers] Status:', response.status);
+
     if (!response.ok) {
-      throw new Error('Failed to fetch job offers');
+      const errorText = await response.text();
+      console.log('❌ API Error:', response.status, errorText);
+      
+      // Optional: Handle 401 for auto-logout
+      if (response.status === 401) {
+        console.log('⚠️ Token invalid - consider logging out');
+        // localStorage.removeItem('token');
+        // window.location.href = '/login';
+      }
+      
+      throw new Error(`Failed to fetch job offers: ${response.status}`);
     }
     
     const result = await response.json();
+    
+    // Transform backend pagination to expected meta structure
     return {
       data: result.data.map(mapBackendToFrontend),
       meta: {

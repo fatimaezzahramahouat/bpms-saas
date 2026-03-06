@@ -33,6 +33,11 @@ export const applicationRepository = {
         documents: {
           where: { docType: "CV" },
         },
+        aiAnalyses: {
+          where: { type: "CANDIDATE_ANALYSIS" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: { createdAt: "desc" },
     });

@@ -112,6 +112,9 @@ model Candidate {
   experience     String?
   education      String?
   applications Application[]
+  skills         String[]   @default([])
+  experience     String?
+  education      String?
 }
 
 model Application {

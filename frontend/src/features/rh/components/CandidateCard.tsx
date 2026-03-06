@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { User, Mail, Phone, Calendar, Eye, Save as SaveIcon, Trash2, ChevronDown, ChevronUp, FileText, GraduationCap, Briefcase, Clock, DollarSign, Download, Heart, Bookmark, StickyNote } from 'lucide-react';
 import { MatchingPercentage } from './MatchingPercentage';
 import { ComparisonTable, MatchItem } from './ComparisonTable';
@@ -338,13 +339,13 @@ export function CandidateCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-3 border-t border-[var(--border-color)]">
-        <button
-          onClick={() => onViewAnalysis(candidate)}
+        <Link
+          to={`/dashboard/rh/candidates/${candidate.id}`}
           className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25"
         >
           <Eye className="w-4 h-4" />
           Voir analyse
-        </button>
+        </Link>
         <button
           onClick={() => onToggleSave?.(candidate.id)}
           className={`p-2 rounded-lg transition-all duration-200 ${
