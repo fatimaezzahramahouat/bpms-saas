@@ -5,110 +5,238 @@ import { notificationService } from "./notification.service";
  * Workflow Engine Service
  * Handles the execution and progression of workflows.
  */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE: Recursive Graph Traversal Engine
+// Traverses nodes one-by-one, stopping ONLY at ACTION/APPROVAL nodes to create a Task.
+// ─────────────────────────────────────────────────────────────────────────────
+async function processWorkflow(params: {
+    nodes: any[];
+    edges: any[];
+    steps: any[];
+    currentNodeId: string;
+    context: Record<string, any>;
+    tx: any;
+    organisationId: string;
+    instanceId: string;
+}): Promise<{ status: string; taskId?: string; assignedTo?: string; reason?: string }> {
+    const { nodes, edges, steps, currentNodeId, context, tx, organisationId, instanceId } = params;
+
+    const node = nodes.find((n: any) => n.id === currentNodeId);
+    if (!node) {
+        console.log(`[Engine] ⚠️ Node "${currentNodeId}" not found. Stopping.`);
+        return { status: 'COMPLETED' };
+    }
+
+    // Prioritize data.variant (set by NexFlow designer) over node.type
+    const nodeType: string = (node.data?.variant || node.type || '').toLowerCase();
+    const nodeTitle: string = node.data?.title || node.data?.label || nodeType;
+    // Also read the assignedTo field set in NexFlow node properties
+    const assignedTo: string = (node.data?.assignedTo || '').toLowerCase();
+
+    console.log(`[Engine] 🔍 Processing node: "${nodeTitle}" (variant: ${nodeType}, assignedTo: ${assignedTo || 'none'})`);
+
+    // ── Determine outgoing edges ───────────────────────────────────────────
+    const getNextNodeId = (sourceHandle?: string): string | null => {
+        const outgoing = edges.filter((e: any) => e.source === node.id);
+        const edge = sourceHandle
+            ? outgoing.find((e: any) => e.sourceHandle === sourceHandle) || null
+            : outgoing[0] || null;
+        return edge ? edge.target : null;
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    // END node: Mark instance as COMPLETED
+    // ─────────────────────────────────────────────────────────────────────
+    if (nodeType === 'end') {
+        console.log(`[Engine] ✅ End node reached. Process COMPLETED.`);
+        await tx.processInstance.update({
+            where: { id: instanceId },
+            data: { status: 'COMPLETED' }
+        });
+        return { status: 'COMPLETED' };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TRIGGER node: Pass-through, move to next
+    // ─────────────────────────────────────────────────────────────────────
+    if (nodeType === 'trigger' || nodeType === 'start') {
+        console.log(`[Engine] 🚀 Trigger node. Moving to next...`);
+        const nextId = getNextNodeId();
+        if (!nextId) return { status: 'COMPLETED' };
+        return processWorkflow({ ...params, currentNodeId: nextId });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // API / CHECK node: Execute (simulated), move to next
+    // ─────────────────────────────────────────────────────────────────────
+    if (nodeType === 'api' || nodeType === 'check' || nodeType === 'apicall') {
+        console.log(`[Engine] 🌐 API node "${nodeTitle}" — Exécution (simulée)...`);
+        // TODO: Here you can add real HTTP calls if needed
+        const nextId = getNextNodeId();
+        if (!nextId) return { status: 'COMPLETED' };
+        return processWorkflow({ ...params, currentNodeId: nextId });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CONDITION node: Evaluate, pick true/false edge, continue
+    // ─────────────────────────────────────────────────────────────────────
+    if (nodeType === 'condition') {
+        console.log(`[Engine] 🧠 Évaluation Condition: "${nodeTitle}"...`);
+        let conditionResult = true; // Default
+
+        // Evaluate based on duration (leaveDays < 5)
+        if (context.startDate && context.endDate) {
+            const diffDays = Math.ceil(
+                Math.abs(new Date(context.endDate).getTime() - new Date(context.startDate).getTime())
+                / (1000 * 60 * 60 * 24)
+            );
+            conditionResult = diffDays < 5;
+            console.log(`[Engine] 📊 diffDays=${diffDays} → Condition is ${conditionResult ? 'TRUE ✅' : 'FALSE ❌'}`);
+        }
+
+        // Find the correct edge based on condition result
+        const allOutgoing = edges.filter((e: any) => e.source === node.id);
+        const targetEdge = allOutgoing.find((e: any) => e.sourceHandle === (conditionResult ? 'true' : 'false'));
+
+        if (!targetEdge) {
+            console.log(`[Engine] ❌ Aucun Edge pour le handle "${conditionResult ? 'true' : 'false'}". Auto-REJET.`);
+            await tx.processInstance.update({
+                where: { id: instanceId },
+                data: { status: 'REJECTED' }
+            });
+            return { status: 'TERMINATED', reason: 'AUTO_REJECTED' };
+        }
+
+        const chosenRole = conditionResult ? 'Manager' : 'RH';
+        console.log(`[Engine] ✅ Chemin choisi : ${chosenRole} (handle="${conditionResult ? 'true' : 'false'}")`);
+        return processWorkflow({ ...params, currentNodeId: targetEdge.target });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // ACTION / APPROVAL / HUMAN TASK node: CREATE a Task and STOP
+    // Matches: 'action', 'approval', 'task', 'humantask', 'manager', 'rh',
+    //          'managerapproval', 'rhvalidation', 'humanTask', or any unknown node that should block.
+    // ─────────────────────────────────────────────────────────────────────
+    const isActionNode = [
+        'action', 'approval', 'task', 'humantask', 'manager', 'rh',
+        'managerapproval', 'rhvalidation', 'usertask', 'manualtask'
+    ].includes(nodeType) || nodeType.includes('action') || nodeType.includes('approval');
+
+    if (isActionNode || (!['trigger', 'start', 'api', 'check', 'apicall', 'condition', 'end'].includes(nodeType))) {
+        console.log(`[Engine] 🛑 Nœud Action trouvé : "${nodeTitle}" — Création tâche...`);
+
+        // Map node to a DB Step
+        let targetStep = steps.find((s: any) => s.name === nodeTitle);
+        if (!targetStep && steps.length > 0) targetStep = steps[0];
+
+        // Determine assignee: check data.assignedTo first, then fall back to title/type keywords
+        let assigneeUser = null;
+        const isRH = assignedTo === 'rh' || nodeTitle.toUpperCase().includes('RH') || nodeType === 'rh' || nodeType === 'rhvalidation';
+
+        if (isRH) {
+            assigneeUser = await tx.user.findFirst({
+                where: { organisationId, rh: { isNot: null } }
+            });
+            console.log(`[Engine] 👤 Nœud Action trouvé : Création tâche pour les RH`);
+        } else {
+            assigneeUser = await tx.user.findFirst({
+                where: { organisationId, manager: { isNot: null } }
+            });
+            console.log(`[Engine] 👤 Nœud Action trouvé : Création tâche pour le Manager`);
+        }
+
+        const durationLabel = (context.startDate && context.endDate)
+            ? ` - ${Math.ceil(Math.abs(new Date(context.endDate).getTime() - new Date(context.startDate).getTime()) / (1000 * 60 * 60 * 24))} jours`
+            : '';
+
+        const task = await tx.task.create({
+            data: {
+                title: `${nodeTitle}${durationLabel}`,
+                status: 'PENDING',
+                processInstanceId: instanceId,
+                stepId: targetStep?.id || steps[0]?.id,
+                organisationId,
+                userId: assigneeUser?.id || null
+            }
+        });
+
+        // Notify assignee
+        if (assigneeUser?.id) {
+            await notificationService.createNotification(
+                assigneeUser.id,
+                `Nouvelle tâche à valider : "${nodeTitle}"${durationLabel}`,
+                'TASK_CREATED'
+            );
+        }
+
+        return {
+            status: 'TASK_CREATED',
+            taskId: task.id,
+            assignedTo: assigneeUser?.email || 'Unassigned'
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Unknown node type: pass-through to next
+    // ─────────────────────────────────────────────────────────────────────
+    console.log(`[Engine] ⏩ Unknown node type "${nodeType}". Passing through...`);
+    const fallbackNext = getNextNodeId();
+    if (!fallbackNext) return { status: 'COMPLETED' };
+    return processWorkflow({ ...params, currentNodeId: fallbackNext });
+}
+
+
 export const workflowEngineService = {
     /**
-     * Starts a new workflow instance for a given application.
-     * 1. Fetches workflow and application data.
-     * 2. Identifies the starting trigger node and its immediate successor.
-     * 3. Creates a ProcessInstance and updates Application status.
-     * 4. Creates the first Task for the RH role.
-     * 5. Logs the event.
+     * Starts a new workflow instance for a given application (Recruitment flow).
      */
     async startWorkflowInstance(applicationId: string, workflowId: string) {
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Fetch Application and verify existence
             const application = await tx.application.findUnique({
                 where: { id: applicationId },
-                include: {
-                    jobOffer: {
-                        select: { organisationId: true }
-                    }
-                }
+                include: { jobOffer: { select: { organisationId: true } } }
             });
-
-            if (!application) {
-                throw new Error(`Application with ID ${applicationId} not found.`);
-            }
-
+            if (!application) throw new Error(`Application with ID ${applicationId} not found.`);
             const organisationId = application.jobOffer.organisationId;
 
-            // 2. Fetch Workflow with its nodes, edges and steps
             const workflow = await tx.workflow.findUnique({
                 where: { id: workflowId },
                 include: { steps: true }
             });
-
-            if (!workflow) {
-                throw new Error(`Workflow with ID ${workflowId} not found.`);
-            }
+            if (!workflow) throw new Error(`Workflow with ID ${workflowId} not found.`);
 
             const nodes = Array.isArray(workflow.nodes) ? (workflow.nodes as any[]) : [];
             const edges = Array.isArray(workflow.edges) ? (workflow.edges as any[]) : [];
 
-            // 3. Find Global Trigger Node (START)
-            // We look for nodes with variant 'trigger' or specific labels
             const startNode = nodes.find((n) =>
-                n.data?.variant === 'trigger' ||
-                n.type === 'trigger' ||
-                n.data?.title?.toLowerCase().includes('début') ||
-                n.data?.label === 'START'
+                n.data?.variant === 'trigger' || n.type === 'trigger' ||
+                n.data?.title?.toLowerCase().includes('début') || n.data?.label === 'START'
             );
+            if (!startNode) throw new Error("Could not find a starting trigger node in the workflow.");
 
-            if (!startNode) {
-                throw new Error("Could not find a starting trigger node in the workflow.");
-            }
-
-            // 4. Find the first task node (successor of the trigger)
             const outgoingEdge = edges.find((e) => e.source === startNode.id);
-            if (!outgoingEdge) {
-                throw new Error("Trigger node is not connected to any subsequent step.");
-            }
+            if (!outgoingEdge) throw new Error("Trigger node is not connected to any subsequent step.");
 
             const firstTaskNode = nodes.find((n) => n.id === outgoingEdge.target);
-            if (!firstTaskNode) {
-                throw new Error("The first task node could not be found in the workflow nodes.");
-            }
+            if (!firstTaskNode) throw new Error("The first task node could not be found in the workflow nodes.");
 
-            // 5. Create the ProcessInstance
             const instance = await tx.processInstance.create({
-                data: {
-                    workflowId: workflow.id,
-                    status: "IN_PROGRESS"
-                }
+                data: { workflowId: workflow.id, status: "IN_PROGRESS" }
             });
 
-            // 6. Update Application: link instance and move status to IN_PROGRESS
             await tx.application.update({
                 where: { id: applicationId },
-                data: {
-                    status: "IN_PROGRESS",
-                    processInstanceId: instance.id
-                }
+                data: { status: "IN_PROGRESS", processInstanceId: instance.id }
             });
 
-            // 7. Resolve the corresponding Step in the DB
-            // We try to match by title/label, or fallback to the first available step
             const stepName = firstTaskNode.data?.title || firstTaskNode.data?.label;
             let targetStep = workflow.steps.find((s: any) => s.name === stepName);
+            if (!targetStep && workflow.steps.length > 0) targetStep = workflow.steps[0];
+            if (!targetStep) throw new Error("No steps found in the database for this workflow to link the task.");
 
-            // If no name match, fallback to first step or create one if necessary
-            if (!targetStep && workflow.steps.length > 0) {
-                targetStep = workflow.steps[0];
-            }
+            const rhUser = await tx.user.findFirst({ where: { organisationId, rh: { isNot: null } } });
 
-            if (!targetStep) {
-                throw new Error("No steps found in the database for this workflow to link the task.");
-            }
-
-            // 8. Find an RH user in the organisation to assign the first task
-            const rhUser = await tx.user.findFirst({
-                where: {
-                    organisationId,
-                    rh: { isNot: null }
-                }
-            });
-
-            // 9. Create the first Task
             const task = await tx.task.create({
                 data: {
                     title: stepName || "Première étape de validation",
@@ -116,11 +244,10 @@ export const workflowEngineService = {
                     processInstanceId: instance.id,
                     stepId: targetStep.id,
                     organisationId,
-                    userId: rhUser?.id || null, // Assign to RH user if found
+                    userId: rhUser?.id || null,
                 }
             });
 
-            // 10. Log the creation event in EventLog
             await tx.eventLog.create({
                 data: {
                     action: `INSTANCE_STARTED: Workflow "${workflow.name}" initialized for application ${applicationId}`,
@@ -129,16 +256,11 @@ export const workflowEngineService = {
                 }
             });
 
-            return {
-                instanceId: instance.id,
-                firstTaskId: task.id,
-                assignedTo: rhUser?.email || "Unassigned"
-            };
+            return { instanceId: instance.id, firstTaskId: task.id, assignedTo: rhUser?.email || "Unassigned" };
         }, { maxWait: 10000, timeout: 20000 });
 
-        // Trigger AI Analysis asynchronously after transaction success
         import("./ai.service").then(({ aiService }) => {
-            aiService.generateCandidateAnalysis(applicationId).catch(err => {
+            aiService.generateCandidateAnalysis(applicationId).catch((err: any) => {
                 console.error("Failed to generate AI analysis:", err);
             });
         });
@@ -147,238 +269,98 @@ export const workflowEngineService = {
     },
 
     /**
-     * Helper to create the first task of a process.
-     * Identifies the node following the trigger or of type 'approval'.
-     */
-    async createInitialTask(workflowId: string, processInstanceId: string, organisationId: string, tx: any) {
-        const workflow = await tx.workflow.findUnique({
-            where: { id: workflowId },
-            include: { steps: true }
-        });
-
-        if (!workflow) throw new Error("Workflow not found");
-
-        const nodes = Array.isArray(workflow.nodes) ? (workflow.nodes as any[]) : [];
-        const edges = Array.isArray(workflow.edges) ? (workflow.edges as any[]) : [];
-
-        // 1. Find Trigger
-        const triggerNode = nodes.find(n => n.type === 'trigger' || n.data?.variant === 'trigger');
-        if (!triggerNode) throw new Error("Trigger node not found");
-
-        // 2. Find next node or Approval node
-        const edge = edges.find(e => e.source === triggerNode.id);
-        const nextNode = edge ? nodes.find(n => n.id === edge.target) : null;
-
-        const targetNode = nextNode || nodes.find(n => n.type === 'approval');
-        if (!targetNode) throw new Error("No initial task node found");
-
-        const stepName = targetNode.data?.title || targetNode.data?.label || "Validation initiale";
-
-        // 3. Find target step in DB
-        let targetStep = workflow.steps.find((s: any) => s.name === stepName);
-        if (!targetStep && workflow.steps.length > 0) targetStep = workflow.steps[0];
-        if (!targetStep) throw new Error("No linked steps found in database");
-
-        // 4. Find a Manager
-        const manager = await tx.user.findFirst({
-            where: { organisationId, manager: { isNot: null } }
-        });
-
-        // 5. Create the Task
-        return await tx.task.create({
-            data: {
-                title: stepName,
-                status: "PENDING",
-                processInstanceId: processInstanceId,
-                stepId: targetStep.id,
-                organisationId,
-                userId: manager?.id || null
-            }
-        });
-    },
-
-    /**
-     * Starts a new process instance for a generic request (e.g. Employee Request).
-     * This version does NOT require an application.
+     * Starts a new process instance for a generic request (e.g. Employee Leave Request).
+     * Uses the recursive processWorkflow engine for correct node traversal.
      */
     async startProcessInstance(workflowId: string, userId: string, organisationId: string, metadata?: any) {
         console.log('🚀 Démarrage du processus métier...');
         try {
             const result = await prisma.$transaction(async (tx) => {
-                const workflow = await tx.workflow.findUnique({
-                    where: { id: workflowId }
-                });
+                const workflow = await tx.workflow.findUnique({ where: { id: workflowId } });
 
                 if (!workflow || workflow.organisationId !== organisationId) {
-                    console.error(`[WorkflowEngine] Workflow start failed. ID: ${workflowId}, Org: ${organisationId}, Found: ${!!workflow}, OwnerOrg: ${workflow?.organisationId}`);
                     throw new Error(`Workflow not found or unauthorized for your organisation.`);
                 }
 
-                // Fetch Initiator Name
                 const initiator = await tx.user.findUnique({
                     where: { id: userId },
                     select: { firstName: true, lastName: true, email: true }
                 });
                 const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Inconnu";
 
-                // Specialized Logic for DEMANDE DE CONGE
-                if (workflow.name.toUpperCase().includes("CONGE") || workflow.name.toUpperCase().includes("CONGÉ")) {
-                    console.log("[WorkflowEngine] Executing specialized Leave Request logic...");
-
-                    // 1. Save Document if present
-                    if (metadata?.file) {
-                        await tx.document.create({
-                            data: {
-                                fileName: metadata.file.originalname,
-                                fileUrl: metadata.file.path,
-                                docType: metadata.file.mimetype,
-                                userId,
-                                organisationId
-                            }
-                        });
-                    }
-
-                    // 2. Create Process Instance
-                    const instance = await tx.processInstance.create({
+                // Save Document if present
+                if (metadata?.file) {
+                    await tx.document.create({
                         data: {
-                            workflowId: workflow.id,
-                            userId, // Added userId to track initiator
-                            status: "IN_PROGRESS",
-                            context: {
-                                startDate: metadata?.startDate,
-                                endDate: metadata?.endDate,
-                                reason: metadata?.reason,
-                                initiatorName,
-                                initiatorEmail: initiator?.email || ""
-                            }
+                            fileName: metadata.file.originalname,
+                            fileUrl: metadata.file.path,
+                            docType: metadata.file.mimetype,
+                            userId,
+                            organisationId
                         }
                     });
-
-                    // 3. Simulated API Call (check-1772677404703)
-                    console.log("[WorkflowEngine] Node check-1772677404703: Verifying leave balance...");
-
-                    // 4. Evaluate Condition Logic (cond-1772677404703)
-                    const start = metadata?.startDate ? new Date(metadata.startDate) : new Date();
-                    const end = metadata?.endDate ? new Date(metadata.endDate) : new Date();
-                    const diffTime = Math.abs(end.getTime() - start.getTime());
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    console.log(`[WorkflowEngine] Duration = ${diffDays} days`);
-
-                    // Process Node Routing dynamically
-                    const nodes = Array.isArray(workflow.nodes) ? (workflow.nodes as any[]) : [];
-                    const edges = Array.isArray(workflow.edges) ? (workflow.edges as any[]) : [];
-                    const steps = await tx.step.findMany({ where: { workflowId: workflow.id } });
-
-                    // Find trigger node
-                    const triggerNode = nodes.find(n => n.type === 'trigger' || n.data?.variant === 'trigger');
-                    let currentNode = triggerNode;
-                    let targetStepNode = null;
-
-                    // Traverse to find the first interactive or condition node
-                    if (triggerNode) {
-                        const triggerEdge = edges.find(e => e.source === triggerNode.id);
-                        if (triggerEdge) {
-                            currentNode = nodes.find(n => n.id === triggerEdge.target);
-                        }
-                    }
-
-                    // Evaluate Condition Node if present
-                    let isApproved = true; // Default
-                    if (currentNode && (currentNode.type === 'condition' || currentNode.data?.variant === 'condition')) {
-                        console.log("[WorkflowEngine] Evaluating Condition Node:", currentNode.data?.title);
-                        isApproved = diffDays < 5; // TRUE if < 5 days, FALSE if >= 5
-
-                        const outgoingEdges = edges.filter(e => e.source === currentNode?.id);
-                        const targetEdge = outgoingEdges.find(e => e.sourceHandle === (isApproved ? 'true' : 'false'))
-                            || outgoingEdges[0]; // Fallback if no handles
-
-                        if (targetEdge) {
-                            currentNode = nodes.find(n => n.id === targetEdge.target);
-                        }
-                    }
-
-                    targetStepNode = currentNode;
-
-                    // If we route to an END Node or auto-reject
-                    if (!targetStepNode || targetStepNode.type === 'end' || targetStepNode.data?.variant === 'end') {
-                        await tx.processInstance.update({
-                            where: { id: instance.id },
-                            data: { status: isApproved ? 'COMPLETED' : 'REJECTED' }
-                        });
-                        console.log(`[WorkflowEngine] Auto-${isApproved ? 'Completed' : 'Rejected'} condition.`);
-                        return { instanceId: instance.id, status: isApproved ? 'COMPLETED' : 'REJECTED' };
-                    }
-
-                    // Otherwise, find the matching step and assign
-                    const stepName = targetStepNode.data?.title || targetStepNode.data?.label || "Validation Congé";
-                    let targetStep = steps.find((s: any) => s.name === stepName);
-                    if (!targetStep && steps.length > 0) targetStep = steps[0];
-
-                    // Determine Role based on condition result (False -> RH, True -> Manager)
-                    let assigneeUser = null;
-                    if (!isApproved) {
-                        // >= 5 days: Assign to RH
-                        assigneeUser = await tx.user.findFirst({
-                            where: { organisationId, rh: { isNot: null } }
-                        });
-                    } else {
-                        // < 5 days: Assign to Manager
-                        assigneeUser = await tx.user.findFirst({
-                            where: { organisationId, manager: { isNot: null } }
-                        });
-                    }
-
-                    const task = await tx.task.create({
-                        data: {
-                            title: `${stepName}: ${diffDays} jours`,
-                            status: "PENDING",
-                            processInstanceId: instance.id,
-                            stepId: targetStep?.id || "default-step-id",
-                            organisationId,
-                            userId: assigneeUser?.id || null
-                        }
-                    });
-
-                    // Notify
-                    if (assigneeUser?.id) {
-                        await notificationService.createNotification(
-                            assigneeUser.id,
-                            `Nouvelle demande de congé à valider (${initiatorName}) - ${diffDays} jours`,
-                            'TASK_CREATED'
-                        );
-                    }
-
-                    return { instanceId: instance.id, taskId: task.id, assignedTo: isApproved ? "MANAGER" : "RH" };
                 }
 
-                // Default Generic Logic
+                // Create the ProcessInstance with full context
                 const instance = await tx.processInstance.create({
                     data: {
                         workflowId: workflow.id,
-                        userId, // Added userId to track initiator
+                        userId,
                         status: "IN_PROGRESS",
                         context: {
+                            startDate: metadata?.startDate,
+                            endDate: metadata?.endDate,
+                            reason: metadata?.reason,
                             initiatorName,
                             initiatorEmail: initiator?.email || ""
                         }
                     }
                 });
 
-                const task = await this.createInitialTask(workflowId, instance.id, organisationId, tx);
+                const nodes = Array.isArray(workflow.nodes) ? (workflow.nodes as any[]) : [];
+                const edges = Array.isArray(workflow.edges) ? (workflow.edges as any[]) : [];
+                const steps = await tx.step.findMany({ where: { workflowId: workflow.id } });
+
+                // Find trigger / start node
+                const triggerNode = nodes.find((n: any) =>
+                    n.type === 'trigger' || n.data?.variant === 'trigger' ||
+                    n.type === 'start' || n.data?.label === 'START'
+                );
+
+                if (!triggerNode) {
+                    throw new Error("No trigger/start node found in workflow.");
+                }
+
+                console.log(`[Engine] 🗺️ Workflow "${workflow.name}" — starting at node: "${triggerNode.data?.title || triggerNode.id}"`);
+
+                const context: Record<string, any> = {
+                    startDate: metadata?.startDate,
+                    endDate: metadata?.endDate,
+                    reason: metadata?.reason,
+                    initiatorName,
+                };
+
+                // Run the recursive engine starting from trigger
+                const engineResult = await processWorkflow({
+                    nodes,
+                    edges,
+                    steps,
+                    currentNodeId: triggerNode.id,
+                    context,
+                    tx,
+                    organisationId,
+                    instanceId: instance.id
+                });
 
                 await tx.eventLog.create({
                     data: {
-                        action: `PROCESS_STARTED: Workflow "${workflow.name}" started by user ${userId}`,
+                        action: `PROCESS_STARTED: Workflow "${workflow.name}" started by user ${userId}. Result: ${engineResult.status}`,
                         processInstanceId: instance.id,
                         userId
                     }
                 });
 
-                return {
-                    instanceId: instance.id,
-                    taskId: task.id,
-                    assignedTo: "MANAGER"
-                };
+                return { instanceId: instance.id, ...engineResult };
             }, { maxWait: 15000, timeout: 30000 });
 
             console.log('✅ Processus créé avec succès');
@@ -390,20 +372,14 @@ export const workflowEngineService = {
     },
 
     /**
-     * Completes a task and moves the workflow to the next step.
+     * Completes a task and advances the workflow to the next step using the recursive engine.
      */
     async completeTaskAndMoveToNext(taskId: string, action: 'APPROVE' | 'REJECT', userId: string) {
         return prisma.$transaction(async (tx) => {
-            // 1. Fetch the Task
             const task = await tx.task.findUnique({
                 where: { id: taskId },
                 include: {
-                    processInstance: {
-                        include: {
-                            workflow: true,
-                            application: true
-                        }
-                    },
+                    processInstance: { include: { workflow: true, application: true } },
                     step: true
                 }
             });
@@ -414,7 +390,7 @@ export const workflowEngineService = {
             const { processInstance } = task;
             const { workflow, application } = processInstance;
 
-            // 2. Mark the current task as completed
+            // Mark this task done
             await tx.task.update({
                 where: { id: taskId },
                 data: {
@@ -423,7 +399,7 @@ export const workflowEngineService = {
                 }
             });
 
-            // Notify Initiator (Employee) if approved
+            // Notify initiator on approve
             if (action === 'APPROVE' && processInstance.userId) {
                 await notificationService.createNotification(
                     processInstance.userId,
@@ -432,7 +408,7 @@ export const workflowEngineService = {
                 );
             }
 
-            // 3. Handle REJECTION
+            // Handle manual REJECT
             if (action === 'REJECT') {
                 await tx.processInstance.update({
                     where: { id: processInstance.id },
@@ -448,7 +424,7 @@ export const workflowEngineService = {
 
                 await tx.eventLog.create({
                     data: {
-                        action: `TASK_REJECTED: Task "${task.title}" rejected by user ${userId}. Workflow terminated.`,
+                        action: `TASK_REJECTED: Task "${task.title}" rejected by user ${userId}.`,
                         processInstanceId: processInstance.id,
                         userId
                     }
@@ -457,64 +433,27 @@ export const workflowEngineService = {
                 return { status: 'TERMINATED', reason: 'REJECTED' };
             }
 
-            // 4. Handle APPROVAL: Find next node
+            // Find current node in the graph corresponding to the completed task
             const nodes = Array.isArray(workflow.nodes) ? (workflow.nodes as any[]) : [];
             const edges = Array.isArray(workflow.edges) ? (workflow.edges as any[]) : [];
+            const steps = await tx.step.findMany({ where: { workflowId: workflow.id } });
 
-            // Find current node in React Flow (matched by title/label)
-            let currentNode = nodes.find(n => n.data?.title === task.step.name || n.data?.label === task.step.name);
+            const currentNode = nodes.find((n: any) =>
+                n.data?.title === task.step.name || n.data?.label === task.step.name
+            );
 
             if (!currentNode) {
-                // Try fallback based on step order if names mismatch
                 throw new Error("Could not find the current step node in the workflow graph.");
             }
 
-            // Find immediate outgoing edges
-            let outgoingEdges = edges.filter(e => e.source === currentNode?.id);
-            let nextNode: any = null;
-            let currentEdge = outgoingEdges[0];
-
-            if (currentEdge) {
-                nextNode = nodes.find(n => n.id === currentEdge.target);
-            }
-
-            // --- CONDITION NODE EVALUATION ---
-            if (nextNode && (nextNode.type === 'condition' || nextNode.data?.variant === 'condition')) {
-                console.log("[WorkflowEngine] Transitioning through Condition Node:", nextNode.data?.title);
-
-                let conditionResult = true; // Default True
-                if (processInstance.context !== null && typeof processInstance.context === 'object') {
-                    const ctx = processInstance.context as Record<string, any>;
-                    if (ctx.startDate && ctx.endDate) {
-                        const start = new Date(ctx.startDate as string);
-                        const end = new Date(ctx.endDate as string);
-                        const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-                        conditionResult = diffDays < 5; // e.g. True if < 5 days, False if >= 5 days
-                        console.log(`[WorkflowEngine] Condition evaluated: diffDays=${diffDays} < 5 is ${conditionResult}`);
-                    }
-                }
-
-                // Find edge from condition node
-                const condEdges = edges.filter(e => e.source === nextNode?.id);
-                // Look for handles: 'true' or 'false'
-                const targetCondEdge = condEdges.find(e => e.sourceHandle === (conditionResult ? 'true' : 'false'))
-                    || condEdges[0]; // fallback
-
-                if (targetCondEdge) {
-                    nextNode = nodes.find(n => n.id === targetCondEdge.target);
-                    currentNode = nextNode; // Move context forward past condition
-                } else {
-                    nextNode = null; // Ends here
-                }
-            }
-
-            // 5. If no next node or we hit END
-            if (!nextNode || nextNode.data?.variant === 'end' || nextNode.type === 'end') {
+            // Get the next node from the current one
+            const outgoing = edges.filter((e: any) => e.source === currentNode.id);
+            if (outgoing.length === 0) {
+                // No outgoing edges: end of workflow
                 await tx.processInstance.update({
                     where: { id: processInstance.id },
                     data: { status: 'COMPLETED' }
                 });
-
                 if (application) {
                     await tx.application.update({
                         where: { id: application.id },
@@ -524,54 +463,48 @@ export const workflowEngineService = {
                 return { status: 'COMPLETED' };
             }
 
-            // 7. Map next node to a Step in DB
-            const nextStepName = nextNode.data?.title || nextNode.data?.label;
-            const targetStep = await tx.step.findFirst({
-                where: { workflowId: workflow.id, name: nextStepName }
+            const nextNodeId = outgoing[0].target;
+
+            // Build context from processInstance
+            const context = (
+                processInstance.context !== null && typeof processInstance.context === 'object'
+            ) ? (processInstance.context as Record<string, any>) : {};
+
+            console.log(`[Engine] ▶️ Continuing from task "${task.title}" → next node: "${nextNodeId}"`);
+
+            // Resume the recursive engine from the next node
+            const engineResult = await processWorkflow({
+                nodes,
+                edges,
+                steps,
+                currentNodeId: nextNodeId,
+                context,
+                tx,
+                organisationId: workflow.organisationId,
+                instanceId: processInstance.id
             });
 
-            if (!targetStep) {
-                throw new Error(`Step "${nextStepName}" not found in database for this workflow.`);
-            }
-
-            // 8. Assign to Next User (Depends on step type. For simplicity, Manager or RH)
-            // Ideally, we check the targetStep or targetNode type to decide who gets it.
-            let nextAssigneeUser = null;
-            if (nextStepName.toUpperCase().includes('RH')) {
-                nextAssigneeUser = await tx.user.findFirst({
-                    where: { organisationId: workflow.organisationId, rh: { isNot: null } }
-                });
-            } else {
-                nextAssigneeUser = await tx.user.findFirst({
-                    where: { organisationId: workflow.organisationId, manager: { isNot: null } }
-                });
-            }
-
-            // 9. Create the Next Task
-            const nextTask = await tx.task.create({
-                data: {
-                    title: nextStepName || "Nouvelle étape",
-                    status: "PENDING",
-                    processInstanceId: processInstance.id,
-                    stepId: targetStep.id,
-                    organisationId: workflow.organisationId,
-                    userId: nextAssigneeUser?.id || null
+            // If it reaches COMPLETED naturally
+            if (engineResult.status === 'COMPLETED' || engineResult.status === 'TERMINATED') {
+                if (application) {
+                    await tx.application.update({
+                        where: { id: application.id },
+                        data: {
+                            status: engineResult.status === 'COMPLETED' ? 'COMPLETED' : 'REJECTED'
+                        }
+                    });
                 }
-            });
+            }
 
             await tx.eventLog.create({
                 data: {
-                    action: `TASK_APPROVED: Task "${task.title}" approved. Next step: "${nextStepName}" created.`,
+                    action: `TASK_APPROVED: "${task.title}" approved by ${userId}. Engine result: ${engineResult.status}.`,
                     processInstanceId: processInstance.id,
                     userId
                 }
             });
 
-            return {
-                status: 'ADVANCED',
-                nextTaskId: nextTask.id,
-                assignedTo: nextAssigneeUser?.email || 'Unassigned'
-            };
+            return { status: engineResult.status === 'TASK_CREATED' ? 'ADVANCED' : engineResult.status, taskId: engineResult.taskId, assignedTo: engineResult.assignedTo, reason: engineResult.reason };
         }, { maxWait: 10000, timeout: 20000 });
     },
 
@@ -582,4 +515,3 @@ export const workflowEngineService = {
         return this.completeTaskAndMoveToNext(taskId, 'APPROVE', userId);
     }
 };
-
