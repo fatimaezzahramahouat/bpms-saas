@@ -202,127 +202,136 @@ export const workflowEngineService = {
      * This version does NOT require an application.
      */
     async startProcessInstance(workflowId: string, userId: string, organisationId: string, metadata?: any) {
-        return await prisma.$transaction(async (tx) => {
-            const workflow = await tx.workflow.findUnique({
-                where: { id: workflowId }
-            });
+        console.log('🚀 Démarrage du processus métier...');
+        try {
+            const result = await prisma.$transaction(async (tx) => {
+                const workflow = await tx.workflow.findUnique({
+                    where: { id: workflowId }
+                });
 
-            if (!workflow || workflow.organisationId !== organisationId) {
-                console.error(`[WorkflowEngine] Workflow start failed. ID: ${workflowId}, Org: ${organisationId}, Found: ${!!workflow}, OwnerOrg: ${workflow?.organisationId}`);
-                throw new Error(`Workflow not found or unauthorized for your organisation.`);
-            }
-
-            // Fetch Initiator Name
-            const initiator = await tx.user.findUnique({
-                where: { id: userId },
-                select: { firstName: true, lastName: true, email: true }
-            });
-            const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Inconnu";
-
-            // Specialized Logic for DEMANDE DE CONGE
-            if (workflow.name.toUpperCase().includes("CONGE") || workflow.name.toUpperCase().includes("CONGÉ")) {
-                console.log("[WorkflowEngine] Executing specialized Leave Request logic...");
-
-                // 1. Save Document if present
-                if (metadata?.file) {
-                    await tx.document.create({
-                        data: {
-                            fileName: metadata.file.originalname,
-                            fileUrl: metadata.file.path,
-                            docType: metadata.file.mimetype,
-                            userId,
-                            organisationId
-                        }
-                    });
+                if (!workflow || workflow.organisationId !== organisationId) {
+                    console.error(`[WorkflowEngine] Workflow start failed. ID: ${workflowId}, Org: ${organisationId}, Found: ${!!workflow}, OwnerOrg: ${workflow?.organisationId}`);
+                    throw new Error(`Workflow not found or unauthorized for your organisation.`);
                 }
 
-                // 2. Create Process Instance
+                // Fetch Initiator Name
+                const initiator = await tx.user.findUnique({
+                    where: { id: userId },
+                    select: { firstName: true, lastName: true, email: true }
+                });
+                const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Inconnu";
+
+                // Specialized Logic for DEMANDE DE CONGE
+                if (workflow.name.toUpperCase().includes("CONGE") || workflow.name.toUpperCase().includes("CONGÉ")) {
+                    console.log("[WorkflowEngine] Executing specialized Leave Request logic...");
+
+                    // 1. Save Document if present
+                    if (metadata?.file) {
+                        await tx.document.create({
+                            data: {
+                                fileName: metadata.file.originalname,
+                                fileUrl: metadata.file.path,
+                                docType: metadata.file.mimetype,
+                                userId,
+                                organisationId
+                            }
+                        });
+                    }
+
+                    // 2. Create Process Instance
+                    const instance = await tx.processInstance.create({
+                        data: {
+                            workflowId: workflow.id,
+                            userId, // Added userId to track initiator
+                            status: "IN_PROGRESS",
+                            context: {
+                                startDate: metadata?.startDate,
+                                endDate: metadata?.endDate,
+                                reason: metadata?.reason,
+                                initiatorName,
+                                initiatorEmail: initiator?.email || ""
+                            }
+                        }
+                    });
+
+                    // 3. Simulated API Call (check-1772677404703)
+                    console.log("[WorkflowEngine] Node check-1772677404703: Verifying leave balance...");
+
+                    // 4. Condition Logic (cond-1772677404703)
+                    const start = metadata?.startDate ? new Date(metadata.startDate) : new Date();
+                    const end = metadata?.endDate ? new Date(metadata.endDate) : new Date();
+                    const diffTime = Math.abs(end.getTime() - start.getTime());
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    console.log(`[WorkflowEngine] Node cond-1772677404703: Duration = ${diffDays} days`);
+
+                    // 5. Create Manager Task (manager-1772677404703)
+                    const manager = await tx.user.findFirst({
+                        where: { organisationId, manager: { isNot: null } }
+                    });
+
+                    const steps = await tx.step.findMany({ where: { workflowId: workflow.id } });
+                    let managerStep = steps.find((s: any) => s.name.toUpperCase().includes("MANAGER"));
+                    if (!managerStep && steps.length > 0) managerStep = steps[0];
+
+                    const task = await tx.task.create({
+                        data: {
+                            title: `Validation Congé: ${diffDays} jours`,
+                            status: "PENDING",
+                            processInstanceId: instance.id,
+                            stepId: managerStep?.id || "default-step-id", // Use a safer fallback or handle missing step
+                            organisationId,
+                            userId: manager?.id || null
+                        }
+                    });
+
+                    // Notify Manager
+                    if (manager?.id) {
+                        await notificationService.createNotification(
+                            manager.id,
+                            `Nouvelle demande de congé à valider (${initiatorName})`,
+                            'TASK_CREATED'
+                        );
+                    }
+
+                    return { instanceId: instance.id, taskId: task.id, assignedTo: "MANAGER" };
+                }
+
+                // Default Generic Logic
                 const instance = await tx.processInstance.create({
                     data: {
                         workflowId: workflow.id,
                         userId, // Added userId to track initiator
                         status: "IN_PROGRESS",
                         context: {
-                            startDate: metadata?.startDate,
-                            endDate: metadata?.endDate,
-                            reason: metadata?.reason,
                             initiatorName,
                             initiatorEmail: initiator?.email || ""
                         }
                     }
                 });
 
-                // 3. Simulated API Call (check-1772677404703)
-                console.log("[WorkflowEngine] Node check-1772677404703: Verifying leave balance...");
+                const task = await this.createInitialTask(workflowId, instance.id, organisationId, tx);
 
-                // 4. Condition Logic (cond-1772677404703)
-                const start = metadata?.startDate ? new Date(metadata.startDate) : new Date();
-                const end = metadata?.endDate ? new Date(metadata.endDate) : new Date();
-                const diffTime = Math.abs(end.getTime() - start.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                console.log(`[WorkflowEngine] Node cond-1772677404703: Duration = ${diffDays} days`);
-
-                // 5. Create Manager Task (manager-1772677404703)
-                const manager = await tx.user.findFirst({
-                    where: { organisationId, manager: { isNot: null } }
-                });
-
-                const steps = await tx.step.findMany({ where: { workflowId: workflow.id } });
-                let managerStep = steps.find((s: any) => s.name.toUpperCase().includes("MANAGER"));
-                if (!managerStep && steps.length > 0) managerStep = steps[0];
-
-                const task = await tx.task.create({
+                await tx.eventLog.create({
                     data: {
-                        title: `Validation Congé: ${diffDays} jours`,
-                        status: "PENDING",
+                        action: `PROCESS_STARTED: Workflow "${workflow.name}" started by user ${userId}`,
                         processInstanceId: instance.id,
-                        stepId: managerStep?.id || "default-step-id", // Use a safer fallback or handle missing step
-                        organisationId,
-                        userId: manager?.id || null
+                        userId
                     }
                 });
 
-                // Notify Manager
-                if (manager?.id) {
-                    await notificationService.createNotification(
-                        manager.id,
-                        `Nouvelle demande de congé à valider (${initiatorName})`,
-                        'TASK_CREATED'
-                    );
-                }
+                return {
+                    instanceId: instance.id,
+                    taskId: task.id,
+                    assignedTo: "MANAGER"
+                };
+            }, { maxWait: 15000, timeout: 30000 });
 
-                return { instanceId: instance.id, taskId: task.id, assignedTo: "MANAGER" };
-            }
-
-            // Default Generic Logic
-            const instance = await tx.processInstance.create({
-                data: {
-                    workflowId: workflow.id,
-                    userId, // Added userId to track initiator
-                    status: "IN_PROGRESS",
-                    context: {
-                        initiatorName,
-                        initiatorEmail: initiator?.email || ""
-                    }
-                }
-            });
-
-            const task = await this.createInitialTask(workflowId, instance.id, organisationId, tx);
-
-            await tx.eventLog.create({
-                data: {
-                    action: `PROCESS_STARTED: Workflow "${workflow.name}" started by user ${userId}`,
-                    processInstanceId: instance.id,
-                    userId
-                }
-            });
-
-            return {
-                instanceId: instance.id,
-                taskId: task.id,
-                assignedTo: "MANAGER"
-            };
-        }, { maxWait: 10000, timeout: 20000 });
+            console.log('✅ Processus créé avec succès');
+            return result;
+        } catch (error) {
+            console.error('❌ Erreur lors du démarrage du processus métier :', error);
+            throw error;
+        }
     },
 
     /**
