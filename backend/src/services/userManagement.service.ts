@@ -26,7 +26,7 @@ export const userManagementService = {
         );
     },
 
-    async updateUser(userId: string, data: { firstName?: string; lastName?: string; email?: string; password?: string }, organisationId: string) {
+    async updateUser(userId: string, data: { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string }, organisationId: string) {
         const user = await userManagementRepository.findUserById(userId);
         if (!user || user.organisationId !== organisationId) {
             throw new Error("User not found or access denied");
@@ -79,6 +79,7 @@ export const userManagementService = {
                     firstName: userData.firstName,
                     lastName: userData.lastName,
                     email: userData.email,
+                    phone: userData.phone,
                     role: userData.role,
                     password: hashedPassword,
                     organisationId,

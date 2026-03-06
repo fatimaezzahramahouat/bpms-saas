@@ -29,11 +29,12 @@ export const settingsRepository = {
     });
   },
 
-  async updateUserProfile(id: string, data: Partial<{ firstName: string; lastName: string; email: string }>) {
+  async updateUserProfile(id: string, data: Partial<{ firstName: string; lastName: string; email: string; phone: string }>) {
     const updateData: Record<string, string> = {};
     if (data.firstName !== undefined) updateData["firstName"] = data.firstName;
     if (data.lastName !== undefined) updateData["lastName"] = data.lastName;
     if (data.email !== undefined) updateData["email"] = data.email;
+    if (data.phone !== undefined) updateData["phone"] = data.phone;
 
     return prisma.user.update({
       where: { id },

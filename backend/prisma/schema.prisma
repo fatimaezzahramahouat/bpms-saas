@@ -36,37 +36,41 @@ model OrgInfo {
   website        String?
   organisationId String       @unique
   createdAt      DateTime     @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  updatedAt      DateTime     @default(now()) @updatedAt
   organisation   Organisation @relation(fields: [organisationId], references: [id])
 }
 
 model User {
-  id             String         @id @default(uuid())
-  email          String         @unique
-  password       String
-  firstName      String
-  lastName       String
-  organisationId String
-  resetExpires   DateTime?
-  resetToken     String?        @unique
-  admin          Admin?
-  manager        Manager?
-  rh             RH?
-  employee       Employee?
-  theme                String?   @default("light")
-  emailNotifications   Boolean   @default(true)
-  inAppNotifications   Boolean   @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id                 String       @id @default(uuid())
+  googleId           String?      @unique
+  email              String       @unique
+  password           String?
+  firstName          String
+  lastName           String
+  phone              String?
+  organisationId     String
+  resetExpires       DateTime?
+  resetToken         String?      @unique
+  admin              Admin?
+  manager            Manager?
+  rh                 RH?
+  employee           Employee?
+  theme              String?      @default("light")
+  emailNotifications Boolean      @default(true)
+  inAppNotifications Boolean      @default(true)
+  provider           AuthProvider @default(LOCAL)
+  profileCompleted   Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @default(now()) @updatedAt
 
-  documents      Document[]
-  eventLogs      EventLog[]
-  jobOffers      JobOffer[]
-  notifications  Notification[]
-  sessions       Session[]
-  tasks          Task[]
-  organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  documents        Document[]
+  eventLogs        EventLog[]
+  jobOffers        JobOffer[]
+  notifications    Notification[]
+  sessions         Session[]
+  tasks            Task[]
   processInstances ProcessInstance[]
+  organisation     Organisation      @relation(fields: [organisationId], references: [id])
 
   @@index([organisationId])
 }
@@ -108,13 +112,10 @@ model Candidate {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   status       CandidateStatus @default(CANDIDATE)
-  skills         String[]   @default([])
-  experience     String?
-  education      String?
+  skills       String[]        @default([])
+  experience   String?
+  education    String?
   applications Application[]
-  skills         String[]   @default([])
-  experience     String?
-  education      String?
 }
 
 model Application {
@@ -303,11 +304,10 @@ model Session {
   ipAddress String?
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
-
 
 enum JobOfferStatus {
   DRAFT
@@ -359,3 +359,7 @@ enum CandidateStatus {
   REJECTED
 }
 
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}

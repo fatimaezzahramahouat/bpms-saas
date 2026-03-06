@@ -34,11 +34,12 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
                     firstName: row['Prénom'] || row['FirstName'] || row['First Name'],
                     lastName: row['Nom'] || row['LastName'] || row['Last Name'],
                     email: row['Email'],
+                    phone: row['Phone'] || row['Téléphone'] || row['Phone Number'],
                     role: row['Rôle'] || row['Role'] || 'Employee',
                 })).filter(u => u.email && u.firstName && u.lastName);
 
                 if (formattedUsers.length === 0) {
-                    setError("Aucun utilisateur valide trouvé. Vérifiez les en-têtes (Prénom, Nom, Email, Rôle).");
+                    setError("Aucun utilisateur valide trouvé. Vérifiez les en-têtes (Prénom, Nom, Email,Phone, Rôle).");
                     return;
                 }
 
@@ -143,7 +144,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
                                 <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
                                 <div className="space-y-1">
                                     <p className="text-sm font-bold text-blue-500">Structure du fichier attendue :</p>
-                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">Le fichier doit contenir les colonnes : <span className="font-bold">Prénom, Nom, Email, Rôle</span>.</p>
+                                    <p className="text-xs text-zinc-600 dark:text-zinc-400">Le fichier doit contenir les colonnes : <span className="font-bold">Prénom, Nom, Email,Phone, Rôle</span>.</p>
                                     <p className="text-xs text-zinc-500 mt-2 italic font-medium">Les rôles acceptés sont : RH, Manager, Employee.</p>
                                 </div>
                             </div>
@@ -166,6 +167,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
                                         <tr>
                                             <th className="px-4 py-3 text-[10px] font-black uppercase text-zinc-400">Utilisateur</th>
                                             <th className="px-4 py-3 text-[10px] font-black uppercase text-zinc-400">Email</th>
+                                            <th className="px-4 py-3 text-[10px] font-black uppercase text-zinc-400">Téléphone</th>
                                             <th className="px-4 py-3 text-[10px] font-black uppercase text-zinc-400">Rôle</th>
                                         </tr>
                                     </thead>
@@ -174,6 +176,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
                                             <tr key={idx} className="text-sm">
                                                 <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">{user.firstName} {user.lastName}</td>
                                                 <td className="px-4 py-3 text-zinc-500">{user.email}</td>
+                                                <td className="px-4 py-3 text-zinc-500">{user.phone}</td>
                                                 <td className="px-4 py-3">
                                                     <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black">
                                                         {user.role}

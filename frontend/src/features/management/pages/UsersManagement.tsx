@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, User, Mail, Shield, UserPlus, Filter, Search as SearchIcon, MoreVertical, Edit2, Trash2, Users, FileSpreadsheet } from 'lucide-react';
+import { Plus, User, Mail,Phone ,Shield, UserPlus, Filter, Search as SearchIcon, MoreVertical, Edit2, Trash2, Users, FileSpreadsheet } from 'lucide-react';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { EditUserModal } from '../components/EditUserModal';
 import { DeleteConfirmationModal } from '../components/DeleteConfirmationModal';
@@ -143,6 +143,7 @@ export function UsersManagement() {
                                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400">Utilisateur</th>
                                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400">Rôle</th>
                                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400">Email</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400">Téléphone</th>
                                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400">Date de création</th>
                                 <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400">Actions</th>
                             </tr>
@@ -182,6 +183,12 @@ export function UsersManagement() {
                                                 <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
                                                     <Mail className="w-4 h-4 opacity-50" />
                                                     <span className="text-sm">{user.email}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">  
+                                                <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
+                                                    <Phone className="w-4 h-4 opacity-50" />
+                                                    <span className="text-sm">{user.phone || 'Non renseigné'}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
