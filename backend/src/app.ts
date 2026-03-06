@@ -5,6 +5,7 @@ import path from 'path';
 
 // ✅ Import Routes 
 
+import analyzeRoutes from './routes/analyze-candidate';
 import authRoutes from './routes/auth.routes';
 import jobOfferRoutes from './routes/jobOffer.routes';
 import applicationRoutes from './routes/application.routes';
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/joboffers', jobOfferRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/candidates', candidateRoutes);
+app.use('/api/analyze-candidate', analyzeRoutes);
 app.use('/api/workflows', workflowRoutes);
 
 // ============================================================================

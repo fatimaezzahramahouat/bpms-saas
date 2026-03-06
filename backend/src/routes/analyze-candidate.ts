@@ -294,7 +294,7 @@ router.post('/analyze-candidate', async (req: Request<{}, {}, AnalysisRequest>, 
   }
 });
 
-router.get('/analyze-candidate/:candidateId/:jobOfferId', async (req: Request, res: Response) => {
+router.get('/:candidateId/:jobOfferId', async (req: Request, res: Response) => {
   try {
     const { candidateId, jobOfferId } = req.params;
 
@@ -341,10 +341,11 @@ router.get('/analyze-candidate/:candidateId/:jobOfferId', async (req: Request, r
   }
 });
 
-router.delete('/analyze-candidate/:id', async (req: Request, res: Response) => {
+// ✅ DELETE /api/analyze-candidate/:id
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const analysisId = req.params.id;
-
+    
     if (!analysisId) {
       return res.status(400).json({
         success: false,
@@ -352,22 +353,26 @@ router.delete('/analyze-candidate/:id', async (req: Request, res: Response) => {
       });
     }
 
+    // ✅ Raw SQL - يعمل دائمًا بدون مشاكل تسمية
     await prisma.$executeRaw`
       DELETE FROM "AIAnalysis" WHERE id = ${analysisId}
     `;
-
+    
+    console.log('🗑️ Analysis deleted:', analysisId);
+    
     res.status(200).json({
       success: true,
       message: 'Analysis deleted successfully'
     });
-
+    
   } catch (error) {
-    console.error('❌ Route Error:', error);
+    console.error('❌ Delete Error:', error);
     res.status(500).json({
       success: false,
       error: (error as Error).message || 'Failed to delete analysis'
     });
   }
 });
+
 
 export default router;

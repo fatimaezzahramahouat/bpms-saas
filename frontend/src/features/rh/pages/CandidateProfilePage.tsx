@@ -51,7 +51,7 @@ export function CandidateProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'analysis'>('profile');
-
+  // ✅ useEffect واحد فقط - نظيف وبدون تكرار
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -62,7 +62,6 @@ export function CandidateProfilePage() {
         
         const token = localStorage.getItem('token');
         
-        // Fetch candidate
         const candidateRes = await fetch(`http://localhost:5000/api/candidates/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -75,7 +74,6 @@ export function CandidateProfilePage() {
         const candidateData = await candidateRes.json();
         setCandidate(candidateData.data || candidateData);
         
-        // Fetch analysis if job offer exists
         const jobOfferId = candidateData.applications?.[0]?.jobOfferId;
         if (jobOfferId) {
           try {
@@ -92,24 +90,36 @@ export function CandidateProfilePage() {
             if (analysisRes.ok) {
               const analysisData = await analysisRes.json();
               if (analysisData.data?.analysis) {
+                console.log('✅ Analysis found!');
                 setAnalysis(analysisData.data.analysis);
-                setActiveTab('analysis'); // Auto-switch to analysis
+                setActiveTab('analysis');
               }
             }
           } catch (err) {
-            console.log('No analysis available yet');
+            console.log('⏳ No analysis yet');
           }
         }
         
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur de chargement');
+        console.error('❌ Error:', err);
+        setError(err instanceof Error ? err.message : 'Erreur');
       } finally {
         setLoading(false);
       }
     };
     
     fetchData();
-  }, [id]);
+    
+    const intervalId = setInterval(() => {
+      if (!analysis) {
+        console.log('🔄 Checking...');
+        fetchData();
+      }
+    }, 3000);
+    
+    return () => clearInterval(intervalId);
+    
+  }, [id, analysis]);  // ✅ هذا هو الإغلاق الوحيد - لا شيء بعده!
 
   if (loading) {
     return (
