@@ -4,7 +4,7 @@ import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, Download, FileSpre
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useToast, toastSuccess, toastError } from '../../../shared/components/Toast';
 import { CandidateCard, Candidate, CandidateStatus } from '../components/CandidateCard';
-import { AIAnalysisPanel } from '../components/AIAnalysisPanel';
+import { LightAnalysisPreview } from '../components/LightAnalysisPreview';
 import { Pagination, PaginationSkeleton } from '../components/Pagination';
 import { SearchBar, CandidateFilters, ActiveFilters } from '../components';
 import { useCandidateFilters } from '../hooks/useCandidateFilters';
@@ -139,13 +139,25 @@ export function JobOfferCandidatsPage() {
                    app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as any,
           jobOfferId: id,
           formData: {
-            skills: app?.aiAnalyses?.[0]?.result?.skills || [],
-            experienceLevel: app?.aiAnalyses?.[0]?.result?.experience || 'Non spécifié',
-            education: app?.aiAnalyses?.[0]?.result?.education || 'Non spécifié',
+            // Try to get skills from various possible locations in the AI analysis result
+            skills: app?.aiAnalyses?.[0]?.result?.matchedRequirements || 
+                   app?.aiAnalyses?.[0]?.result?.exigencesCorrespondantes ||
+                   app?.aiAnalyses?.[0]?.matchedSkills ||
+                   [],
+            experienceLevel: app?.aiAnalyses?.[0]?.result?.experience || 
+                            app?.aiAnalyses?.[0]?.result?.categoryScores?.experience ||
+                            app?.aiAnalyses?.[0]?.experienceScore ||
+                            'Non spécifié',
+            education: app?.aiAnalyses?.[0]?.result?.education ||
+                      app?.aiAnalyses?.[0]?.educationScore ||
+                      'Non spécifié',
             availability: 'Non spécifié',
             cvFileName: app?.documents?.[0]?.fileName || 'cv.pdf',
           },
-          matchPercentage: app?.aiAnalyses?.[0]?.confidence ? Math.round(app.aiAnalyses[0].confidence * 100) : 0,
+          // Get overall score from result or confidence field
+          matchPercentage: app?.aiAnalyses?.[0]?.result?.overallScore || 
+                          app?.aiAnalyses?.[0]?.result?.scoreGlobal ||
+                          (app?.aiAnalyses?.[0]?.confidence ? Math.round(app.aiAnalyses[0].confidence * 100) : 0),
         };
       });
 
@@ -164,8 +176,8 @@ export function JobOfferCandidatsPage() {
   }, [loadData]);
 
   const handleViewAnalysis = useCallback((candidate: Candidate) => {
-    console.log('View analysis for:', candidate);
-  }, []);
+    navigate(`/dashboard/rh/candidates/${candidate.id}`);
+  }, [navigate]);
 
   const handleSave = useCallback((candidate: Candidate) => {
     console.log('Save candidate:', candidate);
@@ -378,8 +390,28 @@ export function JobOfferCandidatsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {paginatedCandidates.map((candidate) => (
                 <div key={candidate.id} className="space-y-4">
-                  <CandidateCard candidate={candidate} onViewAnalysis={handleViewAnalysis} onSave={handleSave} onDelete={handleDelete} jobRequirements={jobRequirements?.requiredSkills || []} />
-                  {jobRequirements && candidate.formData && <AIAnalysisPanel candidate={{ firstName: candidate.firstName, lastName: candidate.lastName, email: candidate.email, skills: candidate.formData.skills, experienceLevel: candidate.formData.experienceLevel, education: candidate.formData.education, coverLetter: candidate.formData.coverLetter }} jobRequirements={jobRequirements} />}
+                  <CandidateCard 
+                    candidate={candidate} 
+                    onViewAnalysis={handleViewAnalysis} 
+                    onSave={handleSave} 
+                    onDelete={handleDelete} 
+                    jobRequirements={jobRequirements?.requiredSkills || []} 
+                  />
+                  {jobRequirements && candidate.formData && (
+                    <LightAnalysisPreview 
+                      candidateId={candidate.id}
+                      jobOfferId={jobOffer?.id || ''}
+                      analysis={{
+                        overallScore: candidate.matchPercentage || 0,
+                        strengths: candidate.formData.skills?.slice(0, 3).map(s => `Compétence en ${s}`) || [],
+                        skillsMatch: {
+                          matched: candidate.formData.skills || [],
+                          missing: [],
+                          percentage: candidate.matchPercentage || 0
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               ))}
             </div>

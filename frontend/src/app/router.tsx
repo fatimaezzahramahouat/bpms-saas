@@ -13,6 +13,7 @@ import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
+import { CandidateProfilePage } from '../features/rh/pages/CandidateProfilePage';
 import { MyApprovals } from '@/pages/MyApprovals';
 import { EmployeeTasks } from '@/pages/EmployeeTasks';
 import { SettingsPage } from '../features/dashboard/pages/SettingsPage';
@@ -69,6 +70,7 @@ export function AppRouter() {
         <Route path="workflow" element={<WorkflowPage />} />
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
+        <Route path="rh/candidates/:id" element={<CandidateProfilePage />} />        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
         <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
