@@ -50,11 +50,24 @@ export const candidateRepository = {
   async findById(id: string) {
     return prisma.candidate.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        cv: true,
+        createdAt: true,
+        updatedAt: true,
+        status: true,
+        // ⚠️ NE PAS inclure: skills, experience, education (n'existent pas en DB)
         applications: {
-          include: {
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
             jobOffer: {
               select: {
+                id: true,
                 title: true,
                 organisation: {
                   select: { name: true }
@@ -96,7 +109,17 @@ export const candidateRepository = {
           },
         },
       },
-      include: {
+      // Utiliser select au lieu de include pour éviter les champs inexistants en DB
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        cv: true,
+        createdAt: true,
+        updatedAt: true,
+        status: true,
+        // ⚠️ NE PAS inclure: skills, experience, education (n'existent pas en DB)
         applications: {
           where: { jobOfferId },
           select: {

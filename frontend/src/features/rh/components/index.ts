@@ -5,6 +5,7 @@ export { CandidateCard } from './CandidateCard';
 export { MatchingPercentage } from './MatchingPercentage';
 export { ComparisonTable } from './ComparisonTable';
 export { AIAnalysisPanel } from './AIAnalysisPanel';
+export { LightAnalysisPreview } from './LightAnalysisPreview';
 export { SkillsRadarChart, ExperienceTimeline, CompetencyBars, AIAnalysisText, ScoreBreakdown } from './AIVisualizations';
 export { CandidateNotes } from './CandidateNotes';
 export { SavedCandidatesSidebar } from './SavedCandidatesSidebar';

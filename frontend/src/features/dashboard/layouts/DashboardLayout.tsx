@@ -45,35 +45,62 @@ export function DashboardLayout() {
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const navigate = useNavigate();
 
-    const fetchProfile = async () => {
-        try {
-            const response = await fetch('http://localhost:5000/api/auth/me', {
-                credentials: 'include'
-            });
+const fetchProfile = async () => {
+    try {
+        const token = localStorage.getItem('token');
+        
+        console.log('🔍 [fetchProfile] Token:', token ? token.substring(0, 30) + '...' : 'NULL');
+        
+        // Fetch full user profile with relations
+        const response = await fetch('http://localhost:5000/api/auth/me', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token && { 'Authorization': `Bearer ${token}` })
+            },
+            credentials: 'include'
+        });
 
-            if (response.ok) {
-                const result = await response.json();
-                const user = result.data;
-                localStorage.setItem('user', JSON.stringify(user));
-                window.dispatchEvent(new CustomEvent('user-data-updated'));
-
-                setUserData(user);
-                setOrgData(user.organisation);
-
-                if (user.organisation?.orgInfo) {
-                    setHasOrgInfo(true);
-                    setShowOnboarding(false);
-                } else {
-                    setHasOrgInfo(false);
-                    setShowOnboarding(true);
-                }
-            }
-        } catch (err) {
-            console.error('Failed to fetch profile:', err);
-        } finally {
-            setIsLoadingProfile(false);
+        console.log('📡 [fetchProfile] Status:', response.status);
+        
+        if (response.status === 401) {
+            console.log('❌ Token invalid - logging out');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/login');
+            return;
         }
-    };
+
+        if (response.ok) {
+            const result = await response.json();
+            const user = result.data;
+
+            // Persist latest data
+            localStorage.setItem('user', JSON.stringify(user));
+
+            setUserData(user);
+            setOrgData(user.organisation);
+            setUserName(`${user.firstName} ${user.lastName}`);
+            setUserRole(getRoleLabel(user));
+            setIsAdmin(!!user.admin);
+
+            if (user.organisation?.orgInfo) {
+                setHasOrgInfo(true);
+                setShowOnboarding(false);
+                localStorage.setItem('onboarding_done', 'true');
+                localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
+            } else {
+                setHasOrgInfo(false);
+                setShowOnboarding(true);
+                localStorage.setItem('onboarding_done', 'false');
+            }
+        }
+    } catch (err) {
+        console.error('Failed to fetch profile:', err);
+    } finally {
+        setIsLoadingProfile(false);
+    }
+};
 
     useEffect(() => {
         fetchProfile();
