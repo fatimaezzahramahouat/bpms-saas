@@ -1,12 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
-import { canAccessWorkflow, canManageUsers, UserRole } from '../utils/permissions.util';
+import { canAccessWorkflow, canManageUsers, canApprove, UserRole } from '../utils/permissions.util';
 
 /**
  * Hook to handle permission checks in components.
- * Retrieves the current user role from localStorage and reacts to changes.
+ * Roles match the Prisma schema User model relations: Admin, Manager, RH, Employee.
  */
 export const usePermission = () => {
-    // Initial state from localStorage
     const [user, setUser] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem('user') || '{}');
@@ -15,7 +14,6 @@ export const usePermission = () => {
         }
     });
 
-    // Listen for storage changes in the same window (or across windows)
     useEffect(() => {
         const handleStorageChange = () => {
             try {
@@ -26,10 +24,7 @@ export const usePermission = () => {
             }
         };
 
-        // Listen for the standard storage event (works across tabs)
         window.addEventListener('storage', handleStorageChange);
-
-        // Custom event for same-window updates (since storage event only fires on other windows)
         window.addEventListener('user-data-updated', handleStorageChange);
 
         return () => {
@@ -38,27 +33,28 @@ export const usePermission = () => {
         };
     }, []);
 
-    const role = useMemo(() => {
-        // Preference: user.role (explicit string from backend)
-        // Fallback: user.role_name or structure check
-        const raw = user.role || user.role_name || (user.admin ? 'ADMIN' : (user.rh ? 'RH' : (user.manager ? 'MANAGER' : 'EMPLOYEE')));
-        return raw.toString().toUpperCase().trim().replace(/[\s\u00A0]+/g, ' ');
+    // Derive role from user object — matches Prisma relations: admin, manager, rh, employee
+    const role = useMemo((): string => {
+        if (user.role) return user.role.toString().toUpperCase().trim();
+        // Fallback: infer from relation presence
+        if (user.admin) return 'ADMIN';
+        if (user.manager) return 'MANAGER';
+        if (user.rh) return 'RH';
+        if (user.employee) return 'EMPLOYEE';
+        return 'EMPLOYEE';
     }, [user]);
-
-    const canEdit = canAccessWorkflow(role);
-
-    // Admin check: Exact ADMIN or ADMINISTRATEUR
-    const isActuallyAdmin = role === 'ADMIN' || role === 'ADMINISTRATEUR' || !!user.isAdmin || !!user.admin;
-    const isHR = canEdit && !isActuallyAdmin;
 
     return {
         user,
         role,
-        canEditWorkflow: canEdit,
+        canEditWorkflow: canAccessWorkflow(role),
         canViewWorkflow: true,
         canManageUsers: canManageUsers(role),
-        isAdmin: isActuallyAdmin,
-        isHR,
-        isEmployee: !isActuallyAdmin && !isHR
+        canApprove: canApprove(role),
+        isAdmin: role === 'ADMIN',
+        isManager: role === 'MANAGER',
+        isHR: role === 'RH',
+        isEmployee: role === 'EMPLOYEE',
     };
 };
+

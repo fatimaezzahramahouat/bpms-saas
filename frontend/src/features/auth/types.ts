@@ -31,7 +31,7 @@ export interface OrganizationRegistration {
 /**
  * User roles for RBAC
  */
-export type UserRole = 'admin' | 'manager' | 'user' | 'viewer';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'RH' | 'EMPLOYEE' | 'admin' | 'manager' | 'rh' | 'employee';
 
 /**
  * Auth user type (for future JWT implementation)
