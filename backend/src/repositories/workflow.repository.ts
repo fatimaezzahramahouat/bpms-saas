@@ -100,16 +100,65 @@ export const workflowRepository = {
         organisationId: string,
         data: UpdateWorkflowData
     ) {
-        return prisma.workflow.update({
-            where: { id },
-            data: {
-                ...(data.name && { name: data.name }),
-                ...(data.description !== undefined && { description: data.description }),
-                ...(data.nodes !== undefined && { nodes: data.nodes }),
-                ...(data.edges !== undefined && { edges: data.edges }),
-                ...(data.status && { status: data.status }),
-                ...(data.version && { version: data.version }),
-            },
+        return prisma.$transaction(async (tx) => {
+            // 1. Update the Workflow record
+            const workflow = await tx.workflow.update({
+                where: { id, organisationId },
+                data: {
+                    ...(data.name && { name: data.name }),
+                    ...(data.description !== undefined && { description: data.description }),
+                    ...(data.nodes !== undefined && { nodes: data.nodes }),
+                    ...(data.edges !== undefined && { edges: data.edges }),
+                    ...(data.status && { status: data.status }),
+                    ...(data.version && { version: data.version }),
+                },
+            });
+
+            // 2. Synchronize Steps if nodes were updated
+            if (data.nodes && Array.isArray(data.nodes)) {
+                // Find all nodes that should be treated as Steps
+                // We exclude 'trigger' and 'end' nodes
+                const stepNodes = data.nodes.filter((n: any) =>
+                    n.type === 'approval' ||
+                    n.type === 'task' ||
+                    n.data?.variant === 'approval' ||
+                    (n.type !== 'trigger' && n.type !== 'end' && n.data?.variant !== 'trigger' && n.data?.variant !== 'end')
+                );
+
+                // Fetch existing steps
+                const existingSteps = await tx.step.findMany({
+                    where: { workflowId: id }
+                });
+
+                // Upsert steps based on node names/labels
+                for (let i = 0; i < stepNodes.length; i++) {
+                    const node = stepNodes[i];
+                    const name = node.data?.title || node.data?.label || `Step ${i + 1}`;
+
+                    const existingStep = existingSteps.find(s => s.name === name);
+
+                    if (existingStep) {
+                        await tx.step.update({
+                            where: { id: existingStep.id },
+                            data: { order: i + 1 }
+                        });
+                    } else {
+                        await tx.step.create({
+                            data: {
+                                name,
+                                order: i + 1,
+                                workflowId: id
+                            }
+                        });
+                    }
+                }
+
+                // Optional: Remove steps that are no longer in the nodes list
+                // (Be careful with this if tasks are already linked to them)
+                // For now, let's keep them to avoid breaking history.
+            }
+
+            return workflow;
         });
     },
 
