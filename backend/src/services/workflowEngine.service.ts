@@ -257,43 +257,98 @@ export const workflowEngineService = {
                     // 3. Simulated API Call (check-1772677404703)
                     console.log("[WorkflowEngine] Node check-1772677404703: Verifying leave balance...");
 
-                    // 4. Condition Logic (cond-1772677404703)
+                    // 4. Evaluate Condition Logic (cond-1772677404703)
                     const start = metadata?.startDate ? new Date(metadata.startDate) : new Date();
                     const end = metadata?.endDate ? new Date(metadata.endDate) : new Date();
                     const diffTime = Math.abs(end.getTime() - start.getTime());
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    console.log(`[WorkflowEngine] Node cond-1772677404703: Duration = ${diffDays} days`);
+                    console.log(`[WorkflowEngine] Duration = ${diffDays} days`);
 
-                    // 5. Create Manager Task (manager-1772677404703)
-                    const manager = await tx.user.findFirst({
-                        where: { organisationId, manager: { isNot: null } }
-                    });
-
+                    // Process Node Routing dynamically
+                    const nodes = Array.isArray(workflow.nodes) ? (workflow.nodes as any[]) : [];
+                    const edges = Array.isArray(workflow.edges) ? (workflow.edges as any[]) : [];
                     const steps = await tx.step.findMany({ where: { workflowId: workflow.id } });
-                    let managerStep = steps.find((s: any) => s.name.toUpperCase().includes("MANAGER"));
-                    if (!managerStep && steps.length > 0) managerStep = steps[0];
+
+                    // Find trigger node
+                    const triggerNode = nodes.find(n => n.type === 'trigger' || n.data?.variant === 'trigger');
+                    let currentNode = triggerNode;
+                    let targetStepNode = null;
+
+                    // Traverse to find the first interactive or condition node
+                    if (triggerNode) {
+                        const triggerEdge = edges.find(e => e.source === triggerNode.id);
+                        if (triggerEdge) {
+                            currentNode = nodes.find(n => n.id === triggerEdge.target);
+                        }
+                    }
+
+                    // Evaluate Condition Node if present
+                    let isApproved = true; // Default
+                    if (currentNode && (currentNode.type === 'condition' || currentNode.data?.variant === 'condition')) {
+                        console.log("[WorkflowEngine] Evaluating Condition Node:", currentNode.data?.title);
+                        isApproved = diffDays < 5; // TRUE if < 5 days, FALSE if >= 5
+
+                        const outgoingEdges = edges.filter(e => e.source === currentNode?.id);
+                        const targetEdge = outgoingEdges.find(e => e.sourceHandle === (isApproved ? 'true' : 'false'))
+                            || outgoingEdges[0]; // Fallback if no handles
+
+                        if (targetEdge) {
+                            currentNode = nodes.find(n => n.id === targetEdge.target);
+                        }
+                    }
+
+                    targetStepNode = currentNode;
+
+                    // If we route to an END Node or auto-reject
+                    if (!targetStepNode || targetStepNode.type === 'end' || targetStepNode.data?.variant === 'end') {
+                        await tx.processInstance.update({
+                            where: { id: instance.id },
+                            data: { status: isApproved ? 'COMPLETED' : 'REJECTED' }
+                        });
+                        console.log(`[WorkflowEngine] Auto-${isApproved ? 'Completed' : 'Rejected'} condition.`);
+                        return { instanceId: instance.id, status: isApproved ? 'COMPLETED' : 'REJECTED' };
+                    }
+
+                    // Otherwise, find the matching step and assign
+                    const stepName = targetStepNode.data?.title || targetStepNode.data?.label || "Validation Congé";
+                    let targetStep = steps.find((s: any) => s.name === stepName);
+                    if (!targetStep && steps.length > 0) targetStep = steps[0];
+
+                    // Determine Role based on condition result (False -> RH, True -> Manager)
+                    let assigneeUser = null;
+                    if (!isApproved) {
+                        // >= 5 days: Assign to RH
+                        assigneeUser = await tx.user.findFirst({
+                            where: { organisationId, rh: { isNot: null } }
+                        });
+                    } else {
+                        // < 5 days: Assign to Manager
+                        assigneeUser = await tx.user.findFirst({
+                            where: { organisationId, manager: { isNot: null } }
+                        });
+                    }
 
                     const task = await tx.task.create({
                         data: {
-                            title: `Validation Congé: ${diffDays} jours`,
+                            title: `${stepName}: ${diffDays} jours`,
                             status: "PENDING",
                             processInstanceId: instance.id,
-                            stepId: managerStep?.id || "default-step-id", // Use a safer fallback or handle missing step
+                            stepId: targetStep?.id || "default-step-id",
                             organisationId,
-                            userId: manager?.id || null
+                            userId: assigneeUser?.id || null
                         }
                     });
 
-                    // Notify Manager
-                    if (manager?.id) {
+                    // Notify
+                    if (assigneeUser?.id) {
                         await notificationService.createNotification(
-                            manager.id,
-                            `Nouvelle demande de congé à valider (${initiatorName})`,
+                            assigneeUser.id,
+                            `Nouvelle demande de congé à valider (${initiatorName}) - ${diffDays} jours`,
                             'TASK_CREATED'
                         );
                     }
 
-                    return { instanceId: instance.id, taskId: task.id, assignedTo: "MANAGER" };
+                    return { instanceId: instance.id, taskId: task.id, assignedTo: isApproved ? "MANAGER" : "RH" };
                 }
 
                 // Default Generic Logic
@@ -407,35 +462,54 @@ export const workflowEngineService = {
             const edges = Array.isArray(workflow.edges) ? (workflow.edges as any[]) : [];
 
             // Find current node in React Flow (matched by title/label)
-            const currentNode = nodes.find(n => n.data?.title === task.step.name || n.data?.label === task.step.name);
+            let currentNode = nodes.find(n => n.data?.title === task.step.name || n.data?.label === task.step.name);
 
             if (!currentNode) {
+                // Try fallback based on step order if names mismatch
                 throw new Error("Could not find the current step node in the workflow graph.");
             }
 
-            const outgoingEdge = edges.find(e => e.source === currentNode.id);
+            // Find immediate outgoing edges
+            let outgoingEdges = edges.filter(e => e.source === currentNode?.id);
+            let nextNode: any = null;
+            let currentEdge = outgoingEdges[0];
 
-            // 5. If no outgoing edge, we are at the END
-            if (!outgoingEdge) {
-                await tx.processInstance.update({
-                    where: { id: processInstance.id },
-                    data: { status: 'COMPLETED' }
-                });
-
-                if (application) {
-                    await tx.application.update({
-                        where: { id: application.id },
-                        data: { status: 'COMPLETED' }
-                    });
-                }
-
-                return { status: 'COMPLETED' };
+            if (currentEdge) {
+                nextNode = nodes.find(n => n.id === currentEdge.target);
             }
 
-            // 6. Find next node
-            const nextNode = nodes.find(n => n.id === outgoingEdge.target);
-            if (!nextNode || nextNode.data?.variant === 'end') {
-                // Finalize if next node is END
+            // --- CONDITION NODE EVALUATION ---
+            if (nextNode && (nextNode.type === 'condition' || nextNode.data?.variant === 'condition')) {
+                console.log("[WorkflowEngine] Transitioning through Condition Node:", nextNode.data?.title);
+
+                let conditionResult = true; // Default True
+                if (processInstance.context !== null && typeof processInstance.context === 'object') {
+                    const ctx = processInstance.context as Record<string, any>;
+                    if (ctx.startDate && ctx.endDate) {
+                        const start = new Date(ctx.startDate as string);
+                        const end = new Date(ctx.endDate as string);
+                        const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                        conditionResult = diffDays < 5; // e.g. True if < 5 days, False if >= 5 days
+                        console.log(`[WorkflowEngine] Condition evaluated: diffDays=${diffDays} < 5 is ${conditionResult}`);
+                    }
+                }
+
+                // Find edge from condition node
+                const condEdges = edges.filter(e => e.source === nextNode?.id);
+                // Look for handles: 'true' or 'false'
+                const targetCondEdge = condEdges.find(e => e.sourceHandle === (conditionResult ? 'true' : 'false'))
+                    || condEdges[0]; // fallback
+
+                if (targetCondEdge) {
+                    nextNode = nodes.find(n => n.id === targetCondEdge.target);
+                    currentNode = nextNode; // Move context forward past condition
+                } else {
+                    nextNode = null; // Ends here
+                }
+            }
+
+            // 5. If no next node or we hit END
+            if (!nextNode || nextNode.data?.variant === 'end' || nextNode.type === 'end') {
                 await tx.processInstance.update({
                     where: { id: processInstance.id },
                     data: { status: 'COMPLETED' }
@@ -460,14 +534,18 @@ export const workflowEngineService = {
                 throw new Error(`Step "${nextStepName}" not found in database for this workflow.`);
             }
 
-            // 8. Assign to Next User (Manager by default if it's an approval step)
-            // For now, we fetch the first Manager in the org or keep it unassigned
-            const managerUser = await tx.user.findFirst({
-                where: {
-                    organisationId: workflow.organisationId,
-                    manager: { isNot: null }
-                }
-            });
+            // 8. Assign to Next User (Depends on step type. For simplicity, Manager or RH)
+            // Ideally, we check the targetStep or targetNode type to decide who gets it.
+            let nextAssigneeUser = null;
+            if (nextStepName.toUpperCase().includes('RH')) {
+                nextAssigneeUser = await tx.user.findFirst({
+                    where: { organisationId: workflow.organisationId, rh: { isNot: null } }
+                });
+            } else {
+                nextAssigneeUser = await tx.user.findFirst({
+                    where: { organisationId: workflow.organisationId, manager: { isNot: null } }
+                });
+            }
 
             // 9. Create the Next Task
             const nextTask = await tx.task.create({
@@ -477,7 +555,7 @@ export const workflowEngineService = {
                     processInstanceId: processInstance.id,
                     stepId: targetStep.id,
                     organisationId: workflow.organisationId,
-                    userId: managerUser?.id || null
+                    userId: nextAssigneeUser?.id || null
                 }
             });
 
@@ -492,7 +570,7 @@ export const workflowEngineService = {
             return {
                 status: 'ADVANCED',
                 nextTaskId: nextTask.id,
-                assignedTo: managerUser?.email || 'Unassigned'
+                assignedTo: nextAssigneeUser?.email || 'Unassigned'
             };
         }, { maxWait: 10000, timeout: 20000 });
     },
