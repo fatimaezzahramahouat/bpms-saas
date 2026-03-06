@@ -26,7 +26,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ============================================================================
-// Register Routes (الترتيب مهم!)
+// Register Routes 
 // ============================================================================
 app.use('/api/auth', authRoutes);
 app.use('/api/joboffers', jobOfferRoutes);
