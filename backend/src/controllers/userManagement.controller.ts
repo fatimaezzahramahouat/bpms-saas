@@ -33,6 +33,7 @@ export const userManagementController = {
             const users = await userManagementService.listUsers(organisationId);
             res.status(200).json({ data: users });
         } catch (error: any) {
+            console.error("Error in getUsers:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     },
@@ -71,6 +72,7 @@ export const userManagementController = {
                 res.status(409).json({ error: error.message });
                 return;
             }
+            console.error("Error in createUser:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     },
@@ -118,6 +120,7 @@ export const userManagementController = {
                 res.status(409).json({ error: error.message });
                 return;
             }
+            console.error("Error in updateUser:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     },
@@ -150,6 +153,7 @@ export const userManagementController = {
                 res.status(404).json({ error: error.message });
                 return;
             }
+            console.error("Error in deleteUser:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     },
@@ -184,6 +188,7 @@ export const userManagementController = {
                 data: result,
             });
         } catch (error: any) {
+            console.error("Error in bulkImport:", error);
             res.status(500).json({ error: error.message || "Internal server error" });
         }
     },
