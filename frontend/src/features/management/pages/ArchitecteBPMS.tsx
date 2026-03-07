@@ -59,9 +59,13 @@ export const ArchitecteBPMS = () => {
             source: e.source,
             target: e.target,
             label: e.condition || undefined,
-            type: 'turbo',
+            type: 'step', // Step type is best for conditional branching
             animated: true,
             style: { stroke: '#3b82f6', strokeWidth: 3 },
+            labelStyle: { fill: '#1e293b', fontWeight: 800, fontSize: '12px' },
+            labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+            labelBgPadding: [4, 4],
+            labelBgBorderRadius: 4,
             data: { color: '#3b82f6' }
         }));
 
