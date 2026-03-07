@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Network, Send, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { getLayoutedElements } from '../..//workflow/utils/workflowUtils';
 
 export const ArchitecteBPMS = () => {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({ name: '', sector: '', rules: '' });
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
@@ -24,14 +27,59 @@ export const ArchitecteBPMS = () => {
             const data = await response.json();
             setResult(data);
 
-            // 2. Rediriger ou Charger le Workflow Builder avec ce JSON
-            // window.location.href = `/workflow-builder?data=${btoa(JSON.stringify(data))}`;
-
         } catch (error) {
             console.error("Erreur de génération", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleConfirmAndRedirect = () => {
+        if (!result || !result.nodes || !result.edges) return;
+
+        // 1. Map AI nodes to React Flow nodes
+        const rawNodes = result.nodes.map((n: any) => ({
+            id: n.id,
+            type: n.type === 'start' ? 'turbo' : (n.type === 'end' ? 'turbo' : 'turbo'),
+            position: { x: 0, y: 0 },
+            data: {
+                title: n.label,
+                variant: n.type === 'start' ? 'trigger' : (n.type === 'condition' ? 'condition' : (n.type === 'end' ? 'end' : 'action')),
+                role: n.role || 'EMPLOYE',
+                assigneeType: 'ALL',
+                slaDuration: 24,
+                requiredDocuments: [],
+                autoEmail: { enabled: false }
+            },
+        }));
+
+        // 2. Map AI edges to React Flow edges
+        const rawEdges = result.edges.map((e: any, idx: number) => ({
+            id: `e-ai-${idx}`,
+            source: e.source,
+            target: e.target,
+            label: e.condition || undefined,
+            type: 'turbo',
+            animated: true,
+            style: { stroke: '#3b82f6', strokeWidth: 3 },
+            data: { color: '#3b82f6' }
+        }));
+
+        // 3. Apply Dagre Auto-Layout
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(rawNodes, rawEdges);
+
+        // 4. Create the final package
+        const workflowData = {
+            nodes: layoutedNodes,
+            edges: layoutedEdges,
+            metadata: result.metadata,
+            dataModel: result.data_model,
+            rules: result.business_rules
+        };
+
+        // 5. Save to LocalStorage and Redirect
+        localStorage.setItem('ai_generated_workflow', JSON.stringify(workflowData));
+        navigate('/dashboard/workflow');
     };
 
     return (
@@ -100,12 +148,20 @@ export const ArchitecteBPMS = () => {
                 <div className="flex-1 p-8 overflow-auto">
                     {result ? (
                         <div className="space-y-6 h-full flex flex-col">
-                            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl">
-                                <h3 className="text-emerald-500 font-bold mb-2 flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                    Architecture Générée
-                                </h3>
-                                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Le workflow est prêt à être injecté dans le Builder.</p>
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-emerald-500 font-bold mb-2 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                        Architecture Générée
+                                    </h3>
+                                    <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Prévisualisation du blueprint généré par l'IA.</p>
+                                </div>
+                                <button
+                                    onClick={handleConfirmAndRedirect}
+                                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg flex items-center gap-2 text-sm"
+                                >
+                                    Confirmer & Ouvrir dans Builder &rarr;
+                                </button>
                             </div>
                             <pre className="flex-1 bg-zinc-50 dark:bg-zinc-950/50 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-sm overflow-x-auto text-zinc-700 dark:text-zinc-300 font-mono">
                                 {JSON.stringify(result, null, 2)}
