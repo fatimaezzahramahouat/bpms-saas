@@ -112,7 +112,7 @@ model Candidate {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   status       CandidateStatus @default(CANDIDATE)
-  skills       String[]        @default([])
+skills       String[]        @default([])
   experience   String?
   education    String?
   applications Application[]

@@ -51,76 +51,167 @@ export function CandidateProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'analysis'>('profile');
-  // ✅ useEffect واحد فقط - نظيف وبدون تكرار
+  
   useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
+  const fetchCandidateAndAnalysis = async () => {
+    if (!id) return;
+    
+    try {
+      console.log('🔍 [DEBUG] Fetching candidate:', id);
       
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const token = localStorage.getItem('token');
-        
-        const candidateRes = await fetch(`http://localhost:5000/api/candidates/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!candidateRes.ok) throw new Error('Failed to fetch candidate');
-        
-        const candidateData = await candidateRes.json();
-        setCandidate(candidateData.data || candidateData);
-        
-        const jobOfferId = candidateData.applications?.[0]?.jobOfferId;
-        if (jobOfferId) {
-          try {
-            const analysisRes = await fetch(
-              `http://localhost:5000/api/analyze-candidate/${id}/${jobOfferId}`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-            
-            if (analysisRes.ok) {
-              const analysisData = await analysisRes.json();
-              if (analysisData.data?.analysis) {
-                console.log('✅ Analysis found!');
-                setAnalysis(analysisData.data.analysis);
-                setActiveTab('analysis');
+      const token = localStorage.getItem('token');
+      
+      // 1. جلب بيانات المرشح
+      const candidateRes = await fetch(`http://localhost:5000/api/candidates/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!candidateRes.ok) {
+        throw new Error(`Failed to fetch candidate: ${candidateRes.status}`);
+      }
+      
+      const candidateData = await candidateRes.json();
+      console.log('✅ [DEBUG] Candidate received:', {
+        id: candidateData.data?.id || candidateData.id,
+        name: candidateData.data?.fullName || candidateData.fullName,
+        applications: candidateData.data?.applications?.length || candidateData.applications?.length
+      });
+      
+      setCandidate(candidateData.data || candidateData);
+      
+      // 2. ✅ استخدام application.id والـ endpoint الصحيح
+      const applications = candidateData.data?.applications || candidateData.applications;
+      const application = applications?.[0];
+      
+      console.log('🔍 [DEBUG] Application info:', {
+        hasApplication: !!application,
+        applicationId: application?.id,
+        jobOfferId: application?.jobOfferId
+      });
+      
+      if (application?.id) {
+        try {
+          // ✅ endpoint الصحيح: /api/applications/:id/analysis
+          console.log('📡 [DEBUG] Fetching analysis for application:', application.id);
+          
+          const analysisRes = await fetch(
+            `http://localhost:5000/api/applications/${application.id}/analysis`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
               }
             }
-          } catch (err) {
-            console.log('⏳ No analysis yet');
+          );
+          
+          console.log('📡 [DEBUG] Analysis status:', analysisRes.status);
+          
+          if (analysisRes.ok) {
+            const analysisData = await analysisRes.json();
+            console.log('📡 [DEBUG] Raw analysis from backend:', analysisData);
+            
+            // ✅ تحويل البيانات من تنسيق Prisma إلى AIAnalysis interface
+            if (analysisData) {
+           // ✅ الكود الجديد: يدعم التنسيق الفرنسي من الـ Backend
+const formatted: AIAnalysis = {
+  // ✅ Score عام
+  overallScore: analysisData.overallScore || 0,
+  
+  // ✅ تحويل categoryScores (مع دعم المفاتيح الفرنسية)
+  categoryScores: {
+    skills: analysisData.result?.categoryScores?.['compétences'] || 
+            analysisData.result?.categoryScores?.skills || 
+            analysisData.skillsScore || null,
+    experience: analysisData.result?.categoryScores?.['expérience'] || 
+                analysisData.result?.categoryScores?.experience || 
+                analysisData.experienceScore || null,
+    education: analysisData.result?.categoryScores?.['éducation'] || 
+               analysisData.result?.categoryScores?.education || 
+               analysisData.educationScore || null,
+    technicalFit: analysisData.result?.categoryScores?.['adéquation technique'] || 
+                  analysisData.result?.categoryScores?.technicalFit || 
+                  analysisData.technicalFitScore || null
+  },
+  
+  // ✅ forces → strengths
+  strengths: analysisData.result?.forces || 
+             analysisData.strengths || 
+             [],
+  
+  // ✅ faiblesses → weaknesses  
+  weaknesses: analysisData.result?.faiblesses || 
+              analysisData.weaknesses || 
+              [],
+  
+  // ✅ skills
+  matchedSkills: analysisData.matchedSkills || 
+                 analysisData.result?.['exigences correspondantes'] || 
+                 [],
+  missingSkills: analysisData.missingSkills || 
+                 analysisData.result?.['exigences manquantes'] || 
+                 [],
+  
+  // ✅object recommandation
+  recommendation: analysisData.result?.recommandation?.notes || 
+                  analysisData.result?.recommandation || 
+                  analysisData.recommendation,
+  
+  // ✅ recommandation.priorité
+  priority: analysisData.result?.recommandation?.priorité || 
+            analysisData.priority,
+  
+  // ✅ recommandation['questions d\'entretien']
+  interviewQuestions: analysisData.interviewQuestions || 
+                      analysisData.result?.recommandation?.['questions d\'entretien'] || 
+                      []
+};
+              
+              console.log('✅ [DEBUG] Formatted analysis:', {
+                score: formatted.overallScore,
+                strengths: formatted.strengths.length,
+                weaknesses: formatted.weaknesses.length
+              });
+              
+              setAnalysis(formatted);
+              setActiveTab('analysis');
+            }
+          } else if (analysisRes.status === 404) {
+            console.log('⏳ [DEBUG] Analysis not found yet (still processing)');
+          } else {
+            const errorText = await analysisRes.text();
+            console.error('❌ [DEBUG] Analysis error:', analysisRes.status, errorText);
           }
+        } catch (err) {
+          console.error('📡 [DEBUG] Network error:', err);
         }
-        
-      } catch (err) {
-        console.error('❌ Error:', err);
-        setError(err instanceof Error ? err.message : 'Erreur');
-      } finally {
-        setLoading(false);
+      } else {
+        console.warn('⚠️ [DEBUG] No application found for this candidate');
       }
-    };
-    
-    fetchData();
-    
-    const intervalId = setInterval(() => {
-      if (!analysis) {
-        console.log('🔄 Checking...');
-        fetchData();
-      }
-    }, 3000);
-    
-    return () => clearInterval(intervalId);
-    
-  }, [id, analysis]);  // ✅ هذا هو الإغلاق الوحيد - لا شيء بعده!
-
+      
+    } catch (err) {
+      console.error('❌ [DEBUG] Main error:', err);
+      setError(err instanceof Error ? err.message : 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchCandidateAndAnalysis();
+  
+  // Polling كل 5 ثوانٍ فقط إذا لم نجد التحليل بعد
+  const intervalId = setInterval(() => {
+    if (!analysis) {
+      console.log('🔄 [DEBUG] Polling for analysis...');
+      fetchCandidateAndAnalysis();
+    }
+  }, 5000);
+  
+  return () => clearInterval(intervalId);
+  
+}, [id, analysis]);
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

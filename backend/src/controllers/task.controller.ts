@@ -104,28 +104,31 @@ export const taskController = {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const tasks = await prisma.task.findMany({
-            where: {
-                userId: userId, // Tasks specifically assigned to this manager
-                status: "PENDING"
-            },
+      
+const tasks = await prisma.task.findMany({
+    where: {
+        userId: userId,
+        status: "PENDING"
+    },
+    include: {
+        
+        user: {
+            select: {
+                firstName: true,
+                lastName: true,
+                email: true
+            }
+        },
+        processInstance: {
             include: {
-                processInstance: {
-                    include: {
-                        workflow: true,
-                        user: {
-                            select: {
-                                firstName: true,
-                                lastName: true,
-                                email: true
-                            }
-                        }
-                    }
-                },
-                step: true
-            },
-            orderBy: { createdAt: "desc" }
-        });
+                workflow: true
+                
+            }
+        },
+        step: true
+    },
+    orderBy: { createdAt: "desc" }
+});
 
         res.status(200).json(tasks);
     })
