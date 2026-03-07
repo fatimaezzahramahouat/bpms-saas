@@ -30,6 +30,7 @@ export const settingsController = {
       if (parsed.data.firstName !== undefined) updateData["firstName"] = parsed.data.firstName;
       if (parsed.data.lastName !== undefined) updateData["lastName"] = parsed.data.lastName;
       if (parsed.data.email !== undefined) updateData["email"] = parsed.data.email;
+      if (parsed.data.phone !== undefined) updateData["phone"] = parsed.data.phone;
 
       const user = await settingsService.updateProfile(userId, updateData);
       res.status(200).json({ message: "Profile updated successfully", data: user });

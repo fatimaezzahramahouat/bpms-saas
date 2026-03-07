@@ -41,7 +41,9 @@ export const Sidebar: React.FC = () => {
     const filteredMenuItems = menuItems.filter(item => {
         // Only Admin and RH can see Workflow Builder
         if (item.path === '/dashboard/workflow') return isAdmin || isHR;
-
+        //Only  and RH can see Job Offers
+        if (item.path === '/dashboard/rh/job-offers') return  isHR;
+        if (item.path === '/dashboard/rh/statistics') return  isHR;
         // Only Employees see "Mes Demandes" (or hide builder for them)
         if (item.path === '/dashboard/mes-demandes') return !isAdmin && !isHR;
 

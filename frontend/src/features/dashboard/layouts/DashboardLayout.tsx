@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap, Briefcase, BarChart3 } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
@@ -77,12 +77,10 @@ const fetchProfile = async () => {
 
             // Persist latest data
             localStorage.setItem('user', JSON.stringify(user));
+            window.dispatchEvent(new Event('user-data-updated'));
 
             setUserData(user);
             setOrgData(user.organisation);
-            setUserName(`${user.firstName} ${user.lastName}`);
-            setUserRole(getRoleLabel(user));
-            setIsAdmin(!!user.admin);
 
             if (user.organisation?.orgInfo) {
                 setHasOrgInfo(true);
@@ -166,6 +164,19 @@ const fetchProfile = async () => {
                             <GitMerge className="w-5 h-5" />
                             Workflow Builder
                         </NavLink>
+                    )}
+
+                    {isUserHR && (
+                        <>
+                            <NavLink to="/dashboard/rh/job-offers" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                                <Briefcase className="w-5 h-5" />
+                                Offres d'emploi
+                            </NavLink>
+                            <NavLink to="/dashboard/rh/statistics" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                                <BarChart3 className="w-5 h-5" />
+                                Statistiques
+                            </NavLink>
+                        </>
                     )}
 
                     {!hasElevatedAccess && (
