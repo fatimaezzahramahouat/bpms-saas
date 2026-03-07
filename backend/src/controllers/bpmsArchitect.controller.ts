@@ -20,7 +20,7 @@ export const bpmsArchitectController = {
 
             const { name, sector, rules } = parsed.data;
 
-            const systemPrompt = `Tu es l'Architecte BPMS de DilWeb Agency. Ta mission est de générer UNIQUEMENT un objet JSON structuré pour un Workflow Builder.
+            const systemPrompt = `Tu es l'Architecte BPMS de Nexflow AI. Ta mission est de générer UNIQUEMENT un objet JSON structuré pour un Workflow Builder.
 L'utilisateur te donnera : [Nom du Processus, Secteur, Règles].
 
 Tu dois retourner un JSON avec cette structure exacte :

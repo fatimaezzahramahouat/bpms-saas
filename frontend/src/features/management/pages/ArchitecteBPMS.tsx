@@ -87,7 +87,7 @@ export const ArchitecteBPMS = () => {
                         className="w-full bg-h1-blue hover:bg-h1-blue/90 disabled:opacity-50 text-white px-6 py-4 rounded-2xl font-black text-sm transition-all shadow-lg shadow-h1-blue/20 flex items-center justify-center gap-2 uppercase tracking-widest mt-auto"
                     >
                         {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <Send size={18} />}
-                        {loading ? 'GÉNÉRATION...' : 'Générer avec DilWeb AI'}
+                        {loading ? 'GÉNÉRATION...' : 'Générer avec nexflow ai'}
                     </button>
                 </div>
             </div>
