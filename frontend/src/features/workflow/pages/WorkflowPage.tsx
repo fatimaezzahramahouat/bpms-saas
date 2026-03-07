@@ -191,59 +191,71 @@ const WorkflowEditor: React.FC = () => {
 
         if (!workflowName || workflowName.trim() === '') {
             toast.error("Veuillez donner un nom à votre workflow avant de sauvegarder.");
-            alert("Veuillez donner un nom à votre workflow avant de sauvegarder.");
             return;
         }
 
-        // Validation logic
+        // Warn (but don't block) if Trigger is missing
         const startNode = flow.nodes.find(n => n.data.variant === 'trigger');
-        const endNode = flow.nodes.find(n => n.data.variant === 'end');
-
         if (!startNode) {
-            toast.error("Erreur : Aucun nœud 'Début' (Trigger) trouvé !");
-            return;
+            toast.warn("Attention : aucun nœud 'Début' (Trigger) n'a été trouvé dans le canvas.");
         }
-
-        const steps = flow.nodes.map((node, index) => ({
-            name: node.data.title || 'Étape sans titre',
-            order: index + 1,
-            metadata: {
-                variant: node.data.variant,
-                role: (node.data as any).role,
-                slaDuration: (node.data as any).slaDuration,
-                requiredDocuments: (node.data as any).requiredDocuments,
-                autoEmail: (node.data as any).autoEmail,
-                actionType: (node.data as any).actionType,
-                position: node.position,
-                nodeId: node.id
-            }
-        }));
 
         const payload = {
             name: workflowName,
             nodes: flow.nodes,
             edges: flow.edges,
-            steps: steps,
         };
 
+        // ── PATCH (update) if we already have an ID in the URL ──
+        if (id && id !== 'new') {
+            const loadingToast = toast.loading("Sauvegarde en cours...");
+            try {
+                console.log(`[WorkflowPage] Mise à jour du workflow existant (id: ${id})...`);
+                await workflowService.updateWorkflow(id, payload);
+                toast.update(loadingToast, {
+                    render: "Workflow sauvegardé avec succès !",
+                    type: "success",
+                    isLoading: false,
+                    autoClose: 3000,
+                });
+            } catch (error: any) {
+                console.error('[WorkflowPage] Update error:', error);
+                const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+                toast.update(loadingToast, {
+                    render: `Échec de la sauvegarde : ${msg}`,
+                    type: "error",
+                    isLoading: false,
+                    autoClose: 5000,
+                });
+            }
+            return;
+        }
+
+        // ── POST (create) when no ID yet ──
         const loadingToast = toast.loading("Création du workflow...");
         try {
             console.log("[WorkflowPage] Création d'un nouveau workflow...");
             const response = await workflowService.createWorkflow(payload);
             const newWf = response.data;
-
             console.log("[WorkflowPage] Succès ! Nouvel ID :", newWf?.id);
-            alert('Workflow créé avec succès !');
-
-            toast.update(loadingToast, { render: "Workflow créé !", type: "success", isLoading: false, autoClose: 3000 });
-
+            toast.update(loadingToast, {
+                render: "Workflow créé avec succès !",
+                type: "success",
+                isLoading: false,
+                autoClose: 3000,
+            });
             if (newWf?.id) {
-                navigate(`/dashboard/workflow/${newWf.id}`, { replace: true });
+                navigate(`/dashboard/workflow/editor/${newWf.id}`, { replace: true });
             }
         } catch (error: any) {
-            console.error('Save Error:', error);
+            console.error('[WorkflowPage] Create error:', error);
             const msg = error.response?.data?.message || error.message;
-            toast.update(loadingToast, { render: `Échec : ${msg}`, type: "error", isLoading: false, autoClose: 5000 });
+            toast.update(loadingToast, {
+                render: `Échec de la création : ${msg}`,
+                type: "error",
+                isLoading: false,
+                autoClose: 5000,
+            });
         }
     };
 
