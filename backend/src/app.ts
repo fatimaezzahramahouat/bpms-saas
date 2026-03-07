@@ -16,6 +16,7 @@ import processRouter from "./routes/process.routes";
 import notificationRouter from "./routes/notification.routes";
 import settingsRouter from "./routes/settings.routes";
 import analyzeRoutes from "./routes/analyze-candidate";
+import bpmsArchitectRouter from "./routes/bpmsArchitect.routes";
 
 import { errorMiddleware } from "./middleware/error.middleware";
 
@@ -70,6 +71,7 @@ app.use("/api/tasks", taskRouter);
 app.use("/api/process", processRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/generate-bpms", bpmsArchitectRouter);
 
 // Health check
 app.get("/", (req, res) => {
