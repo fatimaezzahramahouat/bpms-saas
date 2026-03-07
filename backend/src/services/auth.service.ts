@@ -90,11 +90,11 @@ export const authService = {
 
   async completeOrganisationInfo(organisationId: string, input: CompleteOrgInfoInput) {
     const orgInfo = await authRepository.createOrgInfo(organisationId, {
-      logo: input.logo,
-      website: input.website,
-      city: input.city,
-      domaine: input.domaine,
-      address: input.address,
+      logo: input.logo ?? "",
+      website: input.website ?? "",
+      city: input.city ?? "",
+      domaine: input.domaine ?? "",
+      address: input.address ?? "",
     });
 
     return orgInfo;
@@ -108,6 +108,9 @@ export const authService = {
     }
 
     // 2. Compare password
+    if (!user.password) {
+      throw new Error("Invalid email or password");
+    }
     const isMatch = await bcrypt.compare(input.password, user.password);
     if (!isMatch) {
       throw new Error("Invalid email or password");
@@ -176,7 +179,7 @@ export const authService = {
   async resetPassword(token: string, newPassword: string) {
     // 1. Find user by token
     const user = await authRepository.findUserByResetToken(token);
-    
+
     // 2. Verify token and expiration
     if (!user || !user.resetExpires || user.resetExpires < new Date()) {
       throw new Error("Le jeton de réinitialisation est invalide ou a expiré.");
