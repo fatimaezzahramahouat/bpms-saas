@@ -21,7 +21,11 @@ import { errorMiddleware } from "./middleware/error.middleware";
 
 const app = express();
 
-// Security
+// ============================================================================
+// Security & Middleware
+// ============================================================================
+
+// Helmet for security headers
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -41,7 +45,7 @@ app.use(
   })
 );
 
-// Middleware
+// CORS Configuration
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:3000",
@@ -49,15 +53,18 @@ app.use(
   })
 );
 
+// Body parsers
 app.use(cookieParser());
-
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }));
 
-// uploads
+// Static files for uploads
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// Routes
+// ============================================================================
+// API Routes
+// ============================================================================
+
 app.use("/api/auth", authRouter);
 app.use("/api/organisation", organisationRouter);
 app.use("/api/users", userManagementRouter);
@@ -71,7 +78,10 @@ app.use("/api/process", processRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/settings", settingsRouter);
 
-// Health check
+// ============================================================================
+// Health Check & Root
+// ============================================================================
+
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
@@ -87,7 +97,11 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// 404
+// ============================================================================
+// 404 & Error Handling
+// ============================================================================
+
+// 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     error: "Not Found",
@@ -95,7 +109,7 @@ app.use((req, res) => {
   });
 });
 
-// Error handler
+// Global Error Handler
 app.use(errorMiddleware);
 
 export default app;
