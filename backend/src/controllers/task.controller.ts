@@ -93,6 +93,24 @@ export const taskController = {
     }),
 
     /**
+     * PATCH /api/tasks/:id/reject
+     * Rejects the task and terminates the process.
+     */
+    rejectTask: catchAsync(async (req: AuthRequest, res: Response) => {
+        const id = req.params.id as string;
+        const userId = req.user?.userId;
+
+        if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
+
+        const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', userId);
+
+        res.status(200).json({
+            message: "Task rejected successfully",
+            data: result
+        });
+    }),
+
+    /**
      * GET /api/tasks/approvals
      * Gets all pending tasks assigned to the manager for review.
      */

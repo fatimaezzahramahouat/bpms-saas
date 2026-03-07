@@ -90,6 +90,7 @@ const WorkflowEditor: React.FC = () => {
                         setNodes(wf.nodes || initialNodes);
                         setEdges(wf.edges || initialEdges);
                         setWorkflowName(wf.name || 'Workflow Sans Titre');
+                        setTimeout(() => fitView({ duration: 800 }), 300);
                     }
                 } catch (err) {
                     console.error('Error loading workflow:', err);
@@ -98,7 +99,31 @@ const WorkflowEditor: React.FC = () => {
             };
             fetchWf();
         }
-    }, [id, setNodes, setEdges]);
+    }, [id, setNodes, setEdges, fitView]);
+
+    // Load AI generated workflow from localStorage if it exists
+    useEffect(() => {
+        const storedData = localStorage.getItem('ai_generated_workflow');
+        if (storedData && (!id || id === 'new')) {
+            try {
+                const { nodes, edges, metadata } = JSON.parse(storedData);
+
+                if (nodes && edges) {
+                    setNodes(nodes);
+                    setEdges(edges);
+                    if (metadata && metadata.name) {
+                        setWorkflowName(metadata.name);
+                    }
+                    setTimeout(() => fitView({ duration: 800 }), 300);
+                }
+            } catch (err) {
+                console.error('Error parsing AI workflow data:', err);
+            } finally {
+                // Clean up storage so it doesn't reload on every refresh
+                localStorage.removeItem('ai_generated_workflow');
+            }
+        }
+    }, [id, setNodes, setEdges, fitView]);
 
     const onConnect = useCallback(
         (params: Connection) => {
