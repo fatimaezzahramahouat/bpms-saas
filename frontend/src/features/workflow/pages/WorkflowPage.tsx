@@ -72,6 +72,7 @@ const WorkflowEditor: React.FC = () => {
     const { isAdmin, canEditWorkflow: canEdit } = usePermission();
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [workflowName, setWorkflowName] = useState('Nouveau Workflow');
+    const [dataModel, setDataModel] = useState<any[]>([]);
 
     const selectedNode = useMemo(
         () => nodes.find((n) => n.id === selectedNodeId) || null,
@@ -90,6 +91,7 @@ const WorkflowEditor: React.FC = () => {
                         setNodes(wf.nodes || initialNodes);
                         setEdges(wf.edges || initialEdges);
                         setWorkflowName(wf.name || 'Workflow Sans Titre');
+                        setDataModel(wf.data_model || []);
                         setTimeout(() => fitView({ duration: 800 }), 300);
                     }
                 } catch (err) {
@@ -106,13 +108,16 @@ const WorkflowEditor: React.FC = () => {
         const storedData = localStorage.getItem('ai_generated_workflow');
         if (storedData && (!id || id === 'new')) {
             try {
-                const { nodes, edges, metadata } = JSON.parse(storedData);
+                const { nodes, edges, metadata, data_model } = JSON.parse(storedData);
 
                 if (nodes && edges) {
                     setNodes(nodes);
                     setEdges(edges);
                     if (metadata && metadata.name) {
                         setWorkflowName(metadata.name);
+                    }
+                    if (data_model) {
+                        setDataModel(data_model);
                     }
                     setTimeout(() => fitView({ duration: 800 }), 300);
                 }
@@ -249,21 +254,28 @@ const WorkflowEditor: React.FC = () => {
             nodes: flow.nodes,
             edges: flow.edges,
             steps: steps,
+            data_model: dataModel,
         };
 
-        const loadingToast = toast.loading("Création du workflow...");
+        const loadingToast = toast.loading(id && id !== 'new' ? "Mise à jour du workflow..." : "Création du workflow...");
         try {
-            console.log("[WorkflowPage] Création d'un nouveau workflow...");
-            const response = await workflowService.createWorkflow(payload);
-            const newWf = response.data;
+            if (id && id !== 'new') {
+                console.log("[WorkflowPage] Mise à jour du workflow...");
+                await workflowService.updateWorkflow(id, payload);
+                toast.update(loadingToast, { render: "Workflow mis à jour !", type: "success", isLoading: false, autoClose: 3000 });
+            } else {
+                console.log("[WorkflowPage] Création d'un nouveau workflow...");
+                const response = await workflowService.createWorkflow(payload);
+                const newWf = response.data;
 
-            console.log("[WorkflowPage] Succès ! Nouvel ID :", newWf?.id);
-            alert('Workflow créé avec succès !');
+                console.log("[WorkflowPage] Succès ! Nouvel ID :", newWf?.id);
+                alert('Workflow créé avec succès !');
 
-            toast.update(loadingToast, { render: "Workflow créé !", type: "success", isLoading: false, autoClose: 3000 });
+                toast.update(loadingToast, { render: "Workflow créé !", type: "success", isLoading: false, autoClose: 3000 });
 
-            if (newWf?.id) {
-                navigate(`/dashboard/workflow/${newWf.id}`, { replace: true });
+                if (newWf?.id) {
+                    navigate(`/dashboard/workflow/${newWf.id}`, { replace: true });
+                }
             }
         } catch (error: any) {
             console.error('Save Error:', error);

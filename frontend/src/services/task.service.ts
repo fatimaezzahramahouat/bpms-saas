@@ -32,4 +32,12 @@ export const taskService = {
         const response = await api.patch(`/tasks/${taskId}/approve`);
         return response.data;
     },
+
+    /**
+     * Rejects a task and terminates the graph progression logic.
+     */
+    async rejectTask(taskId: string) {
+        const response = await api.patch(`/tasks/${taskId}/reject`);
+        return response.data;
+    },
 };

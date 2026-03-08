@@ -10,7 +10,7 @@ export const processController = {
      * Starts a new process instance for a workflow.
      */
     startProcess: catchAsync(async (req: AuthRequest, res: Response) => {
-        const { workflowId, startDate, endDate, reason } = req.body;
+        const { workflowId, metadata, startDate, endDate, reason } = req.body;
         const file = req.file;
         const userId = req.user?.userId;
         const organisationId = req.user?.organisationId;
@@ -24,11 +24,22 @@ export const processController = {
         }
 
         try {
+            // Parse metadata if sent as JSON string in FormData
+            let finalMetadata = metadata ? (typeof metadata === 'string' ? JSON.parse(metadata) : metadata) : {};
+
+            // Backwards compatibility for legacy LeaveRequestForm
+            if (startDate || endDate || reason) {
+                finalMetadata = { ...finalMetadata, startDate, endDate, reason };
+            }
+            if (file) {
+                finalMetadata.file = file;
+            }
+
             const result = await workflowEngineService.startProcessInstance(
                 workflowId,
                 userId,
                 organisationId,
-                { startDate, endDate, reason, file }
+                finalMetadata
             );
 
             res.status(201).json({

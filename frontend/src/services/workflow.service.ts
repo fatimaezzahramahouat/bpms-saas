@@ -31,6 +31,7 @@ export interface IWorkflow {
     version: number;
     nodes: any[];
     edges: any[];
+    data_model?: any;
     createdAt: string;
     updatedAt: string;
     _count?: {

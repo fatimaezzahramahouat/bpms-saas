@@ -178,6 +178,7 @@ model Workflow {
   organisationId String
   createdAt      DateTime          @default(now())
   description    String?
+  data_model     Json?             @default("[]")
   edges          Json?             @default("[]")
   nodes          Json?             @default("[]")
   status         WorkflowStatus    @default(DRAFT)

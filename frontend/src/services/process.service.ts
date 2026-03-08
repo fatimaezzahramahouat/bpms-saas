@@ -21,8 +21,20 @@ export const processService = {
      * Starts a new workflow process instance.
      */
     async startProcess(workflowId: string, data?: any) {
-        // If data is FormData, send it directly, otherwise send as JSON
-        const response = await api.post('/process/start', data instanceof FormData ? data : { workflowId });
+        // Data contains metadata properties like custom fields. Send it as JSON under 'metadata'.
+        const payload = data instanceof FormData
+            ? data
+            : { workflowId, metadata: data };
+
+        const response = await api.post('/process/start', payload);
+        return response.data;
+    },
+
+    /**
+     * Gets all process instances initiated by the current user.
+     */
+    async getMyRequests() {
+        const response = await api.get('/process/my-requests');
         return response.data;
     },
 };

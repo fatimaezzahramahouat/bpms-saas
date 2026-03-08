@@ -29,14 +29,6 @@ interface Task {
             lastName: string;
             email: string;
         };
-        application?: {
-            candidate: {
-                fullName: string;
-            };
-            jobOffer: {
-                title: string;
-            };
-        };
     };
     step: {
         name: string;
@@ -78,6 +70,28 @@ export const MyApprovals: React.FC = () => {
             console.error('Approve error:', error);
             toast.update(loadingToast, {
                 render: error.response?.data?.error || 'Une erreur est survenue lors de l\'approbation',
+                type: 'error',
+                isLoading: false,
+                autoClose: 5000
+            });
+        }
+    };
+
+    const handleReject = async (taskId: string) => {
+        const loadingToast = toast.loading("Refus en cours...");
+        try {
+            await taskService.rejectTask(taskId);
+            toast.update(loadingToast, {
+                render: "Demande refusée et workflow terminé.",
+                type: 'success',
+                isLoading: false,
+                autoClose: 3000
+            });
+            fetchTasks(); // Refresh list to remove the task
+        } catch (error: any) {
+            console.error('Reject error:', error);
+            toast.update(loadingToast, {
+                render: error.response?.data?.error || 'Une erreur est survenue lors du refus',
                 type: 'error',
                 isLoading: false,
                 autoClose: 5000
@@ -141,7 +155,7 @@ export const MyApprovals: React.FC = () => {
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 relative">
                     {tasks.map((task, index) => {
                         const initiator = task.processInstance.user;
-                        const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : (task.processInstance.application?.candidate?.fullName || "Employé");
+                        const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Employé Inconnu";
                         const context = task.processInstance.context || {};
                         const isUrgent = context.reason?.toLowerCase().includes('urgent');
 
@@ -189,11 +203,18 @@ export const MyApprovals: React.FC = () => {
                                                 <span className="text-sm font-bold text-slate-200">
                                                     {task.processInstance.workflow?.name || "Workflow Interne"}
                                                 </span>
-                                                {context.startDate && (
-                                                    <span className="text-xs text-slate-400">
-                                                        Du {formatDate(context.startDate)} au {formatDate(context.endDate)}
-                                                    </span>
-                                                )}
+                                                <div className="flex flex-col mt-0.5">
+                                                    {context.startDate && context.endDate && (
+                                                        <span className="text-xs text-slate-400">
+                                                            Du {formatDate(context.startDate)} au {formatDate(context.endDate)}
+                                                        </span>
+                                                    )}
+                                                    {context.duration && (
+                                                        <span className="text-xs font-semibold text-purple-400 mt-0.5">
+                                                            Durée: {context.duration} jour(s)
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -201,10 +222,10 @@ export const MyApprovals: React.FC = () => {
                                     <div className="space-y-3">
                                         <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Motif / Commentaire</p>
                                         <div className="flex items-start gap-3">
-                                            <div className="p-2.5 bg-slate-800 rounded-xl text-slate-400">
+                                            <div className="p-2.5 bg-slate-800 rounded-xl text-slate-400 shrink-0">
                                                 <User size={16} />
                                             </div>
-                                            <p className="text-sm font-medium text-slate-400 italic">
+                                            <p className="text-sm font-medium text-slate-400 italic mt-1 line-clamp-3">
                                                 {context.reason || "Aucun motif précisé"}
                                             </p>
                                         </div>
@@ -214,10 +235,17 @@ export const MyApprovals: React.FC = () => {
                                 <div className="pt-8 border-t border-white/5 flex gap-4 pl-2">
                                     <button
                                         onClick={() => handleApprove(task.id)}
-                                        className="flex-1 flex items-center justify-center gap-3 py-4 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95"
+                                        className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95"
                                     >
                                         <CheckCircle2 size={18} strokeWidth={3} />
                                         <span>Approuver</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleReject(task.id)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 font-black text-sm uppercase tracking-widest rounded-2xl border border-slate-700 hover:border-red-500/50 transition-all hover:-translate-y-1 active:scale-95"
+                                    >
+                                        <XCircle size={18} strokeWidth={3} />
+                                        <span>Refuser</span>
                                     </button>
                                 </div>
                             </motion.div>
