@@ -23,6 +23,15 @@ import { errorMiddleware } from "./middleware/error.middleware";
 
 const app = express();
 
+// Global Logger for Debugging
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  console.log("Headers:", JSON.stringify(req.headers, null, 2));
+  // Only log body if it's already parsed (might be empty/missing for multipart)
+  console.log("Body:", req.body);
+  next();
+});
+
 // Security
 app.use(
   helmet({

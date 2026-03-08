@@ -27,6 +27,8 @@ const completeOrgInfoSchema = z.object({
   city: z.string().min(1, "City is required"),
   domaine: z.string().min(1, "Domaine is required"),
   address: z.string().min(1, "Address is required"),
+  emailorg: z.string().email("Invalid organization email"),
+  phoneorg: z.string().min(1, "Organization phone is required"),
 });
 
 const loginSchema = z.object({
@@ -313,9 +315,20 @@ export const authController = {
         req.ip
       );
 
-      // Redirect to frontend with token
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-      res.redirect(`${frontendUrl}/auth/google-success?token=${token}`);
+      // Set cookie
+res.cookie("token", token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 24 * 60 * 60 * 1000,
+});
+console.log("Cookies:", req.cookies);
+console.log("BODY:", req.body);
+console.log("CONTENT TYPE:", req.headers["content-type"]);
+console.log("FILE:", req.file);
+// Redirect WITHOUT token in URL
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+res.redirect(`${frontendUrl}/dashboard`);
     } catch (error) {
       console.error("GOOGLE_AUTH_CALLBACK_ERROR:", error);
       res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3000"}/login?error=server_error`);

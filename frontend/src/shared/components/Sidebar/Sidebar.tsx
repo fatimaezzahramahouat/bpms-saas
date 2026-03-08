@@ -53,7 +53,7 @@ export const Sidebar: React.FC = () => {
             return approvalsRoles.includes(roleFromStorage?.toUpperCase());
         }
 
-        if (item.path.includes('equipe')) return canManageUsers;
+        if (item.path.includes('equipe')) return canManageUsers  || isHR;
         return true;
     });
 

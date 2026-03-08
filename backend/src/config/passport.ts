@@ -48,39 +48,38 @@ passport.use(
           }
           return done(null, user);
         } else {
-          // 3. If user doesn't exist, create a new one
-          // Note: Since organisationId is required, we create a default organisation for the user
-          const newUser = await prisma.$transaction(async (tx) => {
-            const organisation = await tx.organisation.create({
-              data: {
-                name: `${profile.displayName}'s Organisation`,
-                nom_admin: profile.displayName,
-                email: email,
-                password: "", // No password for Google users
-              },
-            });
+  // Create user ONLY
+  const newUser = await prisma.$transaction(async (tx) => {
 
-            return tx.user.create({
-              data: {
-                email,
-                firstName: profile.name?.givenName || profile.displayName,
-                lastName: profile.name?.familyName || "",
-                googleId: profile.id,
-                provider: "GOOGLE",
-                organisationId: organisation.id,
-                profileCompleted: false,
-              },
-              include: {
-                admin: true,
-                rh: true,
-                manager: true,
-                employee: true
-              }
-            });
-          });
+    const createdUser = await tx.user.create({
+      data: {
+        email,
+        firstName: profile.name?.givenName || profile.displayName,
+        lastName: profile.name?.familyName || "",
+        googleId: profile.id,
+        provider: "GOOGLE",
+        profileCompleted: false,
+      },
+      include: {
+        admin: true,
+        rh: true,
+        manager: true,
+        employee: true
+      }
+    });
 
-          return done(null, newUser);
-        }
+    // IMPORTANT: Make Google user ADMIN
+    await tx.admin.create({
+      data: {
+        userId: createdUser.id
+      }
+    });
+
+    return createdUser;
+  });
+
+  return done(null, newUser);
+}
       } catch (error) {
         return done(error as Error);
       }

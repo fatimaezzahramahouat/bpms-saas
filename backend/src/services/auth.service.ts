@@ -21,6 +21,19 @@ interface CompleteOrgInfoInput {
   city: string;
   domaine: string;
   address: string;
+  emailorg: string;
+  phoneorg: string;
+}
+
+interface CompleteOnboardingInput {
+  organisationId: string | null;
+  userId: string;
+  email: string;
+  orgInfo: CompleteOrgInfoInput;
+  organisation?: {
+    name: string;
+    nb_employers: string;
+  };
 }
 
 interface LoginInput {
@@ -95,9 +108,30 @@ export const authService = {
       city: input.city,
       domaine: input.domaine,
       address: input.address,
+      emailorg: input.emailorg,
+      phoneorg: input.phoneorg,
     });
 
     return orgInfo;
+  },
+
+  async completeOnboarding(input: CompleteOnboardingInput) {
+    const nb_employers = input.organisation?.nb_employers 
+      ? mapNbEmployers(input.organisation.nb_employers) 
+      : undefined;
+
+    const result = await authRepository.completeOnboardingTransaction({
+      organisationId: input.organisationId,
+      userId: input.userId,
+      orgInfo: input.orgInfo,
+      organisation: input.organisation && nb_employers !== undefined ? {
+        name: input.organisation.name,
+        nb_employers: nb_employers,
+        email: input.email,
+      } : undefined,
+    });
+
+    return result;
   },
 
   async login(input: LoginInput) {

@@ -49,10 +49,14 @@ export const userManagementController = {
                 return;
             }
 
-            // Real-time Admin check (Heritage Pattern)
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check (Heritage Pattern)
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 
@@ -89,10 +93,14 @@ export const userManagementController = {
                 return;
             }
 
-            // Real-time Admin check (Heritage Pattern)
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check (Heritage Pattern)
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 
@@ -137,10 +145,14 @@ export const userManagementController = {
                 return;
             }
 
-            // Real-time Admin check (Heritage Pattern)
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check (Heritage Pattern)
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 
@@ -169,10 +181,14 @@ export const userManagementController = {
                 return;
             }
 
-            // Real-time Admin check
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 

@@ -179,6 +179,8 @@ export const settingsController = {
       if (parsed.data.address !== undefined) updateData["address"] = parsed.data.address;
       if (parsed.data.city !== undefined) updateData["city"] = parsed.data.city;
       if (parsed.data.website !== undefined) updateData["website"] = parsed.data.website;
+      if (parsed.data.emailorg !== undefined) updateData["emailorg"] = parsed.data.emailorg;
+      if (parsed.data.phoneorg !== undefined) updateData["phoneorg"] = parsed.data.phoneorg;
 
       const result = await settingsService.updateOrganisation(organisationId, updateData);
       res.status(200).json({ message: "Organisation updated successfully", data: result });

@@ -42,6 +42,8 @@ export const updateOrganisationSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   website: z.string().optional(),
+  emailorg: z.string().email("Invalid organization email").optional(),
+  phoneorg: z.string().optional(),
 });
 
 export type UpdateOrganisationInput = z.infer<typeof updateOrganisationSchema>;

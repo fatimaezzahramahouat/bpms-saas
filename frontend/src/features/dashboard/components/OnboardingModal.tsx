@@ -1,6 +1,7 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Building2, Globe, MapPin, Layout, Home, X, Upload, Check } from 'lucide-react';
+import { Building2, Globe, MapPin, Layout, Home, X, Upload, Check, Mail, Phone, Users } from 'lucide-react';
+import { getCurrentUser } from '../../auth/services/authService';
 
 interface OnboardingModalProps {
     isOpen: boolean;
@@ -13,8 +14,14 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
         city: '',
         domaine: '',
         address: '',
-        logo: ''
+        logo: '',
+        emailorg: '',
+        phoneorg: '',
+        name: '',
+        nb_employers: ''
     });
+    const user = getCurrentUser();
+    const isGoogleProvider = user?.provider === 'GOOGLE';
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -76,12 +83,24 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
         formDataToSend.append('city', formData.city);
         formDataToSend.append('domaine', formData.domaine);
         formDataToSend.append('address', formData.address);
+        formDataToSend.append('emailorg', formData.emailorg);
+        formDataToSend.append('phoneorg', formData.phoneorg);
+        
+        if (isGoogleProvider) {
+            formDataToSend.append('name', formData.name);
+            formDataToSend.append('nb_employers', formData.nb_employers);
+        }
         
         if (logoFile) {
             formDataToSend.append('logo', logoFile);
         } else if (formData.logo) {
-            // This case handles existing logo if we ever add an "edit" mode
             formDataToSend.append('logo', formData.logo);
+        }
+
+        console.log(">>> FRONTEND SUBMIT START <<<");
+        console.log("FormData Entries:");
+        for (let pair of (formDataToSend as any).entries()) {
+            console.log(pair[0] + ': ' + (pair[1] instanceof File ? `File(${pair[1].name})` : pair[1]));
         }
 
         try {
@@ -91,13 +110,17 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
                 credentials: 'include'
                 // browser automatically sets Content-Type to multipart/form-data with boundary
             });
+            console.log("Response Status:", response.status);
+            console.log("Response Content-Type:", response.headers.get("content-type"));
 
             if (response.ok) {
                 const result = await response.json();
                 onSuccess(result.data);
             } else {
                 const error = await response.json();
-                alert(error.error || 'Une erreur est survenue');
+                console.log("Error Response Body:", JSON.stringify(error, null, 2));
+                const firstError = error.details ? Object.values(error.details)[0] : error.error;
+                alert(Array.isArray(firstError) ? firstError[0] : (firstError || 'Une erreur est survenue'));
             }
         } catch (err) {
             console.error(err);
@@ -223,6 +246,78 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
                                         />
                                     </div>
                                 </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">Email Organisation</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-h1-blue" />
+                                        <input
+                                            type="email"
+                                            name="emailorg"
+                                            placeholder="contact@company.com"
+                                            className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder:text-zinc-600 focus:border-h1-blue outline-none transition-all"
+                                            value={formData.emailorg}
+                                            onChange={handleChange}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">Téléphone Organisation</label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-h1-blue" />
+                                        <input
+                                            type="tel"
+                                            name="phoneorg"
+                                            placeholder="+212 6..."
+                                            className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder:text-zinc-600 focus:border-h1-blue outline-none transition-all"
+                                            value={formData.phoneorg}
+                                            onChange={handleChange}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {isGoogleProvider && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">Nom de l'Organisation</label>
+                                            <div className="relative">
+                                                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-h1-blue" />
+                                                <input
+                                                    type="text"
+                                                    name="name"
+                                                    placeholder="NOM DE VOTRE ENTREPRISE"
+                                                    className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder:text-zinc-600 focus:border-h1-blue outline-none transition-all"
+                                                    value={formData.name}
+                                                    onChange={handleChange}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">Nombre d'employés</label>
+                                            <div className="relative">
+                                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-h1-blue" />
+                                                <select
+                                                    name="nb_employers"
+                                                    className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-white focus:border-h1-blue outline-none transition-all appearance-none px-10"
+                                                    value={formData.nb_employers}
+                                                    onChange={(e: any) => setFormData({ ...formData, nb_employers: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="" disabled className="bg-zinc-900 text-zinc-500">Sélectionner une taille</option>
+                                                    <option value="1-10" className="bg-zinc-900">1-10 employés</option>
+                                                    <option value="11-50" className="bg-zinc-900">11-50 employés</option>
+                                                    <option value="51-200" className="bg-zinc-900">51-200 employés</option>
+                                                    <option value="200+" className="bg-zinc-900">200+ employés</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="pt-4 flex justify-end gap-4">
