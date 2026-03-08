@@ -19,12 +19,19 @@ const MODEL_NAME = 'llama-3.3-70b-versatile'; // ← هذا هو التحديث 
 export async function generateContent(prompt: string): Promise<string> {
   try {
     console.log(`🔄 Calling Groq AI (${MODEL_NAME})...`);
+    console.log(`📝 Prompt length: ${prompt.length} chars`);
     
     const chatCompletion = await groqClient.chat.completions.create({
       messages: [
         {
           role: 'system',
-          content: 'You are an expert HR recruiter and professional CV analyst. Respond in French language only. Output must be valid JSON only, no extra text.'
+          content: `You are an expert HR recruiter and professional CV analyst. 
+
+IMPORTANT: You MUST analyze each candidate UNIQUELY based on their specific CV data provided in the prompt.
+- Do NOT copy example content from the prompt
+- Generate unique analysis based ONLY on the actual CV information provided
+- Each candidate is DIFFERENT - your response must reflect their specific skills, experience, and qualifications
+- Output must be valid JSON only, no extra text.`
         },
         {
           role: 'user',
@@ -32,7 +39,7 @@ export async function generateContent(prompt: string): Promise<string> {
         }
       ],
       model: MODEL_NAME,
-      temperature: 0.2,
+      temperature: 0.3,  // Slightly increased for more varied responses
       max_tokens: 4096,
       top_p: 0.95,
       stream: false,
@@ -40,7 +47,8 @@ export async function generateContent(prompt: string): Promise<string> {
     
     const response = chatCompletion.choices[0]?.message?.content || '';
     
-    console.log('✅ Response received from Groq AI');
+    console.log('✅ Response received from Groq AI, length:', response.length, 'chars');
+    console.log('📊 Response preview:', response.substring(0, 200), '...');
     return response;
     
   } catch (error: unknown) {
