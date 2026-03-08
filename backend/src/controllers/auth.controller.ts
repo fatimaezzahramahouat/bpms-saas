@@ -305,10 +305,7 @@ res.cookie("token", token, {
   sameSite: "lax",
   maxAge: 24 * 60 * 60 * 1000,
 });
-console.log("Cookies:", req.cookies);
-console.log("BODY:", req.body);
-console.log("CONTENT TYPE:", req.headers["content-type"]);
-console.log("FILE:", req.file);
+
 // Redirect WITHOUT token in URL
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 res.redirect(`${frontendUrl}/dashboard`);

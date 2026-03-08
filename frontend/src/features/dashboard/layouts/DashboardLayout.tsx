@@ -105,12 +105,13 @@ export function DashboardLayout() {
                 setShowOnboarding(true);
                 localStorage.setItem('onboarding_done', 'false');
             }
-        } catch (err) {
-            console.error('Failed to fetch profile:', err);
-        } finally {
-            setIsLoadingProfile(false);
         }
-    };
+    } catch (err) {
+        console.error('Failed to fetch profile:', err);
+    } finally {
+        setIsLoadingProfile(false);
+    }
+};
 
     useEffect(() => {
         fetchProfile();
