@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Settings2, Trash2, Cpu, FileText, Globe, Split, Clock, Mail, CheckCircle2, Play, Users } from 'lucide-react';
+import { X, Settings2, Trash2, Cpu, FileText, Globe, Split, Clock, Mail, CheckCircle2, Play, Timer, Paperclip, UserCheck } from 'lucide-react';
 import { Node } from '@xyflow/react';
 import { WorkflowData, isDecisionNode, isAINode, isActionNode, isAPINode } from '../types';
 import { motion } from 'motion/react';
@@ -172,25 +172,151 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                         </div>
                     </div>
                 );
-            case 'api':
+            case 'email':
+                return (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Destinataire</label>
+                            <input
+                                type="text"
+                                value={data.to || ''}
+                                onChange={(e) => handleInputChange('to', e.target.value)}
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                                placeholder="ex: {{initiator.email}}"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sujet</label>
+                            <input
+                                type="text"
+                                value={data.subject || ''}
+                                onChange={(e) => handleInputChange('subject', e.target.value)}
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                                placeholder="Objet de l'email"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Message (HTML/Text)</label>
+                            <textarea
+                                value={data.body || ''}
+                                onChange={(e) => handleInputChange('body', e.target.value)}
+                                rows={4}
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none resize-none"
+                            />
+                        </div>
+                    </div>
+                );
+            case 'timer':
+                return (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="flex gap-3">
+                            <div className="flex-1 space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Durée</label>
+                                <input
+                                    type="number"
+                                    value={data.duration || 1}
+                                    onChange={(e) => handleInputChange('duration', parseInt(e.target.value))}
+                                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                                />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Unité</label>
+                                <select
+                                    value={data.unit || 'hours'}
+                                    onChange={(e) => handleInputChange('unit', e.target.value)}
+                                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                                >
+                                    <option value="minutes">Minutes</option>
+                                    <option value="hours">Heures</option>
+                                    <option value="days">Jours</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'webhook':
                 return (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="flex items-center gap-2">
                             <select
-                                value={data.method || 'GET'}
+                                value={data.method || 'POST'}
                                 onChange={(e) => handleInputChange('method', e.target.value)}
                                 className="bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1.5 text-xs font-bold outline-none"
                             >
                                 <option value="GET">GET</option>
                                 <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
                             </select>
                             <input
                                 type="text"
                                 value={data.url || ''}
                                 onChange={(e) => handleInputChange('url', e.target.value)}
-                                className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-                                placeholder="API URL"
+                                className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-rose-500 outline-none font-mono"
+                                placeholder="https://api.myapp.com/webhook"
                             />
+                        </div>
+                    </div>
+                );
+            case 'document':
+                return (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Template ID</label>
+                            <input
+                                type="text"
+                                value={data.templateId || ''}
+                                onChange={(e) => handleInputChange('templateId', e.target.value)}
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                                placeholder="ex: LEAVE_DOC_01"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Format</label>
+                            <div className="flex gap-4">
+                                {['PDF', 'DOCX'].map(f => (
+                                    <label key={f} className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="outputFormat"
+                                            checked={(data.outputFormat || 'PDF') === f}
+                                            onChange={() => handleInputChange('outputFormat', f)}
+                                            className="accent-emerald-500"
+                                        />
+                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{f}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'file':
+                return (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl space-y-3">
+                            <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">Fichiers Requis</label>
+                            <div className="space-y-2">
+                                {(data.requiredFiles || ['Justificatif']).map((file: string, idx: number) => (
+                                    <div key={idx} className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={file}
+                                            className="flex-1 bg-white dark:bg-slate-950 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white outline-none"
+                                            placeholder="Nom du document..."
+                                            onChange={(e) => {
+                                                const newFiles = [...(data.requiredFiles || ['Justificatif'])];
+                                                newFiles[idx] = e.target.value;
+                                                handleInputChange('requiredFiles', newFiles);
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={() => handleInputChange('requiredFiles', [...(data.requiredFiles || ['Justificatif']), ''])}
+                                    className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 transition-colors"
+                                >
+                                    + Ajouter un document
+                                </button>
+                            </div>
                         </div>
                     </div>
                 );
@@ -201,12 +327,17 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
 
     const getHeaderConfig = () => {
         switch (data.variant) {
-            case 'action': return { icon: <Users className="w-5 h-5 text-blue-500" />, title: 'Tâche Humaine', color: 'bg-blue-500' };
+            case 'action': return { icon: <UserCheck className="w-5 h-5 text-blue-500" />, title: 'Tâche Humaine', color: 'bg-blue-500' };
             case 'decision':
             case 'condition': return { icon: <Split className="w-5 h-5 text-amber-500" />, title: 'Règle Logique', color: 'bg-amber-500' };
             case 'ai': return { icon: <Cpu className="w-5 h-5 text-purple-500" />, title: 'Intelligence Artificielle', color: 'bg-purple-500' };
             case 'api': return { icon: <Globe className="w-5 h-5 text-emerald-500" />, title: 'Appel API', color: 'bg-emerald-500' };
             case 'trigger': return { icon: <Play className="w-5 h-5 text-emerald-500" />, title: 'Déclencheur', color: 'bg-emerald-500' };
+            case 'email': return { icon: <Mail className="w-5 h-5 text-sky-500" />, title: 'Email Automatique', color: 'bg-sky-500' };
+            case 'document': return { icon: <FileText className="w-5 h-5 text-emerald-500" />, title: 'Génération Document', color: 'bg-emerald-500' };
+            case 'timer': return { icon: <Timer className="w-5 h-5 text-amber-500" />, title: 'Attente Chrono', color: 'bg-amber-500' };
+            case 'file': return { icon: <Paperclip className="w-5 h-5 text-indigo-500" />, title: 'Dépôt de Fichier', color: 'bg-indigo-500' };
+            case 'webhook': return { icon: <Globe className="w-5 h-5 text-rose-500" />, title: 'Webhook Sortant', color: 'bg-rose-500' };
             default: return { icon: <Settings2 className="w-5 h-5 text-slate-500" />, title: 'Configuration', color: 'bg-slate-500' };
         }
     };

@@ -185,6 +185,13 @@ export function DashboardLayout() {
                         </NavLink>
                     )}
 
+                    {(isUserAdmin || userRole === 'Manager') && (
+                        <NavLink to="/dashboard/analytics" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                            <BarChart3 className="w-5 h-5" />
+                            Analytics
+                        </NavLink>
+                    )}
+
                     {isUserHR && (
                         <>
                             <NavLink to="/dashboard/rh/job-offers" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>

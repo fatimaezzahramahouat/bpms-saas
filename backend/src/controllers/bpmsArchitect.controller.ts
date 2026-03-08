@@ -39,6 +39,13 @@ Tu dois retourner un JSON avec cette structure exacte :
   "business_rules": ["Règle 1", "Règle 2"]
 }
 
+RÈGLES CRITIQUES POUR LA LOGIQUE :
+Quand tu génères le data_model et les edges, utilise TOUJOURS des clés techniques en Anglais :
+- Utilise 'amount' pour toute valeur monétaire (prix, total, montant).
+- Utilise 'duration' pour toute valeur temporelle (jours, durée, délai).
+- Utilise 'type' pour les catégories.
+Assure-toi que les labels dans les edges utilisent ces clés exactes (ex: "amount > 1000").
+
 IMPORTANT : Ne réponds avec aucun texte avant ou après le JSON. Retourne uniquement le code JSON.`;
 
             const userPrompt = `Génère le workflow pour : ${name} dans le secteur ${sector}. Règles : ${rules}`;

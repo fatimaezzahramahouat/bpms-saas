@@ -22,6 +22,7 @@ export const createWorkflowSchema = z.object({
     description: z.string().optional(),
     nodes: z.any().optional().default([]), // Expected to be an array of XYFlow nodes
     edges: z.any().optional().default([]), // Expected to be an array of XYFlow edges
+    data_model: z.any().optional().default([]), // Expected to be the array of form fields defined by AI
     steps: z.array(stepInputSchema).optional(),
 });
 
@@ -34,6 +35,7 @@ export const updateWorkflowSchema = z.object({
     description: z.string().optional(),
     nodes: z.any().optional(),
     edges: z.any().optional(),
+    data_model: z.any().optional(),
     status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]).optional(),
 });
 

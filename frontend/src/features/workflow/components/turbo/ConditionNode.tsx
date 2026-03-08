@@ -1,73 +1,120 @@
-import React, { memo } from 'react';
-import { Handle, Position, NodeProps, Node } from '@xyflow/react';
-import { Diamond, Split } from 'lucide-react';
+import React, { memo, useCallback } from 'react';
+import { Handle, Position, NodeProps, Node, useReactFlow } from '@xyflow/react';
+import { Diamond, Split, GitBranch } from 'lucide-react';
 import { DecisionNodeData } from '../../types';
 
-const ConditionNode = ({ data, selected }: NodeProps<Node<DecisionNodeData>>) => {
+const ConditionNode = ({ id, data, selected }: NodeProps<Node<DecisionNodeData>>) => {
+    const { setNodes } = useReactFlow();
     const { condition } = data;
 
+    const updateCondition = useCallback((field: string, value: string) => {
+        setNodes((nds) =>
+            nds.map((node) => {
+                if (node.id === id) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            condition: {
+                                ...((node.data as DecisionNodeData).condition || { variable: '', operator: '===', value: '' }),
+                                [field]: value,
+                            },
+                        },
+                    };
+                }
+                return node;
+            })
+        );
+    }, [id, setNodes]);
+
     return (
-        <div className={`relative p-4 rounded-xl bg-slate-900 border-2 transition-all duration-300 min-w-[220px] shadow-2xl
-            ${selected ? 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.3)]' : 'border-slate-800 hover:border-slate-700'}
+        <div className={`relative p-5 rounded-3xl bg-slate-900 border-2 transition-all duration-300 min-w-[260px] shadow-2xl
+            ${selected ? 'border-purple-500 shadow-[0_0_25px_rgba(168,85,247,0.4)]' : 'border-slate-800 hover:border-slate-700'}
         `}>
-            {/* Diamond Icon Background Ornament */}
-            <div className="absolute -top-3 -left-3 p-2 bg-amber-500 rounded-lg shadow-lg shadow-amber-500/20">
-                <Diamond className="w-5 h-5 text-white" />
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 rounded-xl">
+                    <Split className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest leading-tight">
+                        {(data as any).label || data.title || 'Condition Logic'}
+                    </h3>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter mt-0.5 whitespace-nowrap">Branchement Intelligent</p>
+                </div>
             </div>
 
-            <div className="mt-2 space-y-3">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                    <Split className="w-4 h-4 text-amber-500" />
-                    <span className="text-xs font-bold text-amber-500 text-center uppercase tracking-widest leading-tight">
-                        {(data as any).label || data.title || 'Condition'}
-                    </span>
-                </div>
-
-                <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">
-                    <p className="text-sm font-medium text-white text-center">
-                        {condition?.variable || 'Variable'}
-                        <span className="text-amber-500 mx-2 font-mono">{condition?.operator || '==='}</span>
-                        {condition?.value || 'Valeur'}
-                    </p>
-                </div>
-
-                <div className="flex justify-between items-center px-1">
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <span className="text-[9px] font-bold text-emerald-500 uppercase">Vrai</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-bold text-rose-500 uppercase">Faux</span>
-                        <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
-                    </div>
+            {/* Inline Inputs */}
+            <div className="space-y-3">
+                <div className="grid grid-cols-12 gap-2">
+                    <input
+                        type="text"
+                        value={condition?.variable || ''}
+                        onChange={(e) => updateCondition('variable', e.target.value)}
+                        placeholder="Variable"
+                        className="col-span-12 bg-slate-950/80 border border-white/5 rounded-lg px-3 py-2 text-[11px] text-white focus:ring-1 focus:ring-amber-500/50 outline-none transition-all placeholder:text-slate-700"
+                    />
+                    <select
+                        value={condition?.operator || '==='}
+                        onChange={(e) => updateCondition('operator', e.target.value)}
+                        className="col-span-4 bg-slate-950/80 border border-white/5 rounded-lg px-2 py-2 text-[11px] text-amber-500 font-mono focus:ring-1 focus:ring-amber-500/50 outline-none transition-all"
+                    >
+                        <option value="===">===</option>
+                        <option value=">">&gt;</option>
+                        <option value="<">&lt;</option>
+                        <option value="!=">!=</option>
+                        <option value="contains">In</option>
+                    </select>
+                    <input
+                        type="text"
+                        value={condition?.value || ''}
+                        onChange={(e) => updateCondition('value', e.target.value)}
+                        placeholder="Valeur"
+                        className="col-span-8 bg-slate-950/80 border border-white/5 rounded-lg px-3 py-2 text-[11px] text-white focus:ring-1 focus:ring-amber-500/50 outline-none transition-all placeholder:text-slate-700"
+                    />
                 </div>
             </div>
 
             {/* Input Handle (Top) */}
             <Handle
                 type="target"
-                position={Position.Top}
-                className="!bg-slate-900 !border-2 !border-blue-500 !w-3 !h-3 hover:!bg-blue-500 transition-colors"
-                style={{ top: -6 }}
+                position={Position.Left}
+                className="!bg-slate-950 !border-2 !border-blue-500 !w-3.5 !h-3.5 shadow-[0_0_12px_rgba(59,130,246,0.5)]"
             />
 
-            {/* Output Handle A (TRUE - Right) */}
-            <Handle
-                type="source"
-                id="true"
-                position={Position.Right}
-                className="!bg-slate-900 !border-2 !border-emerald-500 !w-3 !h-3 hover:!bg-emerald-500 transition-colors"
-                style={{ right: -6 }}
-            />
+            {/* Right Side Handles (OUI/NON) */}
+            <div className="absolute -right-2 top-0 bottom-0 flex flex-col justify-around py-8">
+                <div className="relative group/handle">
+                    <Handle
+                        type="source"
+                        position={Position.Right}
+                        id="true"
+                        className="!w-4 !h-4 !bg-emerald-500 !border-2 !border-white dark:!border-slate-900 shadow-[0_0_12px_rgba(16,185,129,0.5)] hover:scale-125 transition-transform"
+                    />
+                    <span className="absolute left-6 -top-2 text-[9px] font-black text-emerald-500 uppercase tracking-widest opacity-0 group-hover/handle:opacity-100 transition-opacity">Vrai</span>
+                </div>
+                <div className="relative group/handle">
+                    <Handle
+                        type="source"
+                        position={Position.Right}
+                        id="false"
+                        className="!w-4 !h-4 !bg-rose-500 !border-2 !border-white dark:!border-slate-900 shadow-[0_0_12px_rgba(244,63,94,0.5)] hover:scale-125 transition-transform"
+                    />
+                    <span className="absolute left-6 -top-2 text-[9px] font-black text-rose-500 uppercase tracking-widest opacity-0 group-hover/handle:opacity-100 transition-opacity">Faux</span>
+                </div>
+            </div>
 
-            {/* Output Handle B (FALSE - Bottom) */}
-            <Handle
-                type="source"
-                id="false"
-                position={Position.Bottom}
-                className="!bg-slate-900 !border-2 !border-rose-500 !w-3 !h-3 hover:!bg-rose-500 transition-colors"
-                style={{ bottom: -6 }}
-            />
+            {/* Labels in node for visual clarity if no zoom */}
+            <div className="mt-4 flex flex-col gap-2">
+                <div className="flex items-center justify-end gap-2 pr-1">
+                    <span className="text-[10px] font-black text-emerald-500/50 uppercase">OUI</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+                </div>
+                <div className="flex items-center justify-end gap-2 pr-1">
+                    <span className="text-[10px] font-black text-rose-500/50 uppercase">NON</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500/50" />
+                </div>
+            </div>
         </div>
     );
 };

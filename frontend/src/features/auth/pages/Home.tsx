@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Building2, Users, Check, ChevronRight, ChevronDown, UserCheck, TrendingUp, FileText, ArrowRight } from 'lucide-react';
@@ -19,7 +19,7 @@ export function Home() {
   const scrollToFeatures = () => {
     const element = document.getElementById('fonctionnalites');
     if (element) {
-      element.scrollIntoView({ 
+      element.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       });
@@ -71,20 +71,20 @@ export function Home() {
                 Espace d'Organisation
                 <ChevronDown className="w-4 h-4 text-zinc-400 dark:text-white/40 group-hover:text-h1-blue dark:group-hover:text-white transition-colors" />
               </button>
-              
+
               <button
-  onClick={scrollToFeatures}
-  className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0"
->
-  Fonctionnalités
-</button>
+                onClick={scrollToFeatures}
+                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0"
+              >
+                Fonctionnalités
+              </button>
 
               <Link
                 to="/pricing"
                 className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
               >
-                	
-              Nos Offres
+
+                Nos Offres
               </Link>
               <Link
                 to="/our-team"
@@ -233,7 +233,7 @@ export function Home() {
               Des fonctionnalités puissantes conçues pour les équipes RH modernes
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
@@ -290,7 +290,7 @@ export function Home() {
             <p className="text-white/80 mb-8">
               Choisissez le plan parfait pour la taille de votre équipe
             </p>
-            
+
             {/* Toggle */}
             <div className="flex items-center justify-center gap-4">
               <span className={`text-sm font-medium ${!yearly ? 'text-white' : 'text-white/60'}`}>Mensuel</span>
@@ -308,12 +308,12 @@ export function Home() {
               </span>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {plans.map((plan, index) => {
               const displayPrice = plan.isCustom ? 'Sur Mesure' : (yearly ? Math.round(plan.price * 12 * 0.8) : plan.price);
               const period = plan.isCustom ? '' : (yearly ? '/an' : '/mois');
-              
+
               return (
                 <div
                   key={index}
@@ -344,11 +344,10 @@ export function Home() {
                     ))}
                   </ul>
                   <button
-                    className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${
-                      plan.popular
-                        ? 'bg-h1-blue hover:bg-[#3b3de0] text-white'
-                        : 'bg-white hover:bg-gray-100 text-h1-blue'
-                    }`}
+                    className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 ${plan.popular
+                      ? 'bg-h1-blue hover:bg-[#3b3de0] text-white'
+                      : 'bg-white hover:bg-gray-100 text-h1-blue'
+                      }`}
                   >
                     {plan.cta}
                   </button>
@@ -370,7 +369,7 @@ export function Home() {
               Découvrez ce que les professionnels RH disent de Nexflow
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {

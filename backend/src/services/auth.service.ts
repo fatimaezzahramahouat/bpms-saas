@@ -82,7 +82,8 @@ export const authService = {
         userId: result.user.id,
         email: result.user.email,
         organisationId: result.organisation.id,
-        isAdmin: true, // Organization admin by default
+        role: "ADMIN", // Organization admin by default
+        isAdmin: true,
       },
       JWT_SECRET,
       { expiresIn: "24h" }
@@ -151,12 +152,20 @@ export const authService = {
       throw new Error("Invalid email or password");
     }
 
-    // 3. Generate JWT token
+    // 3. Determine Role (Heritage Pattern)
+    let role = "EMPLOYEE";
+    if (user.admin) role = "ADMIN";
+    else if (user.rh) role = "RH";
+    else if (user.manager) role = "MANAGER";
+    else if (user.employee) role = "EMPLOYEE";
+
+    // 4. Generate JWT token
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
         organisationId: user.organisationId,
+        role: role,
         isAdmin: !!user.admin,
       },
       JWT_SECRET,
@@ -170,6 +179,7 @@ export const authService = {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        role: role,
         isAdmin: !!user.admin,
         isRH: !!user.rh,
         isManager: !!user.manager,
