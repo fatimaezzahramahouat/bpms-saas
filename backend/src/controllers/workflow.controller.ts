@@ -59,12 +59,14 @@ export const workflowController = {
     /**
      * GET /api/workflows
      * Returns all workflows for the authenticated organisation.
+     * Accepts optional ?category= query.
      */
     getAllWorkflows: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
+        const category = req.query.category as string | undefined;
 
-        const workflows = await workflowService.getAllWorkflows(organisationId);
+        const workflows = await workflowService.getAllWorkflows(organisationId, category);
 
         res.status(200).json({ data: workflows });
     }),
@@ -166,6 +168,46 @@ export const workflowController = {
         }
 
         res.status(204).send();
+    }),
+
+    /**
+     * POST /api/workflows/:id/duplicate
+     * Duplicates an existing workflow.
+     */
+    duplicateWorkflow: catchAsync(async (req: AuthRequest, res: Response) => {
+        const organisationId = getOrgId(req);
+        const id = req.params.id as string;
+
+        const duplicated = await workflowService.duplicateWorkflow(id, organisationId);
+        if (!duplicated) {
+            res.status(404).json({ error: "Workflow not found" });
+            return;
+        }
+
+        res.status(201).json({
+            message: "Workflow duplicated successfully",
+            data: duplicated,
+        });
+    }),
+
+    /**
+     * PATCH /api/workflows/:id/status
+     * Toggles the active status of a workflow.
+     */
+    toggleStatus: catchAsync(async (req: AuthRequest, res: Response) => {
+        const organisationId = getOrgId(req);
+        const id = req.params.id as string;
+
+        const workflow = await workflowService.toggleWorkflowStatus(id, organisationId);
+        if (!workflow) {
+            res.status(404).json({ error: "Workflow not found" });
+            return;
+        }
+
+        res.status(200).json({
+            message: "Workflow status toggled successfully",
+            data: workflow,
+        });
     }),
 
     /**
