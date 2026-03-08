@@ -8,6 +8,7 @@ interface CreateWorkflowData {
     description?: string | undefined;
     nodes?: any;
     edges?: any;
+    data_model?: any;
     steps: StepInput[];
 }
 
@@ -16,6 +17,7 @@ interface UpdateWorkflowData {
     description?: string | undefined;
     nodes?: any;
     edges?: any;
+    data_model?: any;
     status?: "DRAFT" | "ACTIVE" | "ARCHIVED" | undefined;
     version?: number | undefined;
 }
@@ -43,6 +45,7 @@ export const workflowRepository = {
                 description: data.description ?? null,
                 nodes: data.nodes || [],
                 edges: data.edges || [],
+                data_model: data.data_model || [],
                 organisationId,
                 steps: {
                     create: data.steps.map((step) => ({
@@ -63,14 +66,18 @@ export const workflowRepository = {
     /**
      * Returns all workflows for a given organisation,
      * including step count via _count.
+     * Optionally filters by category and sorts by updatedAt descending.
      */
-    async findAllByOrg(organisationId: string) {
+    async findAllByOrg(organisationId: string, category?: string) {
         return prisma.workflow.findMany({
-            where: { organisationId },
+            where: {
+                organisationId,
+                ...(category && { category })
+            },
             include: {
                 _count: { select: { steps: true, instances: true } },
             },
-            orderBy: { name: "asc" },
+            orderBy: { updatedAt: "desc" },
         });
     },
 
@@ -109,6 +116,7 @@ export const workflowRepository = {
                     ...(data.description !== undefined && { description: data.description }),
                     ...(data.nodes !== undefined && { nodes: data.nodes }),
                     ...(data.edges !== undefined && { edges: data.edges }),
+                    ...(data.data_model !== undefined && { data_model: data.data_model }),
                     ...(data.status && { status: data.status }),
                     ...(data.version && { version: data.version }),
                 },

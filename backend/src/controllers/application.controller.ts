@@ -1,5 +1,6 @@
 // /home/manal/projet_final_BPMS/backend/src/controllers/application.controller.ts
 import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
 import { applicationService } from "../services/application.service";
 import { z } from "zod";

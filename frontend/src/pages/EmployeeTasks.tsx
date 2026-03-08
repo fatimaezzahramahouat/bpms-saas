@@ -10,7 +10,8 @@ import {
     Briefcase,
     User,
     ExternalLink,
-    Search
+    Search,
+    Download
 } from 'lucide-react';
 import { taskService } from '../services/task.service';
 import { workflowService, IWorkflow } from '../services/workflow.service';
@@ -18,6 +19,7 @@ import { processService } from '../services/process.service';
 import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'motion/react';
 import { LeaveRequestForm } from '../features/workflow/components/LeaveRequestForm';
+import { DynamicRequestForm } from '../features/workflow/components/DynamicRequestForm';
 
 interface TaskDocument {
     id: string;
@@ -33,17 +35,11 @@ interface Task {
     dueDate: string | null;
     createdAt: string;
     processInstance: {
-        application: {
-            candidate: {
-                fullName: string;
-                email: string;
-            };
-            jobOffer: {
-                title: string;
-            };
-            documents: TaskDocument[];
-        };
+        id: string;
+        context?: any;
+        status: string;
         workflow: {
+            name: string;
             _count: {
                 steps: number;
             };
@@ -57,8 +53,32 @@ interface Task {
     };
 }
 
+interface ProcessInstanceRequest {
+    id: string;
+    status: string;
+    createdAt: string;
+    workflow: {
+        name: string;
+    };
+    context?: any;
+    documents?: {
+        id: string;
+        fileName: string;
+        fileUrl: string;
+        docType: string;
+    }[];
+    tasks: {
+        title: string;
+        user: {
+            firstName: string;
+            lastName: string;
+        } | null;
+    }[];
+}
+
 export const EmployeeTasks: React.FC = () => {
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [requests, setRequests] = useState<ProcessInstanceRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,20 +86,24 @@ export const EmployeeTasks: React.FC = () => {
     const [selectedWorkflowId, setSelectedWorkflowId] = useState('');
     const [isStarting, setIsStarting] = useState(false);
 
-    const fetchTasks = async () => {
+    const fetchData = async () => {
         try {
-            const data = await taskService.getTasks();
-            setTasks(data);
+            const [tasksData, requestsData] = await Promise.all([
+                taskService.getTasks(),
+                processService.getMyRequests()
+            ]);
+            setTasks(tasksData);
+            setRequests(requestsData);
         } catch (error) {
-            console.error('Error fetching tasks:', error);
-            toast.error('Erreur lors de la récupération des tâches');
+            console.error('Error fetching data:', error);
+            toast.error('Erreur lors de la récupération des données');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchTasks();
+        fetchData();
         fetchWorkflows();
     }, []);
 
@@ -104,7 +128,7 @@ export const EmployeeTasks: React.FC = () => {
             toast.success('Demande créée avec succès !');
             setIsModalOpen(false);
             setSelectedWorkflowId('');
-            fetchTasks(); // Refresh task list
+            fetchData(); // Refresh list
         } catch (error: any) {
             console.error('Error starting process:', error);
             toast.error(error.response?.data?.error || 'Erreur lors du lancement de la demande');
@@ -135,6 +159,15 @@ export const EmployeeTasks: React.FC = () => {
         };
     };
 
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'IN_PROGRESS': return { label: 'En cours', color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' };
+            case 'COMPLETED': return { label: 'Approuvée', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' };
+            case 'REJECTED': return { label: 'Refusée', color: 'text-rose-500 bg-rose-500/10 border-rose-500/20' };
+            default: return { label: status, color: 'text-slate-500 bg-slate-500/10 border-slate-500/20' };
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-white dark:bg-h1-black">
@@ -147,8 +180,8 @@ export const EmployeeTasks: React.FC = () => {
         <div className="p-8 max-w-7xl mx-auto min-h-screen bg-white dark:bg-h1-black transition-colors duration-300">
             <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Ma To-Do List</h1>
-                    <p className="text-zinc-500 dark:text-zinc-400 font-medium">Gérez vos tâches de recrutement quotidiennes avec efficacité.</p>
+                    <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Mes Demandes & Tâches</h1>
+                    <p className="text-zinc-500 dark:text-zinc-400 font-medium">Gérez vos requêtes et suivez l'avancement de vos workflows.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -188,14 +221,65 @@ export const EmployeeTasks: React.FC = () => {
                                     <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Choisissez le type de processus à lancer.</p>
                                 </div>
 
-                                {selectedWorkflowId && workflows.find(w => w.id === selectedWorkflowId)?.name.toUpperCase().includes("CONGE") ? (
-                                    <LeaveRequestForm
-                                        onSuccess={() => {
-                                            setIsModalOpen(false);
-                                            fetchTasks();
-                                        }}
-                                        onCancel={() => setSelectedWorkflowId('')}
-                                    />
+                                {selectedWorkflowId ? (
+                                    (() => {
+                                        const selectedWf = workflows.find(w => w.id === selectedWorkflowId);
+                                        // If no workflow is selected somehow, or it's not found:
+                                        if (!selectedWf) return null;
+
+                                        // If workflow has a data_model with fields, use DynamicRequestForm
+                                        if (selectedWf.data_model && Array.isArray(selectedWf.data_model) && selectedWf.data_model.length > 0) {
+                                            return (
+                                                <DynamicRequestForm
+                                                    workflow={selectedWf as any}
+                                                    onSuccess={() => {
+                                                        setIsModalOpen(false);
+                                                        fetchData();
+                                                    }}
+                                                    onCancel={() => setSelectedWorkflowId('')}
+                                                />
+                                            );
+                                        }
+
+                                        // Fallback to LeaveRequestForm for legacy 'Congé' workflows without data_model
+                                        if (selectedWf.name.toUpperCase().includes("CONGÉ") || selectedWf.name.toUpperCase().includes("CONGE") || selectedWf.name.toUpperCase().includes("LEAVE")) {
+                                            return (
+                                                <LeaveRequestForm
+                                                    onSuccess={() => {
+                                                        setIsModalOpen(false);
+                                                        fetchData();
+                                                    }}
+                                                    onCancel={() => setSelectedWorkflowId('')}
+                                                />
+                                            );
+                                        }
+
+                                        // Otherwise, default simple submission view
+                                        return (
+                                            <div className="space-y-6">
+                                                <div className="p-4 bg-h1-blue/5 border border-h1-blue/20 rounded-xl text-sm text-gray-700 dark:text-zinc-300">
+                                                    Ce processus (<strong>{selectedWf.name}</strong>) ne requiert aucun formulaire spécifique. Vous pouvez le lancer directement.
+                                                </div>
+                                                <div className="flex flex-col gap-3 pt-4">
+                                                    <button
+                                                        onClick={handleStartProcess}
+                                                        disabled={isStarting}
+                                                        className="w-full py-4 bg-h1-blue hover:bg-h1-blue/90 disabled:opacity-50 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-h1-blue/20 flex items-center justify-center gap-2"
+                                                    >
+                                                        {isStarting ? (
+                                                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                                        ) : 'Lancer directement'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setSelectedWorkflowId('')}
+                                                        className="w-full py-4 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 font-black text-sm uppercase tracking-widest rounded-2xl transition-all"
+                                                    >
+                                                        Changer de workflow
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()
                                 ) : (
                                     <div className="space-y-6">
                                         <div className="space-y-4">
@@ -213,15 +297,6 @@ export const EmployeeTasks: React.FC = () => {
                                         </div>
 
                                         <div className="flex flex-col gap-3 pt-4">
-                                            <button
-                                                onClick={handleStartProcess}
-                                                disabled={isStarting || !selectedWorkflowId}
-                                                className="w-full py-4 bg-h1-blue hover:bg-h1-blue/90 disabled:opacity-50 text-white font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-h1-blue/20 flex items-center justify-center gap-2"
-                                            >
-                                                {isStarting ? (
-                                                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                                                ) : 'Lancer la demande'}
-                                            </button>
                                             <button
                                                 onClick={() => setIsModalOpen(false)}
                                                 className="w-full py-4 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300 font-black text-sm uppercase tracking-widest rounded-2xl transition-all"
@@ -268,10 +343,10 @@ export const EmployeeTasks: React.FC = () => {
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-2 text-h1-blue text-[10px] font-black uppercase tracking-widest">
                                                         <Briefcase size={12} strokeWidth={3} />
-                                                        <span>{task.processInstance.application.jobOffer.title}</span>
+                                                        <span>{task.processInstance.workflow.name}</span>
                                                     </div>
                                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-h1-blue transition-colors">
-                                                        {task.step.name}
+                                                        Étape Actuelle : {task.step.name}
                                                     </h3>
                                                 </div>
                                                 <div className={`flex items-center gap-1.5 px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-wider ${priority.color}`}>
@@ -283,7 +358,7 @@ export const EmployeeTasks: React.FC = () => {
                                             <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-zinc-500 dark:text-zinc-400">
                                                 <div className="flex items-center gap-2">
                                                     <User size={14} className="text-h1-blue" />
-                                                    <span>{task.processInstance.application.candidate.fullName}</span>
+                                                    <span>Créé le {new Date(task.createdAt).toLocaleDateString('fr-FR')}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Calendar size={14} className="text-h1-blue" />
@@ -294,8 +369,8 @@ export const EmployeeTasks: React.FC = () => {
                                             {/* Progress Bar */}
                                             <div className="space-y-2">
                                                 <div className="flex justify-between items-end">
-                                                    <p className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Progression du recrutement</p>
-                                                    <p className="text-xs font-black text-h1-blue">{progress.percentage}%</p>
+                                                    <p className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Statut du Processus</p>
+                                                    <p className="text-xs font-black text-h1-blue uppercase">{task.processInstance.status.replace('_', ' ')}</p>
                                                 </div>
                                                 <div className="h-2 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                                                     <motion.div
@@ -321,81 +396,94 @@ export const EmployeeTasks: React.FC = () => {
                     )}
                 </div>
 
-                {/* Task Details / Documents */}
+                {/* Right Side: Requests History */}
                 <div className="space-y-6">
-                    <AnimatePresence mode="wait">
-                        {selectedTask ? (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 20 }}
-                                className="sticky top-8 bg-zinc-950 border border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-2xl"
-                            >
-                                <div className="p-8 space-y-8">
-                                    <div className="space-y-4">
-                                        <div className="w-16 h-16 bg-h1-blue/10 rounded-2xl flex items-center justify-center text-h1-blue">
-                                            <FileText size={32} />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-2xl font-black text-white tracking-tight leading-tight">Documents du Candidat</h2>
-                                            <p className="text-zinc-400 font-medium text-sm mt-1">{selectedTask.processInstance.application.candidate.fullName}</p>
-                                        </div>
-                                    </div>
+                    <div className="flex items-center gap-3 mb-6 p-6 bg-h1-blue/5 rounded-3xl border border-h1-blue/20">
+                        <div className="w-12 h-12 bg-h1-blue/20 rounded-2xl flex items-center justify-center text-h1-blue shrink-0">
+                            <FileText size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">Historique de vos requêtes</h2>
+                            <p className="text-zinc-400 font-medium text-xs mt-1">Suivez le statut de vos demandes en temps réel.</p>
+                        </div>
+                    </div>
 
-                                    <div className="space-y-3">
-                                        {selectedTask.processInstance.application.documents.length === 0 ? (
-                                            <div className="p-6 bg-zinc-900/50 rounded-2xl border border-zinc-800 text-center">
-                                                <p className="text-zinc-500 font-bold text-sm italic">Aucun document disponible</p>
-                                            </div>
-                                        ) : (
-                                            selectedTask.processInstance.application.documents.map((doc) => (
-                                                <a
-                                                    key={doc.id}
-                                                    href={doc.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="group flex items-center justify-between p-4 bg-zinc-900/50 hover:bg-h1-blue/10 border border-zinc-800 hover:border-h1-blue/30 rounded-2xl transition-all"
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="p-2 bg-zinc-800 group-hover:bg-h1-blue/20 rounded-xl text-zinc-400 group-hover:text-h1-blue transition-colors">
-                                                            <FileText size={18} />
-                                                        </div>
-                                                        <div className="space-y-0.5">
-                                                            <p className="text-sm font-bold text-white group-hover:text-h1-blue transition-colors">{doc.name}</p>
-                                                            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{doc.type}</p>
-                                                        </div>
-                                                    </div>
-                                                    <ExternalLink size={14} className="text-zinc-600 group-hover:text-h1-blue transition-colors" />
-                                                </a>
-                                            ))
-                                        )}
-                                    </div>
-
-                                    <div className="pt-8 border-t border-zinc-800 space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-xs font-black text-zinc-500 uppercase tracking-[0.2em]">Contact</span>
-                                            <span className="text-sm font-bold text-white">{selectedTask.processInstance.application.candidate.email}</span>
-                                        </div>
-
-                                        <button
-                                            onClick={() => setSelectedTask(null)}
-                                            className="w-full py-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-black text-sm uppercase tracking-widest rounded-2xl transition-all"
-                                        >
-                                            Fermer les détails
-                                        </button>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ) : (
-                            <div className="sticky top-8 p-12 bg-zinc-50 dark:bg-zinc-900/10 border-2 border-dashed border-zinc-100 dark:border-zinc-800/50 rounded-[2.5rem] flex flex-col items-center text-center justify-center min-h-[400px]">
-                                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-900 rounded-3xl flex items-center justify-center text-zinc-300 dark:text-zinc-700 mb-6">
-                                    <Search size={32} />
-                                </div>
-                                <h3 className="text-lg font-black text-gray-900 dark:text-white mb-2">Sélectionnez une tâche</h3>
-                                <p className="text-sm text-zinc-400 dark:text-zinc-500 font-medium">Cliquez sur une tâche pour voir les documents du candidat et les informations complémentaires.</p>
+                    <div className="space-y-4">
+                        {requests.length === 0 ? (
+                            <div className="p-8 bg-zinc-50 dark:bg-zinc-900/10 border-2 border-dashed border-zinc-100 dark:border-zinc-800/50 rounded-[2rem] flex flex-col items-center text-center">
+                                <Search size={24} className="text-zinc-300 dark:text-zinc-700 mb-4" />
+                                <p className="text-sm text-zinc-400 font-bold">Aucune demande initiée</p>
                             </div>
+                        ) : (
+                            requests.map((request) => {
+                                const currentTask = request.tasks && request.tasks[0];
+                                const statusInfo = getStatusLabel(request.status);
+                                const context = request.context || {};
+
+                                return (
+                                    <motion.div
+                                        key={request.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="bg-white dark:bg-zinc-950 border-2 border-zinc-100 dark:border-zinc-800 rounded-[2rem] p-6 hover:shadow-xl hover:shadow-h1-blue/5 transition-all"
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h3 className="text-[16px] font-bold text-gray-900 dark:text-white leading-tight pr-4">
+                                                {request.workflow.name}
+                                            </h3>
+                                            <span className={`shrink-0 px-3 py-1 border rounded-full text-[10px] font-black uppercase tracking-wider ${statusInfo.color}`}>
+                                                {statusInfo.label}
+                                            </span>
+                                        </div>
+
+                                        <div className="space-y-4 font-medium">
+                                            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                                <Calendar size={14} className="text-h1-blue" />
+                                                <span>Soumis le {new Date(request.createdAt).toLocaleDateString('fr-FR')}</span>
+                                            </div>
+
+                                            {context.startDate && context.endDate && (
+                                                <div className="flex items-start gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    <Clock size={14} className="text-h1-blue shrink-0 mt-0.5" />
+                                                    <div className="flex flex-col">
+                                                        <span>Du {new Date(context.startDate).toLocaleDateString('fr-FR')} au {new Date(context.endDate).toLocaleDateString('fr-FR')}</span>
+                                                        {context.duration && <span className="text-h1-blue font-bold">Durée: {context.duration} jour(s)</span>}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {request.status === 'IN_PROGRESS' && currentTask && (
+                                                <div className="mt-4 p-4 bg-h1-blue/5 border border-h1-blue/20 rounded-2xl space-y-2">
+                                                    <p className="text-[10px] text-h1-blue font-black uppercase tracking-widest">Étape Actuelle</p>
+                                                    <p className="text-sm text-gray-900 dark:text-white font-bold">{currentTask.title}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-zinc-500 mt-2">
+                                                        <User size={12} className="text-zinc-400" />
+                                                        <span>En attente de: <strong className="text-gray-700 dark:text-zinc-300">
+                                                            {currentTask.user ? `${currentTask.user.firstName} ${currentTask.user.lastName}` : 'Manager'}
+                                                        </strong></span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {request.status === 'COMPLETED' && request.documents && request.documents.some(d => d.docType === 'CERTIFICATE') && (
+                                                <div className="mt-4">
+                                                    <a
+                                                        href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${request.documents.find(d => d.docType === 'CERTIFICATE')?.fileUrl}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                                                    >
+                                                        <Download size={14} />
+                                                        Télécharger le Certificat
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                );
+                            })
                         )}
-                    </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </div>

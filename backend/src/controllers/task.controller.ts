@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import prisma from "../lib/prisma";
 import { workflowEngineService } from "../services/workflowEngine.service";
@@ -8,8 +8,9 @@ export const taskController = {
     /**
      * Gets all pending tasks for the logged-in user.
      */
-    getTasks: catchAsync(async (req: AuthRequest, res: Response) => {
-        const userId = req.user?.userId;
+    getTasks: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const userId = authReq.user?.userId;
 
         if (!userId) {
             return res.status(401).json({ error: "User not authenticated" });
@@ -57,10 +58,11 @@ export const taskController = {
     /**
      * Updates a task's status and potentially advances the workflow.
      */
-    updateTaskStatus: catchAsync(async (req: AuthRequest, res: Response) => {
+    updateTaskStatus: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const { id } = req.params as { id: string };
         const { action } = req.body; // 'APPROVE' | 'REJECT'
-        const userId = req.user?.userId as string;
+        const userId = authReq.user?.userId as string;
 
         if (!['APPROVE', 'REJECT'].includes(action)) {
             return res.status(400).json({ error: "Invalid action. Must be 'APPROVE' or 'REJECT'." });
@@ -78,9 +80,10 @@ export const taskController = {
      * PATCH /api/tasks/:id/approve
      * Approves the task and moves to next step.
      */
-    approveTask: catchAsync(async (req: AuthRequest, res: Response) => {
+    approveTask: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const id = req.params.id as string;
-        const userId = req.user?.userId;
+        const userId = authReq.user?.userId;
 
         if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
 
@@ -93,12 +96,31 @@ export const taskController = {
     }),
 
     /**
+     * PATCH /api/tasks/:id/reject
+     * Rejects the task and terminates the process.
+     */
+    rejectTask: catchAsync(async (req: AuthRequest, res: Response) => {
+        const id = req.params.id as string;
+        const userId = req.user?.userId;
+
+        if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
+
+        const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', userId);
+
+        res.status(200).json({
+            message: "Task rejected successfully",
+            data: result
+        });
+    }),
+
+    /**
      * GET /api/tasks/approvals
      * Gets all pending tasks assigned to the manager for review.
      */
-    getApprovals: catchAsync(async (req: AuthRequest, res: Response) => {
-        const userId = req.user?.userId;
-        const organisationId = req.user?.organisationId;
+    getApprovals: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const userId = authReq.user?.userId;
+        const organisationId = authReq.user?.organisationId;
 
         if (!userId || !organisationId) {
             return res.status(401).json({ error: "Unauthorized" });

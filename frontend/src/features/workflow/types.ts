@@ -6,7 +6,7 @@ export interface BaseWorkflowData {
     subTitle?: string;
     icon?: string;
     category?: string;
-    variant: 'trigger' | 'action' | 'condition' | 'end' | 'ai' | 'decision' | 'api';
+    variant: 'trigger' | 'action' | 'condition' | 'end' | 'ai' | 'decision' | 'api' | 'email' | 'timer' | 'file' | 'webhook' | 'document';
     [key: string]: any;
 }
 
@@ -59,13 +59,49 @@ export interface EndNodeData extends BaseWorkflowData {
     variant: 'end';
 }
 
+export interface EmailNodeData extends BaseWorkflowData {
+    variant: 'email';
+    to?: string;
+    subject?: string;
+    body?: string;
+}
+
+export interface DocumentNodeData extends BaseWorkflowData {
+    variant: 'document';
+    templateId?: string;
+    outputFormat?: 'PDF' | 'DOCX';
+}
+
+export interface TimerNodeData extends BaseWorkflowData {
+    variant: 'timer';
+    duration: number;
+    unit: 'minutes' | 'hours' | 'days';
+}
+
+export interface FileNodeData extends BaseWorkflowData {
+    variant: 'file';
+    requiredFiles: string[];
+}
+
+export interface WebhookNodeData extends BaseWorkflowData {
+    variant: 'webhook';
+    url: string;
+    method: 'POST' | 'GET';
+    payload?: any;
+}
+
 export type WorkflowData =
     | ActionNodeData
     | DecisionNodeData
     | AINodeData
     | APINodeData
     | TriggerNodeData
-    | EndNodeData;
+    | EndNodeData
+    | EmailNodeData
+    | DocumentNodeData
+    | TimerNodeData
+    | FileNodeData
+    | WebhookNodeData;
 
 // Type guard
 export const isActionNode = (data: WorkflowData): data is ActionNodeData => data.variant === 'action';

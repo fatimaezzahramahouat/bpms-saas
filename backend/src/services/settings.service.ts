@@ -7,7 +7,7 @@ export const settingsService = {
   async updateProfile(userId: string, data: Record<string, string>) {
     // If email is being changed, check for uniqueness
     if (data["email"]) {
-      const existing = await settingsRepository.findUserByEmail(data["email"]);
+      const existing = await settingsRepository.findUserByEmail(data["email"] as string);
       if (existing && existing.id !== userId) {
         throw { status: 409, message: "Email already in use" };
       }
@@ -20,8 +20,12 @@ export const settingsService = {
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await settingsRepository.getUserPassword(userId);
-    if (!user) {
-      throw { status: 404, message: "User not found" };
+    if (!user || !user.password) {
+      throw { status: 404, message: "User not found or no password set" };
+    }
+
+    if (!user.password) {
+      throw { status: 400, message: "No password set for this account. If you signed up via Google, please use the forgot password flow to set one." };
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);

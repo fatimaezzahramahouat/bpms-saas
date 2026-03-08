@@ -9,7 +9,8 @@ import {
     Zap,
     BarChart3,
     Briefcase,
-    CheckSquare
+    CheckSquare,
+    Network
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { usePermission } from '../../hooks/usePermission';
@@ -23,6 +24,7 @@ const menuItems = [
     { name: 'Mes Approbations', icon: CheckSquare, path: '/dashboard/approvals' },
     { name: 'Mes Demandes', icon: Zap, path: '/dashboard/mes-demandes' },
     { name: 'Documents', icon: Files, path: '/documents' },
+    { name: 'Architecte BPMS', icon: Network, path: '/dashboard/architecte' },
     { name: 'Paramètres', icon: Settings, path: '/settings' },
 ];
 
@@ -42,8 +44,8 @@ export const Sidebar: React.FC = () => {
         // Only Admin and RH can see Workflow Builder
         if (item.path === '/dashboard/workflow') return isAdmin || isHR;
         //Only  and RH can see Job Offers
-        if (item.path === '/dashboard/rh/job-offers') return  isHR;
-        if (item.path === '/dashboard/rh/statistics') return  isHR;
+        if (item.path === '/dashboard/rh/job-offers') return isHR;
+        if (item.path === '/dashboard/rh/statistics') return isHR;
         // Only Employees see "Mes Demandes" (or hide builder for them)
         if (item.path === '/dashboard/mes-demandes') return !isAdmin && !isHR;
 
@@ -53,7 +55,13 @@ export const Sidebar: React.FC = () => {
             return approvalsRoles.includes(roleFromStorage?.toUpperCase());
         }
 
-        if (item.path.includes('equipe')) return canManageUsers;
+        if (item.path.includes('equipe')) return canManageUsers  || isHR;
+
+        if (item.path === '/dashboard/architecte') {
+            const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];
+            return isAdmin || adminRoles.includes(roleFromStorage?.toUpperCase()) || adminRoles.includes(role?.toUpperCase());
+        }
+
         return true;
     });
 

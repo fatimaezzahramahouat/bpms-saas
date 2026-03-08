@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap, Briefcase, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap, Briefcase, BarChart3, Network } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
+import { ForceChangePasswordModal } from '../components/ForceChangePasswordModal';
 import { ThemeSwitcher } from '@shared/components';
 import { usePermission } from '@shared/hooks/usePermission';
 import { RHJobOffersButton } from '@/features/rh/components';
@@ -42,34 +43,35 @@ export function DashboardLayout() {
 
     const [hasOrgInfo, setHasOrgInfo] = useState(true);
     const [showOnboarding, setShowOnboarding] = useState(false);
+    const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const navigate = useNavigate();
 
-const fetchProfile = async () => {
-    try {
-        const token = localStorage.getItem('token');
-        
-        console.log('🔍 [fetchProfile] Token:', token ? token.substring(0, 30) + '...' : 'NULL');
-        
-        // Fetch full user profile with relations
-        const response = await fetch('http://localhost:5000/api/auth/me', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` })
-            },
-            credentials: 'include'
-        });
+    const fetchProfile = async () => {
+        try {
+            const token = localStorage.getItem('token');
 
-        console.log('📡 [fetchProfile] Status:', response.status);
-        
-        if (response.status === 401) {
-            console.log('❌ Token invalid - logging out');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            navigate('/login');
-            return;
-        }
+            console.log('🔍 [fetchProfile] Token:', token ? token.substring(0, 30) + '...' : 'NULL');
+
+            // Fetch full user profile with relations
+            const response = await fetch('http://localhost:5000/api/auth/me', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                credentials: 'include'
+            });
+
+            console.log('📡 [fetchProfile] Status:', response.status);
+
+            if (response.status === 401) {
+                console.log('❌ Token invalid - logging out');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                navigate('/login');
+                return;
+            }
 
         if (response.ok) {
             const result = await response.json();
@@ -82,9 +84,20 @@ const fetchProfile = async () => {
             setUserData(user);
             setOrgData(user.organisation);
 
-            if (user.organisation?.orgInfo) {
+            if (user.profileCompleted === false) {
+                if (user.organisation?.orgInfo) {
+                    // Collaborator's first login
+                    setShowForcePasswordChange(true);
+                    setHasOrgInfo(true);
+                } else if (user.role === 'ADMIN') {
+                    // Main Admin's onboarding
+                    setHasOrgInfo(false);
+                    setShowOnboarding(true);
+                }
+            } else if (user.organisation?.orgInfo) {
                 setHasOrgInfo(true);
                 setShowOnboarding(false);
+                setShowForcePasswordChange(false);
                 localStorage.setItem('onboarding_done', 'true');
                 localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
             } else {
@@ -152,7 +165,7 @@ const fetchProfile = async () => {
                         Tableau de bord
                     </NavLink>
 
-                    {isUserAdmin && (
+                    {(isUserAdmin || isUserHR) && (
                         <NavLink to="/dashboard/equipe" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
                             <Users className="w-5 h-5" />
                             Equipe
@@ -163,6 +176,20 @@ const fetchProfile = async () => {
                         <NavLink to="/dashboard/workflow" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
                             <GitMerge className="w-5 h-5" />
                             Workflow Builder
+                        </NavLink>
+                    )}
+
+                    {isUserAdmin && (
+                        <NavLink to="/dashboard/architecte" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                            <Network className="w-5 h-5" />
+                            Architecte BPMS
+                        </NavLink>
+                    )}
+
+                    {(isUserAdmin || userRole === 'Manager') && (
+                        <NavLink to="/dashboard/analytics" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                            <BarChart3 className="w-5 h-5" />
+                            Analytics
                         </NavLink>
                     )}
 
@@ -222,7 +249,7 @@ const fetchProfile = async () => {
                     )}
 
                     {[
-                        
+
                     ].map((item) => (
                         <button
                             key={item.label}
@@ -277,6 +304,13 @@ const fetchProfile = async () => {
             </main>
 
             <OnboardingModal isOpen={showOnboarding} onSuccess={handleOnboardingSuccess} />
+            <ForceChangePasswordModal 
+                isOpen={showForcePasswordChange} 
+                onSuccess={() => {
+                    setShowForcePasswordChange(false);
+                    fetchProfile();
+                }} 
+            />
         </div>
     );
 }

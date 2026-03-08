@@ -6,7 +6,7 @@ import { checkRole } from "../middleware/permission.middleware";
 const router = Router();
 
 router.use(authMiddleware);
-router.use(checkRole(['ADMIN']));
+router.use(checkRole(['ADMIN', 'RH']));
 
 router.get("/", userManagementController.getUsers);
 router.post("/", userManagementController.createUser);

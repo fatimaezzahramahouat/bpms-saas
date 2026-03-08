@@ -17,6 +17,19 @@ interface OrgInfoData {
   city: string;
   domaine: string;
   address: string;
+  emailorg?: string;
+  phoneorg?: string;
+}
+
+interface OnboardingTransactionData {
+  organisationId?: string | null;
+  userId: string;
+  orgInfo: OrgInfoData;
+  organisation?: {
+    name: string;
+    nb_employers: number;
+    email: string; // Added to create organisation
+  };
 }
 
 export const authRepository = {
@@ -69,7 +82,9 @@ export const authRepository = {
                 address: true,
                 city: true,
                 website: true,
-                logo: true
+                logo: true,
+                emailorg: true,
+                phoneorg: true
               }
             }
           }
@@ -90,8 +105,69 @@ export const authRepository = {
         city: data.city,
         domaine: data.domaine,
         address: data.address,
+        emailorg: data.emailorg,
+        phoneorg: data.phoneorg,
         organisationId,
       },
+    });
+  },
+
+  async completeOnboardingTransaction(data: OnboardingTransactionData) {
+    return prisma.$transaction(async (tx) => {
+      let finalOrganisationId = data.organisationId;
+
+      // 1. Create or Update Organisation
+      if (!finalOrganisationId && data.organisation) {
+        // Create new organisation for Google users
+        const newOrg = await tx.organisation.create({
+          data: {
+            name: data.organisation.name,
+            nb_employers: data.organisation.nb_employers,
+            email: data.organisation.email,
+            nom_admin: "", // Can be filled later or left empty
+            password: "", // No password for Google orgs
+          },
+        });
+        finalOrganisationId = newOrg.id;
+      } else if (finalOrganisationId && data.organisation) {
+        // Update existing organisation (if any)
+        await tx.organisation.update({
+          where: { id: finalOrganisationId },
+          data: {
+            name: data.organisation.name,
+            nb_employers: data.organisation.nb_employers,
+          },
+        });
+      }
+
+      if (!finalOrganisationId) {
+        throw new Error("Organisation ID is required but was not provided or created.");
+      }
+
+      // 2. Create OrgInfo
+      const orgInfo = await tx.orgInfo.create({
+        data: {
+          logo: data.orgInfo.logo,
+          website: data.orgInfo.website,
+          city: data.orgInfo.city,
+          domaine: data.orgInfo.domaine,
+          address: data.orgInfo.address,
+          emailorg: data.orgInfo.emailorg,
+          phoneorg: data.orgInfo.phoneorg,
+          organisationId: finalOrganisationId,
+        },
+      });
+
+      // 3. Update User: Set profileCompleted and link to organisation if not already linked
+      const user = await tx.user.update({
+        where: { id: data.userId },
+        data: {
+          profileCompleted: true,
+          organisationId: finalOrganisationId,
+        },
+      });
+
+      return { orgInfo, user };
     });
   },
   
@@ -106,7 +182,9 @@ export const authRepository = {
             address: true,
             city: true,
             website: true,
-            logo: true
+            logo: true,
+            emailorg: true,
+            phoneorg: true
           }
         },
         users: {
