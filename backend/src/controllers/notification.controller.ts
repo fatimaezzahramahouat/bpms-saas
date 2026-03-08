@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { notificationService } from "../services/notification.service";
 import { catchAsync } from "../utils/catchAsync";
@@ -8,8 +8,9 @@ export const notificationController = {
      * GET /api/notifications
      * Returns all unread notifications for the logged-in user.
      */
-    getNotifications: catchAsync(async (req: AuthRequest, res: Response) => {
-        const userId = req.user?.userId;
+    getNotifications: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const userId = authReq.user?.userId;
 
         if (!userId) {
             return res.status(401).json({ error: "User not authenticated" });
@@ -23,8 +24,9 @@ export const notificationController = {
      * PATCH /api/notifications/read-all
      * Marks all notifications for the logged-in user as read.
      */
-    markAllAsRead: catchAsync(async (req: AuthRequest, res: Response) => {
-        const userId = req.user?.userId;
+    markAllAsRead: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const userId = authReq.user?.userId;
 
         if (!userId) {
             return res.status(401).json({ error: "User not authenticated" });

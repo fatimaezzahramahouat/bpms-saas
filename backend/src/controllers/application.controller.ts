@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
 import { applicationService } from "../services/application.service";
 import { z } from "zod";
@@ -49,9 +50,10 @@ export const applicationController = {
   /**
    * GET /api/joboffers/:jobOfferId/applications
    */
-  getApplicationsByJob: catchAsync(async (req: any, res: Response) => {
+  getApplicationsByJob: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { jobOfferId } = req.params;
-    const { organisationId } = req.user!;
+    const { organisationId } = authReq.user!;
 
     const applications = await applicationService.getJobApplications(
       jobOfferId as string,
@@ -66,9 +68,10 @@ export const applicationController = {
   /**
    * PATCH /api/applications/:id/status
    */
-  updateStatus: catchAsync(async (req: any, res: Response) => {
+  updateStatus: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
-    const { organisationId } = req.user!;
+    const { organisationId } = authReq.user!;
 
     const statusSchema = z.object({
       status: z.enum(["INTERVIEW", "ACCEPTED", "REJECTED", "CONTACTED"]),
@@ -95,9 +98,10 @@ export const applicationController = {
   /**
    * DELETE /api/applications/:id
    */
-  deleteApplication: catchAsync(async (req: any, res: Response) => {
+  deleteApplication: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
-    const { organisationId } = req.user!;
+    const { organisationId } = authReq.user!;
 
     await applicationService.deleteApplication(id as string, organisationId);
 

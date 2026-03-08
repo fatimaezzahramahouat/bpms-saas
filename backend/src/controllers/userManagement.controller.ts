@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { z } from "zod";
 import { userManagementService } from "../services/userManagement.service";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -22,9 +22,10 @@ const updateUserSchema = z.object({
 });
 
 export const userManagementController = {
-    async getUsers(req: AuthRequest, res: Response): Promise<void> {
+    async getUsers(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
             if (!organisationId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
@@ -37,10 +38,11 @@ export const userManagementController = {
         }
     },
 
-    async createUser(req: AuthRequest, res: Response): Promise<void> {
+    async createUser(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
@@ -75,11 +77,12 @@ export const userManagementController = {
         }
     },
 
-    async updateUser(req: AuthRequest, res: Response): Promise<void> {
+    async updateUser(req: Request, res: Response): Promise<void> {
         try {
+            const authReq = req as AuthRequest;
             const id = req.params.id as string;
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
@@ -122,11 +125,12 @@ export const userManagementController = {
         }
     },
 
-    async deleteUser(req: AuthRequest, res: Response): Promise<void> {
+    async deleteUser(req: Request, res: Response): Promise<void> {
         try {
+            const authReq = req as AuthRequest;
             const id = req.params.id as string;
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
@@ -154,10 +158,11 @@ export const userManagementController = {
         }
     },
 
-    async bulkImport(req: AuthRequest, res: Response): Promise<void> {
+    async bulkImport(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });

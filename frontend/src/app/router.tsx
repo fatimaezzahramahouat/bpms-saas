@@ -12,6 +12,7 @@ import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
+import { GoogleSuccess } from '../features/auth/pages/GoogleSuccess';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
 import { CandidateProfilePage } from '../features/rh/pages/CandidateProfilePage';
 import { MyApprovals } from '@/pages/MyApprovals';
@@ -42,6 +43,7 @@ export function AppRouter() {
       <Route path="/login" element={<Login />} />
       <Route path="/register-org" element={<RegisterOrg />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/google-success" element={<GoogleSuccess />} />
 
 
       {/* Dashboard Routes - Protected */}

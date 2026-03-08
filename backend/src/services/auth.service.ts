@@ -108,6 +108,10 @@ export const authService = {
     }
 
     // 2. Compare password
+    if (!user.password) {
+      throw new Error("No password set for this account. If you signed up via Google, please use the forgot password flow to set one.");
+    }
+
     const isMatch = await bcrypt.compare(input.password, user.password);
     if (!isMatch) {
       throw new Error("Invalid email or password");

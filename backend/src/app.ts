@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import path from "path";
+import passport from "passport";
+import "./config/passport"; // Import passport configuration
 
 import authRouter from "./routes/auth.routes";
 import organisationRouter from "./routes/organisation.routes";
@@ -50,6 +52,7 @@ app.use(
 );
 
 app.use(cookieParser());
+app.use(passport.initialize());
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }));

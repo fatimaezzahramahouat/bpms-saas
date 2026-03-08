@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { z } from "zod";
 import { storageService } from "../services/storage.service";
 import { authService } from "../services/auth.service";
@@ -13,15 +13,16 @@ const onboardingSchema = z.object({
 });
 
 export const organisationController = {
-    async onboarding(req: AuthRequest, res: Response): Promise<void> {
+    async onboarding(req: Request, res: Response): Promise<void> {
         try {
+            const authReq = req as AuthRequest;
             const parsed = onboardingSchema.safeParse(req.body);
             if (!parsed.success) {
                 res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
                 return;
             }
 
-            const organisationId = req.user?.organisationId;
+            const organisationId = authReq.user?.organisationId;
             if (!organisationId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
@@ -57,9 +58,10 @@ export const organisationController = {
         }
     },
 
-    async profile(req: AuthRequest, res: Response): Promise<void> {
+    async profile(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
             if (!organisationId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
@@ -77,9 +79,10 @@ export const organisationController = {
         }
     },
 
-    async getLogo(req: AuthRequest, res: Response): Promise<void> {
+    async getLogo(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
             if (!organisationId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;

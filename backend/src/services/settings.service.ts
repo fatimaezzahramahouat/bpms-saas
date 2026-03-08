@@ -24,6 +24,10 @@ export const settingsService = {
       throw { status: 404, message: "User not found" };
     }
 
+    if (!user.password) {
+      throw { status: 400, message: "No password set for this account. If you signed up via Google, please use the forgot password flow to set one." };
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       throw { status: 400, message: "Current password is incorrect" };

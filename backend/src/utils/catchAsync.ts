@@ -4,7 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 // ─── Type Definitions ─────────────────────────────────────
 
 type AsyncHandler = (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => Promise<any>;
@@ -18,6 +18,6 @@ type AsyncHandler = (
  */
 export const catchAsync = (fn: AsyncHandler) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    fn(req as AuthRequest, res, next).catch(next);
+    fn(req, res, next).catch(next);
   };
 };
