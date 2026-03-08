@@ -77,7 +77,7 @@ export const ArchitecteBPMS = () => {
             nodes: layoutedNodes,
             edges: layoutedEdges,
             metadata: result.metadata,
-            dataModel: result.data_model,
+            data_model: result.data_model,
             rules: result.business_rules
         };
 

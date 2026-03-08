@@ -17,6 +17,7 @@ export const workflowService = {
                 description: input.description,
                 nodes: input.nodes,
                 edges: input.edges,
+                data_model: input.data_model,
                 steps: input.steps || [],
             }
         );
@@ -53,7 +54,7 @@ export const workflowService = {
 
         let version = current.version;
         // Business Rule: If editing an ACTIVE workflow, increment version
-        if (current.status === "ACTIVE" && (input.nodes || input.edges || input.name)) {
+        if (current.status === "ACTIVE" && (input.nodes || input.edges || input.data_model || input.name)) {
             version += 1;
         }
 
