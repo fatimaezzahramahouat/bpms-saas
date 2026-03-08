@@ -58,6 +58,12 @@ export const processController = {
             include: {
                 workflow: {
                     select: { name: true }
+                },
+                tasks: {
+                    where: { status: 'PENDING' },
+                    include: {
+                        user: { select: { firstName: true, lastName: true } }
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' }

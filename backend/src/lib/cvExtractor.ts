@@ -1,5 +1,6 @@
 // backend/src/lib/cvExtractor.ts
 import { generateContent } from './groq';
+const pdfParse = require('pdf-parse');
 
 /**
  * Extract structured data from CV text using AI
@@ -123,6 +124,26 @@ function parseCVTextFallback(cvText: string): {
     education: '',
     rawText: text
   };
+}
+
+/**
+ * Extract raw text from a PDF file buffer
+ */
+export async function extractTextFromPDFFile(filePath: string): Promise<string> {
+  try {
+    const fs = await import('fs/promises');
+    
+    
+    const dataBuffer = await fs.readFile(filePath);
+    
+    
+    const data = await pdfParse(dataBuffer);
+    
+    return data.text;
+  } catch (error) {
+    console.error('❌ Failed to extract text from PDF:', (error as Error).message);
+    throw new Error('Failed to parse PDF file');
+  }
 }
 
 export default {

@@ -214,7 +214,7 @@ export const authService = {
   async resetPassword(token: string, newPassword: string) {
     // 1. Find user by token
     const user = await authRepository.findUserByResetToken(token);
-    
+
     // 2. Verify token and expiration
     if (!user || !user.resetExpires || user.resetExpires < new Date()) {
       throw new Error("Le jeton de réinitialisation est invalide ou a expiré.");

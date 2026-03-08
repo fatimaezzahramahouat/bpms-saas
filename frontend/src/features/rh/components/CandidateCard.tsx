@@ -99,6 +99,7 @@ interface CandidateCardProps {
   onSave: (candidate: Candidate) => void;
   onDelete: (candidate: Candidate) => void;
   jobRequirements?: string[];
+  onViewCV?: (candidate: Candidate) => void;
   isSaved?: boolean;
   savedLabels?: string[];
   savedNotes?: Array<{ id: string; content: string; createdAt: string; updatedAt: string }>;
@@ -117,6 +118,7 @@ export function CandidateCard({
   onSave, 
   onDelete, 
   jobRequirements = [], 
+  onViewCV,
   isSaved = false, 
   savedLabels = [], 
   savedNotes = [],
@@ -135,27 +137,10 @@ export function CandidateCard({
   const fullName = `${candidate.firstName} ${candidate.lastName}`;
 
   // Default form data if not provided
-  const formData = candidate.formData || {
-    skills: ['React', 'TypeScript', 'Node.js', 'JavaScript'],
-    experienceLevel: '3 ans',
-    education: 'Master en Informatique',
-    availability: 'Immédiate',
-    salaryExpectations: '45 000€ - 55 000€',
-    coverLetter: 'Lettre de motivation standard...',
-    cvFileName: 'cv_mohamed_el_amrani.pdf',
-  };
 
-  // Default match items if not provided
-  const matchItems: MatchItem[] = candidate.matchItems || [
-    { requirement: 'React', candidateProfile: 'React', matchPercentage: 100, status: 'matched' },
-    { requirement: 'Node.js', candidateProfile: 'Node.js', matchPercentage: 100, status: 'matched' },
-    { requirement: 'TypeScript', candidateProfile: 'TypeScript', matchPercentage: 100, status: 'matched' },
-    { requirement: '5+ ans expérience', candidateProfile: '3 ans', matchPercentage: 60, status: 'partial' },
-    { requirement: 'MongoDB', candidateProfile: 'PostgreSQL', matchPercentage: 50, status: 'partial' },
-    { requirement: 'AWS', candidateProfile: 'Non spécifié', matchPercentage: 0, status: 'missing' },
-  ];
-
-  const matchPercentage = candidate.matchPercentage || 72;
+const formData = candidate.formData;
+const matchPercentage = candidate.matchPercentage || 0;
+const matchItems: MatchItem[] = candidate.matchItems || [];
 
   return (
     <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -238,104 +223,81 @@ export function CandidateCard({
           Données du candidat
         </h4>
         
-        {/* CV */}
-        <div className="flex items-center justify-between p-2 bg-[var(--bg-main)] rounded-lg">
-          <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-            <FileText className="w-4 h-4 text-purple-500" />
-            <span>CV</span>
-          </div>
-          {formData.cvFileName ? (
-            <button className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300">
-              <Download className="w-3 h-3" />
-              {formData.cvFileName}
-            </button>
-          ) : (
-            <span className="text-xs text-[var(--text-secondary)]">Non fourni</span>
-          )}
-        </div>
+        {/* CV - clickable */}
+<div className="flex items-center justify-between p-2 bg-[var(--bg-main)] rounded-lg">
+  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+    <FileText className="w-4 h-4 text-purple-500" />
+    <span>CV</span>
+  </div>
+  {formData?.cvFileName ? (
+    <button 
+      onClick={() => onViewCV?.(candidate)}
+      className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+    >
+      <Download className="w-3 h-3" />
+      <span className="max-w-[150px] truncate">{formData.cvFileName}</span>
+    </button>
+  ) : (
+    <span className="text-xs text-[var(--text-secondary)]">Non fourni</span>
+  )}
+</div>
 
         {/* Skills */}
-        <div>
-          <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-2">
-            <Briefcase className="w-4 h-4 text-purple-500" />
-            <span>Compétences</span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {formData.skills.map((skill, index) => (
-              <SkillTag key={index} skill={skill} />
-            ))}
-          </div>
-        </div>
+
+<div>
+  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-2">
+    <Briefcase className="w-4 h-4 text-purple-500" />
+    <span>Compétences</span>
+  </div>
+  <div className="flex flex-wrap gap-1">
+    {formData?.skills?.slice(0, 3).map((skill, index) => (
+      <SkillTag key={index} skill={skill} />
+    ))}
+    {(!formData?.skills || formData.skills.length === 0) && (
+      <span className="text-xs text-[var(--text-secondary)]">Non spécifié</span>
+    )}
+  </div>
+</div>
 
         {/* Experience */}
         <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-            <Briefcase className="w-4 h-4 text-purple-500" />
-            <span>Expérience</span>
-          </div>
-          <span className="text-[var(--text-primary)]">{formData.experienceLevel}</span>
-        </div>
+  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+    <Briefcase className="w-4 h-4 text-purple-500" />
+    <span>Expérience</span>
+  </div>
+  <span className="text-[var(--text-primary)]">
+    {formData?.experienceLevel || 'Non spécifié'}
+  </span>
+</div>
 
         {/* Education */}
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-            <GraduationCap className="w-4 h-4 text-purple-500" />
-            <span>Formation</span>
-          </div>
-          <span className="text-[var(--text-primary)]">{formData.education}</span>
-        </div>
+      <div className="flex items-center justify-between text-sm">
+  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+    <GraduationCap className="w-4 h-4 text-purple-500" />
+    <span>Formation</span>
+  </div>
+  <span className="text-[var(--text-primary)]">
+    {formData?.education || 'Non spécifié'}
+  </span>
+</div>
+
 
         {/* Availability */}
         <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-            <Clock className="w-4 h-4 text-purple-500" />
-            <span>Disponibilité</span>
-          </div>
-          <span className="text-[var(--text-primary)]">{formData.availability}</span>
-        </div>
+  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+    <Clock className="w-4 h-4 text-purple-500" />
+    <span>Disponibilité</span>
+  </div>
+  <span className="text-[var(--text-primary)]">
+    {formData?.availability || 'Non spécifié'}
+  </span>
+</div>
 
-        {/* Salary Expectations */}
-        {formData.salaryExpectations && (
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-              <DollarSign className="w-4 h-4 text-purple-500" />
-              <span>Salaire souhaité</span>
-            </div>
-            <span className="text-[var(--text-primary)]">{formData.salaryExpectations}</span>
-          </div>
-        )}
+        
+    
       </div>
 
-      {/* Toggle Analysis Button */}
-      <button
-        onClick={() => setShowAnalysis(!showAnalysis)}
-        className="w-full flex items-center justify-between p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg hover:border-purple-500/50 transition-colors mb-4"
-      >
-        <span className="text-sm font-medium text-[var(--text-primary)]">
-          {showAnalysis ? 'Masquer l\'analyse détaillée' : 'Voir l\'analyse détaillée'}
-        </span>
-        {showAnalysis ? (
-          <ChevronUp className="w-4 h-4 text-purple-500" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-purple-500" />
-        )}
-      </button>
-
-      {/* Detailed Analysis - Comparison Table */}
-      <div 
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          showAnalysis ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div className="pt-2">
-          <h4 className="font-medium text-[var(--text-primary)] text-sm mb-2">
-            Comparaison profil/exigences
-          </h4>
-          <div className="border border-[var(--border-color)] rounded-lg overflow-hidden">
-            <ComparisonTable items={matchItems} showHeader={true} />
-          </div>
-        </div>
-      </div>
+  
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-3 border-t border-[var(--border-color)]">

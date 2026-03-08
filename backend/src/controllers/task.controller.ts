@@ -96,6 +96,24 @@ export const taskController = {
     }),
 
     /**
+     * PATCH /api/tasks/:id/reject
+     * Rejects the task and terminates the process.
+     */
+    rejectTask: catchAsync(async (req: AuthRequest, res: Response) => {
+        const id = req.params.id as string;
+        const userId = req.user?.userId;
+
+        if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
+
+        const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', userId);
+
+        res.status(200).json({
+            message: "Task rejected successfully",
+            data: result
+        });
+    }),
+
+    /**
      * GET /api/tasks/approvals
      * Gets all pending tasks assigned to the manager for review.
      */
@@ -108,28 +126,31 @@ export const taskController = {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-        const tasks = await prisma.task.findMany({
-            where: {
-                userId: userId, // Tasks specifically assigned to this manager
-                status: "PENDING"
-            },
+      
+const tasks = await prisma.task.findMany({
+    where: {
+        userId: userId,
+        status: "PENDING"
+    },
+    include: {
+        
+        user: {
+            select: {
+                firstName: true,
+                lastName: true,
+                email: true
+            }
+        },
+        processInstance: {
             include: {
-                processInstance: {
-                    include: {
-                        workflow: true,
-                        user: {
-                            select: {
-                                firstName: true,
-                                lastName: true,
-                                email: true
-                            }
-                        }
-                    }
-                },
-                step: true
-            },
-            orderBy: { createdAt: "desc" }
-        });
+                workflow: true
+                
+            }
+        },
+        step: true
+    },
+    orderBy: { createdAt: "desc" }
+});
 
         res.status(200).json(tasks);
     })
