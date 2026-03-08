@@ -12,6 +12,7 @@ import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
 import { WorkflowListPage } from '../features/workflow/pages/WorkflowListPage';
 import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
+import { ArchitecteBPMS } from '../features/management/pages/ArchitecteBPMS';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
 import { CandidateProfilePage } from '../features/rh/pages/CandidateProfilePage';
@@ -50,6 +51,7 @@ export function AppRouter() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
         <Route path="equipe" element={<UsersManagement />} />
+        <Route path="architecte" element={<ArchitecteBPMS />} />
 
         {/* Workflow Pages */}
         <Route path="workflow" element={<WorkflowListPage />} />
@@ -71,7 +73,6 @@ export function AppRouter() {
 
       {/* Team Route */}
       <Route path="/our-team" element={<TeamPage />} />
-
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />
     </Routes>

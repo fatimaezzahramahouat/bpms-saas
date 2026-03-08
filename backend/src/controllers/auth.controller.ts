@@ -129,6 +129,12 @@ export const authController = {
       }
 
       // 3. Password Validation
+      if (!user.password) {
+        console.warn(`Login attempt failed: No password set for user (${email})`);
+        res.status(401).json({ error: "Identifiants invalides" });
+        return;
+      }
+
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         console.warn(`Login attempt failed: Invalid password (${email})`);

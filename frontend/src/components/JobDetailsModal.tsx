@@ -216,8 +216,7 @@ export function JobDetailsModal({ job, isOpen, onClose }: JobDetailsModalProps) 
         isOpen={showApplyModal}
         onClose={() => setShowApplyModal(false)}
         jobTitle={job.title}
-        jobId={job.id}
-      />
+        jobId={String(job?.id)}       />
     </>
   );
 }

@@ -18,7 +18,8 @@ export function SettingsPage() {
   const [profile, setProfile] = useState<UserProfile>({
     firstName: userData?.firstName || '',
     lastName: userData?.lastName || '',
-    email: userData?.email || ''
+    email: userData?.email || '',
+    phone: userData?.phone || ''
   });
 
   // Password State
@@ -226,15 +227,27 @@ export function SettingsPage() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-zinc-400">Email</label>
-              <input
-                type="email"
-                value={profile.email}
-                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-sm focus:border-h1-blue outline-none transition-all"
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-zinc-400">Email</label>
+                <input
+                  type="email"
+                  value={profile.email}
+                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-sm focus:border-h1-blue outline-none transition-all"
                 required
-              />
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-zinc-400">Téléphone</label>
+                <input
+                  type="tel"
+                  value={profile.phone}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-sm focus:border-h1-blue outline-none transition-all"
+                required
+                />
+              </div>
             </div>
             <div className="flex justify-end">
               <button

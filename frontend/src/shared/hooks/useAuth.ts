@@ -5,6 +5,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  phone: string;
   role: 'ADMIN' | 'RH' | 'MANAGER' | 'EMPLOYEE';
   admin?: boolean;
   rh?: boolean;

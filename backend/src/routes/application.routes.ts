@@ -389,39 +389,67 @@ Respond in French.
 });
 
 // ❌ 4. GET /applications/:id - MOST GENERIC (يجب أن يأتي آخراً)
-router.get('/:id', async (req: Request, res: Response) => {
+// ✅ GET /api/applications/:id/analysis - جلب تحليل الـ AI لتطبيق معين
+// ============================================================================
+// ✅ NEW: GET /api/applications/:id/analysis - جلب تحليل الـ AI فقط
+// ============================================================================
+router.get('/:id/analysis', async (req: Request, res: Response) => {
   try {
-    const rawId = req.params.id;
-    const applicationId = Array.isArray(rawId) ? rawId[0] : rawId;
+    const applicationId = req.params.id as string;
     
-    if (!applicationId) {
-      return res.status(400).json({ error: 'Application ID is required' });
-    }
-
-    const application = await prisma.application.findUnique({
-      where: { id: applicationId },
-      include: {
-        candidate: true,
-        jobOffer: true,
-        aiAnalyses: {
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        }
-      }
+    console.log('🔍 [Backend] Fetching AI analysis for application:', applicationId);
+    
+    // البحث عن أحدث تحليل مرتبط بهذا التطبيق
+    const analysis = await prisma.aIAnalysis.findFirst({
+      where: { applicationId },
+      orderBy: { createdAt: 'desc' }
     });
-
-    if (!application) {
-      return res.status(404).json({ error: 'Application not found' });
+    
+    if (!analysis) {
+      console.log('⏳ [Backend] No analysis found yet for application:', applicationId);
+      return res.status(404).json({ 
+        error: 'Analysis not found',
+        message: 'L\'analyse IA est encore en cours de traitement. Veuillez réessayer dans quelques secondes.'
+      });
     }
-
+    
+    console.log('✅ [Backend] Analysis found:', {
+      id: analysis.id,
+      overallScore: analysis.overallScore,
+      type: analysis.type
+    });
+    
+    // إرجاع التحليل بصيغة متوافقة مع الـ Frontend
     res.json({
-      success: true,
-      data: application
+      id: analysis.id,
+      applicationId: analysis.applicationId,
+      overallScore: analysis.overallScore || 0,
+      confidence: analysis.confidence,
+      priority: analysis.priority,
+      recommendation: analysis.recommendation,
+      matchedSkills: analysis.matchedSkills || [],
+      missingSkills: analysis.missingSkills || [],
+      interviewQuestions: analysis.interviewQuestions || [],
+      // ✅ حقل result يحتوي على: forces, faiblesses, recommandation, etc.
+      result: analysis.result,
+      strengths: analysis.strengths || [],
+      weaknesses: analysis.weaknesses || [],
+      categoryScores: {
+        skills: analysis.skillsScore,
+        experience: analysis.experienceScore,
+        education: analysis.educationScore,
+        technicalFit: analysis.technicalFitScore
+      },
+      createdAt: analysis.createdAt,
+      updatedAt: analysis.updatedAt
     });
-
+    
   } catch (error) {
-    console.error('❌ Error fetching application:', error);
-    res.status(500).json({ error: 'Failed to fetch application' });
+    console.error('❌ [Backend] Error fetching analysis:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch analysis',
+      details: (error as Error).message 
+    });
   }
 });
 

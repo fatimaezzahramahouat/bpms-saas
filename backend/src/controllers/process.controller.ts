@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { workflowEngineService } from "../services/workflowEngine.service";
-import prisma from "../lib/prisma";
+import { prisma } from "../lib/prisma";
 import { catchAsync } from "../utils/catchAsync";
 
 export const processController = {
@@ -56,6 +56,12 @@ export const processController = {
             include: {
                 workflow: {
                     select: { name: true }
+                },
+                tasks: {
+                    where: { status: 'PENDING' },
+                    include: {
+                        user: { select: { firstName: true, lastName: true } }
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' }

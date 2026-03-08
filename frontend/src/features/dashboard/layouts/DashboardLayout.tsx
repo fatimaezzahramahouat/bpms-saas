@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap, Briefcase, BarChart3, Network } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { ThemeSwitcher } from '@shared/components';
@@ -45,62 +45,60 @@ export function DashboardLayout() {
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const navigate = useNavigate();
 
-const fetchProfile = async () => {
-    try {
-        const token = localStorage.getItem('token');
-        
-        console.log('🔍 [fetchProfile] Token:', token ? token.substring(0, 30) + '...' : 'NULL');
-        
-        // Fetch full user profile with relations
-        const response = await fetch('http://localhost:5000/api/auth/me', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` })
-            },
-            credentials: 'include'
-        });
+    const fetchProfile = async () => {
+        try {
+            const token = localStorage.getItem('token');
 
-        console.log('📡 [fetchProfile] Status:', response.status);
-        
-        if (response.status === 401) {
-            console.log('❌ Token invalid - logging out');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            navigate('/login');
-            return;
-        }
+            console.log('🔍 [fetchProfile] Token:', token ? token.substring(0, 30) + '...' : 'NULL');
 
-        if (response.ok) {
-            const result = await response.json();
-            const user = result.data;
+            // Fetch full user profile with relations
+            const response = await fetch('http://localhost:5000/api/auth/me', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                credentials: 'include'
+            });
 
-            // Persist latest data
-            localStorage.setItem('user', JSON.stringify(user));
+            console.log('📡 [fetchProfile] Status:', response.status);
 
-            setUserData(user);
-            setOrgData(user.organisation);
-            setUserName(`${user.firstName} ${user.lastName}`);
-            setUserRole(getRoleLabel(user));
-            setIsAdmin(!!user.admin);
-
-            if (user.organisation?.orgInfo) {
-                setHasOrgInfo(true);
-                setShowOnboarding(false);
-                localStorage.setItem('onboarding_done', 'true');
-                localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
-            } else {
-                setHasOrgInfo(false);
-                setShowOnboarding(true);
-                localStorage.setItem('onboarding_done', 'false');
+            if (response.status === 401) {
+                console.log('❌ Token invalid - logging out');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                navigate('/login');
+                return;
             }
+
+            if (response.ok) {
+                const result = await response.json();
+                const user = result.data;
+
+                // Persist latest data
+                localStorage.setItem('user', JSON.stringify(user));
+                window.dispatchEvent(new Event('user-data-updated'));
+
+                setUserData(user);
+                setOrgData(user.organisation);
+
+                if (user.organisation?.orgInfo) {
+                    setHasOrgInfo(true);
+                    setShowOnboarding(false);
+                    localStorage.setItem('onboarding_done', 'true');
+                    localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
+                } else {
+                    setHasOrgInfo(false);
+                    setShowOnboarding(true);
+                    localStorage.setItem('onboarding_done', 'false');
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch profile:', err);
+        } finally {
+            setIsLoadingProfile(false);
         }
-    } catch (err) {
-        console.error('Failed to fetch profile:', err);
-    } finally {
-        setIsLoadingProfile(false);
-    }
-};
+    };
 
     useEffect(() => {
         fetchProfile();
@@ -168,6 +166,26 @@ const fetchProfile = async () => {
                         </NavLink>
                     )}
 
+                    {isUserAdmin && (
+                        <NavLink to="/dashboard/architecte" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                            <Network className="w-5 h-5" />
+                            Architecte BPMS
+                        </NavLink>
+                    )}
+
+                    {isUserHR && (
+                        <>
+                            <NavLink to="/dashboard/rh/job-offers" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                                <Briefcase className="w-5 h-5" />
+                                Offres d'emploi
+                            </NavLink>
+                            <NavLink to="/dashboard/rh/statistics" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                                <BarChart3 className="w-5 h-5" />
+                                Statistiques
+                            </NavLink>
+                        </>
+                    )}
+
                     {!hasElevatedAccess && (
                         <NavLink to="/dashboard/mes-demandes" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
                             <Zap className="w-5 h-5" />
@@ -175,8 +193,8 @@ const fetchProfile = async () => {
                         </NavLink>
                     )}
 
-                    {/* Manager Approvals - Only visible to Managers or Admins */}
-                    {(userRole === 'Manager' || isUserAdmin) && (
+                    {/* Manager/RH Approvals - Only visible to Managers, RH or Admins */}
+                    {(userRole === 'Manager' || userRole === 'Responsable RH' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/approvals"
                             className={({ isActive }) =>
@@ -211,7 +229,7 @@ const fetchProfile = async () => {
                     )}
 
                     {[
-                        
+
                     ].map((item) => (
                         <button
                             key={item.label}

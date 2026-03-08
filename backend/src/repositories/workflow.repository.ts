@@ -1,4 +1,4 @@
-import prisma from "../lib/prisma";
+import { prisma } from "../lib/prisma";
 import { StepInput } from "../schemas/workflow.schema";
 
 // ─── Input Types ──────────────────────────────────────────

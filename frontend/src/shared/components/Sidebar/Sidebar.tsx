@@ -8,7 +8,9 @@ import {
     ChevronRight,
     Zap,
     BarChart3,
-    Briefcase
+    Briefcase,
+    CheckSquare,
+    Network
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { usePermission } from '../../hooks/usePermission';
@@ -19,8 +21,10 @@ const menuItems = [
     { name: 'Statistiques', icon: BarChart3, path: '/dashboard/rh/statistics' },
     { name: 'Equipe', icon: Users, path: '/dashboard/equipe' },
     { name: 'Workflow Builder', icon: GitMerge, path: '/dashboard/workflow' },
+    { name: 'Mes Approbations', icon: CheckSquare, path: '/dashboard/approvals' },
     { name: 'Mes Demandes', icon: Zap, path: '/dashboard/mes-demandes' },
     { name: 'Documents', icon: Files, path: '/documents' },
+    { name: 'Architecte BPMS', icon: Network, path: '/dashboard/architecte' },
     { name: 'Paramètres', icon: Settings, path: '/settings' },
 ];
 
@@ -28,14 +32,36 @@ export const Sidebar: React.FC = () => {
     const location = useLocation();
     const { canEditWorkflow, canManageUsers, role, isAdmin, isHR } = usePermission();
 
+    // Récupération directe du rôle depuis localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const roleFromStorage = user.role;
+
+    // DEBUG: Log du rôle détecté
+    console.log('Vérification rôle Sidebar:', roleFromStorage);
+    console.log('Rôle depuis usePermission:', role);
+
     const filteredMenuItems = menuItems.filter(item => {
         // Only Admin and RH can see Workflow Builder
         if (item.path === '/dashboard/workflow') return isAdmin || isHR;
-
+        //Only  and RH can see Job Offers
+        if (item.path === '/dashboard/rh/job-offers') return isHR;
+        if (item.path === '/dashboard/rh/statistics') return isHR;
         // Only Employees see "Mes Demandes" (or hide builder for them)
         if (item.path === '/dashboard/mes-demandes') return !isAdmin && !isHR;
 
+        // Admin, Manager and RH can see "Mes Approbations"
+        if (item.path === '/dashboard/approvals') {
+            const approvalsRoles = ['ADMIN', 'ADMINISTRATEUR', 'MANAGER', 'RH'];
+            return approvalsRoles.includes(roleFromStorage?.toUpperCase());
+        }
+
         if (item.path.includes('equipe')) return canManageUsers;
+
+        if (item.path === '/dashboard/architecte') {
+            const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];
+            return isAdmin || adminRoles.includes(roleFromStorage?.toUpperCase()) || adminRoles.includes(role?.toUpperCase());
+        }
+
         return true;
     });
 
