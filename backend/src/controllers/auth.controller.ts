@@ -27,6 +27,8 @@ const completeOrgInfoSchema = z.object({
   city: z.string().min(1, "City is required"),
   domaine: z.string().min(1, "Domaine is required"),
   address: z.string().min(1, "Address is required"),
+  emailorg: z.string().email("Invalid organization email"),
+  phoneorg: z.string().min(1, "Organization phone is required"),
 });
 
 const loginSchema = z.object({
@@ -77,7 +79,8 @@ export const authController = {
     }
   },
 
-  async completeOrganisationInfo(req: AuthRequest, res: Response): Promise<void> {
+  async completeOrganisationInfo(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthRequest;
     try {
       // Validate request body
       const parsed = completeOrgInfoSchema.safeParse(req.body);
@@ -86,7 +89,7 @@ export const authController = {
         return;
       }
 
-      const organisationId = req.user?.organisationId;
+      const organisationId = authReq.user?.organisationId;
       if (!organisationId) {
         res.status(401).json({ error: "Unauthorized" });
         return;
@@ -210,15 +213,16 @@ export const authController = {
     res.status(200).json({ message: "Logged out successfully" });
   },
 
-  async getCurrentUser(req: AuthRequest, res: Response): Promise<void> {
+  async getCurrentUser(req: Request, res: Response): Promise<void> {
+    const authReq = req as AuthRequest;
     try {
-      const userId = req.user?.userId;
+      const userId = authReq.user?.userId;
       if (!userId) {
         res.status(401).json({ error: "Non autorisé" });
         return;
       }
 
-      const user = await authRepository.findUserByEmail(req.user!.email);
+      const user = await authRepository.findUserByEmail(authReq.user!.email);
 
       if (!user) {
         res.status(404).json({ error: "Utilisateur non trouvé" });
@@ -272,6 +276,62 @@ export const authController = {
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  },
+
+  async googleAuthCallback(req: any, res: Response): Promise<void> {
+    try {
+      const user = req.user as any;
+      if (!user) {
+        res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3000"}/login?error=auth_failed`);
+        return;
+      }
+
+      // Role Identification (Heritage Pattern safety)
+      let role = "EMPLOYEE";
+      if (user.admin) role = "ADMIN";
+      else if (user.rh) role = "RH";
+      else if (user.manager) role = "MANAGER";
+      else if (user.employee) role = "EMPLOYEE";
+
+      // Generate JWT Token
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          role: role,
+          organisationId: user.organisationId,
+          firstName: user.firstName,
+          isAdmin: role === "ADMIN",
+        },
+        JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      // Create Session record
+      await authRepository.createSession(
+        user.id,
+        req.headers["user-agent"] as string,
+        req.ip
+      );
+
+      // Set cookie
+res.cookie("token", token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: 24 * 60 * 60 * 1000,
+});
+console.log("Cookies:", req.cookies);
+console.log("BODY:", req.body);
+console.log("CONTENT TYPE:", req.headers["content-type"]);
+console.log("FILE:", req.file);
+// Redirect WITHOUT token in URL
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+res.redirect(`${frontendUrl}/dashboard`);
+    } catch (error) {
+      console.error("GOOGLE_AUTH_CALLBACK_ERROR:", error);
+      res.redirect(`${process.env.FRONTEND_URL || "http://localhost:3000"}/login?error=server_error`);
     }
   },
 };

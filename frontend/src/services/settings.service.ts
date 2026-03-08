@@ -26,10 +26,12 @@ export interface ActiveSession {
 export interface OrganisationSettings {
   name: string;
   logo?: string;
-  domain?: string;
+  domaine?: string;
   address?: string;
   city?: string;
   website?: string;
+  phoneorg?:string;
+  emailorg?:string;
 }
 
 export const settingsService = {

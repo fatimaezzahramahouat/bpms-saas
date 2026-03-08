@@ -21,6 +21,19 @@ interface CompleteOrgInfoInput {
   city: string;
   domaine: string;
   address: string;
+  emailorg: string;
+  phoneorg: string;
+}
+
+interface CompleteOnboardingInput {
+  organisationId: string | null;
+  userId: string;
+  email: string;
+  orgInfo: CompleteOrgInfoInput;
+  organisation?: {
+    name: string;
+    nb_employers: string;
+  };
 }
 
 interface LoginInput {
@@ -90,14 +103,35 @@ export const authService = {
 
   async completeOrganisationInfo(organisationId: string, input: CompleteOrgInfoInput) {
     const orgInfo = await authRepository.createOrgInfo(organisationId, {
-      logo: input.logo ?? "",
-      website: input.website ?? "",
-      city: input.city ?? "",
-      domaine: input.domaine ?? "",
-      address: input.address ?? "",
+      logo: input.logo,
+      website: input.website,
+      city: input.city,
+      domaine: input.domaine,
+      address: input.address,
+      emailorg: input.emailorg,
+      phoneorg: input.phoneorg,
     });
 
     return orgInfo;
+  },
+
+  async completeOnboarding(input: CompleteOnboardingInput) {
+    const nb_employers = input.organisation?.nb_employers 
+      ? mapNbEmployers(input.organisation.nb_employers) 
+      : undefined;
+
+    const result = await authRepository.completeOnboardingTransaction({
+      organisationId: input.organisationId,
+      userId: input.userId,
+      orgInfo: input.orgInfo,
+      organisation: input.organisation && nb_employers !== undefined ? {
+        name: input.organisation.name,
+        nb_employers: nb_employers,
+        email: input.email,
+      } : undefined,
+    });
+
+    return result;
   },
 
   async login(input: LoginInput) {
@@ -109,8 +143,9 @@ export const authService = {
 
     // 2. Compare password
     if (!user.password) {
-      throw new Error("Invalid email or password");
+      throw new Error("No password set for this account. If you signed up via Google, please use the forgot password flow to set one.");
     }
+
     const isMatch = await bcrypt.compare(input.password, user.password);
     if (!isMatch) {
       throw new Error("Invalid email or password");

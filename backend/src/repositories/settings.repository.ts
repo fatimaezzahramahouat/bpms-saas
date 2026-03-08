@@ -45,7 +45,10 @@ export const settingsRepository = {
   async updateUserPassword(id: string, hashedPassword: string) {
     return prisma.user.update({
       where: { id },
-      data: { password: hashedPassword },
+      data: { 
+        password: hashedPassword,
+        profileCompleted: true
+      },
     });
   },
 
@@ -98,7 +101,7 @@ export const settingsRepository = {
 
   async upsertOrgInfo(
     organisationId: string,
-    data: Partial<{ logo: string; domaine: string; address: string; city: string; website: string }>
+    data: Partial<{ logo: string; domaine: string; address: string; city: string; website: string; emailorg: string; phoneorg: string }>
   ) {
     const updateData: Record<string, string> = {};
     if (data.logo !== undefined) updateData["logo"] = data.logo;
@@ -106,6 +109,8 @@ export const settingsRepository = {
     if (data.address !== undefined) updateData["address"] = data.address;
     if (data.city !== undefined) updateData["city"] = data.city;
     if (data.website !== undefined) updateData["website"] = data.website;
+    if (data.emailorg !== undefined) updateData["emailorg"] = data.emailorg;
+    if (data.phoneorg !== undefined) updateData["phoneorg"] = data.phoneorg;
 
     return prisma.orgInfo.upsert({
       where: { organisationId },

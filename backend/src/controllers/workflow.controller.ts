@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
 import { workflowService } from "../services/workflow.service";
@@ -11,8 +11,9 @@ import {
 // ─── Helpers ──────────────────────────────────────────────
 
 /** Extract organisationId from the JWT payload (set by authMiddleware). */
-const getOrgId = (req: AuthRequest): string => {
-    const organisationId = req.user?.organisationId;
+const getOrgId = (req: Request): string => {
+    const authReq = req as AuthRequest;
+    const organisationId = authReq.user?.organisationId;
     if (!organisationId) throw new Error("Unauthorized: missing organisationId in token");
     return organisationId;
 };
@@ -24,7 +25,8 @@ export const workflowController = {
      * POST /api/workflows
      * Creates a workflow + initial steps in one atomic call.
      */
-    createWorkflow: catchAsync(async (req: AuthRequest, res: Response) => {
+    createWorkflow: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
 
         const parsed = createWorkflowSchema.safeParse(req.body);
@@ -58,7 +60,8 @@ export const workflowController = {
      * GET /api/workflows
      * Returns all workflows for the authenticated organisation.
      */
-    getAllWorkflows: catchAsync(async (req: AuthRequest, res: Response) => {
+    getAllWorkflows: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
 
         const workflows = await workflowService.getAllWorkflows(organisationId);
@@ -71,7 +74,8 @@ export const workflowController = {
      * Returns a single workflow with its steps and rules.
      * Returns 404 if not found or belongs to another org.
      */
-    getWorkflowById: catchAsync(async (req: AuthRequest, res: Response) => {
+    getWorkflowById: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
         const id = req.params.id as string;
 
@@ -89,7 +93,8 @@ export const workflowController = {
      * Updates the workflow name.
      * Returns 404 if not found or belongs to another org.
      */
-    updateWorkflow: catchAsync(async (req: AuthRequest, res: Response) => {
+    updateWorkflow: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const id = req.params.id as string;
         console.log(`[WorkflowController] Updating workflow ${id}`);
         console.log("Request Body:", JSON.stringify(req.body, null, 2));
@@ -149,7 +154,8 @@ export const workflowController = {
      * Deletes a workflow and all its dependent data.
      * Returns 404 if not found or belongs to another org.
      */
-    deleteWorkflow: catchAsync(async (req: AuthRequest, res: Response) => {
+    deleteWorkflow: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
         const id = req.params.id as string;
 
@@ -166,7 +172,8 @@ export const workflowController = {
      * POST /api/workflows/:id/steps
      * Adds a new step to an existing workflow.
      */
-    addStep: catchAsync(async (req: AuthRequest, res: Response) => {
+    addStep: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
         const workflowId = req.params.id as string;
 
@@ -196,7 +203,8 @@ export const workflowController = {
      * PATCH /api/workflows/:id/publish
      * Validates graph connectivity and marks workflow as ACTIVE.
      */
-    publishWorkflow: catchAsync(async (req: AuthRequest, res: Response) => {
+    publishWorkflow: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
         const id = req.params.id as string;
 
@@ -215,7 +223,8 @@ export const workflowController = {
      * DELETE /api/workflows/:id/steps/:stepId
      * Removes a step from a workflow.
      */
-    deleteStep: catchAsync(async (req: AuthRequest, res: Response) => {
+    deleteStep: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const organisationId = getOrgId(req);
         const stepId = req.params.stepId as string;
 
