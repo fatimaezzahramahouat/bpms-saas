@@ -296,7 +296,7 @@ const WorkflowEditor: React.FC = () => {
                 {canEdit && (
                     <div className="pt-20 absolute inset-y-0 left-0 z-30 pointer-events-none">
                         <div className="h-full pointer-events-auto">
-                            <WorkflowSidebar />
+                            <WorkflowSidebar dataModel={dataModel} />
                         </div>
                     </div>
                 )}

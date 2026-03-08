@@ -56,7 +56,11 @@ const nodeItems: NodeItem[] = [
     },
 ];
 
-export const WorkflowSidebar: React.FC = () => {
+interface WorkflowSidebarProps {
+    dataModel?: any[];
+}
+
+export const WorkflowSidebar: React.FC<WorkflowSidebarProps> = ({ dataModel = [] }) => {
     const onDragStart = (event: React.DragEvent, nodeType: NodeType, label: string) => {
         event.dataTransfer.setData('application/reactflow', JSON.stringify({ nodeType: 'turbo', label, variant: nodeType }));
         event.dataTransfer.effectAllowed = 'move';
@@ -96,6 +100,23 @@ export const WorkflowSidebar: React.FC = () => {
                     TIP: Use conditions to branch your workflow based on custom variables.
                 </p>
             </div>
+
+            {dataModel && dataModel.length > 0 && (
+                <div className="mt-2 p-4 border border-zinc-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/50 rounded-xl overflow-y-auto max-h-48 custom-scrollbar">
+                    <h3 className="text-[10px] font-black tracking-widest text-purple-600 dark:text-purple-400 uppercase mb-3 flex items-center gap-2">
+                        <Settings className="w-3 h-3" />
+                        Form Data Model
+                    </h3>
+                    <div className="space-y-2">
+                        {dataModel.map((field, index) => (
+                            <div key={index} className="p-2 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 rounded-lg text-[10px] flex items-center justify-between shadow-sm">
+                                <span className="text-zinc-900 dark:text-white font-bold truncate pr-2">{field.name}</span>
+                                <span className="text-zinc-500 dark:text-slate-400 capitalize px-1.5 py-0.5 bg-zinc-100 dark:bg-white/5 rounded block shrink-0">{field.type}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
