@@ -1,17 +1,18 @@
-import { useState, useEffect, useCallback, memo } from 'react';
+// /home/manal/projet_final_BPMS/frontend/src/features/rh/pages/JobOfferCandidatsPage.tsx
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, Download, FileSpreadsheet, FileText, Share2, Printer } from 'lucide-react';
+import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, Printer } from 'lucide-react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useToast, toastSuccess, toastError } from '../../../shared/components/Toast';
 import { CandidateCard, Candidate, CandidateStatus } from '../components/CandidateCard';
 import { LightAnalysisPreview } from '../components/LightAnalysisPreview';
-import { Pagination, PaginationSkeleton } from '../components/Pagination';
+import { Pagination } from '../components/Pagination';
 import { SearchBar, CandidateFilters, ActiveFilters } from '../components';
 import { useCandidateFilters } from '../hooks/useCandidateFilters';
-import { exportCandidatesToCSV, exportAnalysisToPDF, copyToClipboard, generateShareableLink } from '../utils/exportUtils';
+import { exportCandidatesToCSV, exportAnalysisToPDF } from '../utils/exportUtils';
 import { jobOfferService } from '../../../services/jobOffer.service';
 
-// ========== INTERFACES (at top) ==========
+// ========== INTERFACES ==========
 interface JobOffer {
   id: string;
   title: string;
@@ -25,9 +26,23 @@ interface JobOffer {
   requiredEducation?: string;
 }
 
+// ✅ واجهة التحليل المصغر (جديدة)
+export interface AIAnalysisPreview {
+  overallScore: number;
+  strengths: string[];
+  weaknesses: string[];
+  recommendation?: string;
+  priority?: string;
+  interviewQuestions: string[];
+  categoryScores?: {
+    skills?: number;
+    experience?: number;
+    education?: number;
+    technicalFit?: number;
+  };
+}
 
-
-// ========== SKELETON COMPONENT (outside main component) ==========
+// ========== SKELETON COMPONENT ==========
 function CandidateSkeleton() {
   return (
     <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 animate-pulse">
@@ -55,7 +70,7 @@ function CandidateSkeleton() {
   );
 }
 
-// ========== EMPTY STATE COMPONENT (outside main component) ==========
+// ========== EMPTY STATE COMPONENT ==========
 function EmptyState() {
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-16">
@@ -74,14 +89,12 @@ function EmptyState() {
 
 // ========== MAIN COMPONENT ==========
 export function JobOfferCandidatsPage() {
-  // ========== PHASE 1: ALL HOOKS AT THE VERY TOP (NO EXCEPTIONS) ==========
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { addToast } = useToast();
 
-  // State hooks
   const [jobOffer, setJobOffer] = useState<JobOffer | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,20 +102,14 @@ export function JobOfferCandidatsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Constants (after hooks)
   const itemsPerPage = 4;
   const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
-
-  // Filter hook (depends on candidates, which is a hook)
   const { filters, updateFilter, resetFilters, filteredCandidates } = useCandidateFilters(candidates);
-
-  // Derived state (calculated after hooks, not hooks themselves)
   const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedCandidates = filteredCandidates.slice(startIndex, startIndex + itemsPerPage);
   const isRH = user?.role === 'RH' || user?.rh;
 
-  // ========== PHASE 2: HELPER FUNCTIONS (NOT HOOKS) ==========
   const loadData = useCallback(async () => {
     if (!id) return;
     setIsLoading(true);
@@ -120,48 +127,86 @@ export function JobOfferCandidatsPage() {
 
       setJobOffer(offerRes.data as any);
 
-      // Map backend candidates to frontend Candidate type
-      const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
-        const app = c.applications?.[0];
-        const fullNameParts = c.fullName.split(' ');
-        const firstName = fullNameParts[0] || '';
-        const lastName = fullNameParts.slice(1).join(' ') || '';
+      // ✅ Map backend candidates to frontend Candidate type WITH aiAnalysis
+      // ✅ Map backend candidates to frontend Candidate type
+const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
+   console.log('🔍 [Raw Candidate] Full data:', {
+    id: c.id,
+    fullName: c.fullName,
+    applications: c.applications?.length,
+    firstApplication: c.applications?.[0],
+    aiAnalyses: c.applications?.[0]?.aiAnalyses?.[0],
+    result: c.applications?.[0]?.aiAnalyses?.[0]?.result,
+    overallScore: c.applications?.[0]?.aiAnalyses?.[0]?.result?.overallScore,
+  });
+  
+  const app = c.applications?.[0];
+  const fullNameParts = c.fullName?.split(' ') || [];
+  const firstName = fullNameParts[0] || '';
+  const lastName = fullNameParts.slice(1).join(' ') || '';
 
-        return {
-          id: c.id,
-          firstName,
-          lastName,
-          email: c.email,
-          phone: c.phone || 'Non renseigné',
-          appliedDate: app?.createdAt || c.createdAt,
-          status: (app?.status === 'APPLIED' ? 'Nouveau' : 
-                   app?.status === 'INTERVIEW' ? 'En cours' : 
-                   app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as any,
-          jobOfferId: id,
-          formData: {
-            // Try to get skills from various possible locations in the AI analysis result
-            skills: app?.aiAnalyses?.[0]?.result?.matchedRequirements || 
-                   app?.aiAnalyses?.[0]?.result?.exigencesCorrespondantes ||
-                   app?.aiAnalyses?.[0]?.matchedSkills ||
-                   [],
-            experienceLevel: app?.aiAnalyses?.[0]?.result?.experience || 
-                            app?.aiAnalyses?.[0]?.result?.categoryScores?.experience ||
-                            app?.aiAnalyses?.[0]?.experienceScore ||
-                            'Non spécifié',
-            education: app?.aiAnalyses?.[0]?.result?.education ||
-                      app?.aiAnalyses?.[0]?.educationScore ||
+  // ✅ استخراج التحليل بشكل صحيح
+  const analysis = app?.aiAnalyses?.[0];
+  const result = analysis?.result;
+  
+  return {
+    id: c.id,
+    firstName,
+    lastName,
+    email: c.email,
+    phone: c.phone || 'Non renseigné',
+    appliedDate: app?.createdAt || c.createdAt,
+    status: (app?.status === 'APPLIED' ? 'Nouveau' : 
+             app?.status === 'INTERVIEW' ? 'En cours' : 
+             app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as CandidateStatus,
+    jobOfferId: id,
+    
+    // ✅ النسبة المئوية - من عدة مصادر محتملة
+    matchPercentage: result?.overallScore || 
+                    result?.scoreGlobal ||
+                    analysis?.overallScore ||
+                    (analysis?.confidence ? Math.round(analysis.confidence * 100) : 0),
+    
+    // ✅ البيانات الديناميكية من التحليل
+    formData: {
+      // المهارات
+      skills: result?.matchedRequirements || 
+             result?.['exigences correspondantes'] ||
+             result?.matchedSkills ||
+             analysis?.matchedSkills ||
+             [],
+      
+      // الخبرة - من categoryScores
+      experienceLevel: result?.categoryScores?.['expérience'] !== undefined ? 
+                      `${result.categoryScores['expérience']}%` :
+                      result?.experience ||
+                      analysis?.experienceScore !== undefined ?
+                      `${analysis.experienceScore}%` :
                       'Non spécifié',
-            availability: 'Non spécifié',
-            cvFileName: app?.documents?.[0]?.fileName || 'cv.pdf',
-          },
-          // Get overall score from result or confidence field
-          matchPercentage: app?.aiAnalyses?.[0]?.result?.overallScore || 
-                          app?.aiAnalyses?.[0]?.result?.scoreGlobal ||
-                          (app?.aiAnalyses?.[0]?.confidence ? Math.round(app.aiAnalyses[0].confidence * 100) : 0),
-        };
-      });
+      
+      // التعليم - من categoryScores
+      education: result?.categoryScores?.['éducation'] !== undefined ?
+                `${result.categoryScores['éducation']}%` :
+                result?.education ||
+                analysis?.educationScore !== undefined ?
+                `${analysis.educationScore}%` :
+                'Non spécifié',
+      
+      // التوفر
+      availability: result?.disponibilite || 
+                   result?.availability ||
+                   'Non spécifié',
+      
+      // اسم ملف CV
+      cvFileName: app?.documents?.[0]?.fileName || 
+                 analysis?.cvFileName ||
+                 'cv.pdf',
+    },
+  };
+});
 
-      setCandidates(mappedCandidates);
+setCandidates(mappedCandidates);
+
     } catch (err: any) {
       console.error('Error loading candidates data:', err);
       setError(err.response?.data?.error || 'Erreur lors du chargement des données');
@@ -170,48 +215,39 @@ export function JobOfferCandidatsPage() {
     }
   }, [id]);
 
-  const handleRetry = useCallback(() => {
-    setError(null);
-    loadData();
-  }, [loadData]);
-
+  const handleRetry = useCallback(() => { setError(null); loadData(); }, [loadData]);
   const handleViewAnalysis = useCallback((candidate: Candidate) => {
     navigate(`/dashboard/rh/candidates/${candidate.id}`);
   }, [navigate]);
-
+  const handleViewCV = useCallback((candidate: Candidate) => {
+  if (candidate.formData?.cvFileName) {
+    // إذا كان الرابط كاملاً (يبدأ بـ http)
+    if (candidate.formData.cvFileName.startsWith('http')) {
+      window.open(candidate.formData.cvFileName, '_blank');
+    } else {
+      // إذا كان اسم ملف فقط، نضيف مسار الـ uploads
+      const cvUrl = `/uploads/cvs/${candidate.formData.cvFileName}`;
+      window.open(cvUrl, '_blank');
+    }
+  }
+}, []);
   const handleSave = useCallback((candidate: Candidate) => {
-    console.log('Save candidate:', candidate);
-    addToast(toastSuccess(
-      'Candidature sauvegardée',
-      `La candidature de ${candidate.firstName} ${candidate.lastName} a été sauvegardée.`
-    ));
+    addToast(toastSuccess('Candidature sauvegardée', `${candidate.firstName} ${candidate.lastName}`));
   }, [addToast]);
-
   const handleDelete = useCallback((candidate: Candidate) => {
-    console.log('Delete candidate:', candidate);
     setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
-    addToast(toastSuccess(
-      'Candidature supprimée',
-      `La candidature de ${candidate.firstName} ${candidate.lastName} a été supprimée.`
-    ));
+    addToast(toastSuccess('Candidature supprimée', `${candidate.firstName} ${candidate.lastName}`));
   }, [addToast]);
-
   const handleExportCSV = useCallback(async () => {
     if (!jobOffer) return;
     setIsExporting(true);
     try {
       exportCandidatesToCSV(filteredCandidates, jobOffer.title);
-      addToast(toastSuccess(
-        'Export CSV réussie',
-        `${filteredCandidates.length} candidat(s) exporté(s) avec succès.`
-      ));
+      addToast(toastSuccess('Export CSV réussie', `${filteredCandidates.length} candidat(s) exporté(s)`));
     } catch {
-      addToast(toastError('Export échoué', 'Une erreur est survenue lors de l\'export CSV.'));
-    } finally {
-      setIsExporting(false);
-    }
+      addToast(toastError('Export échoué', 'Erreur lors de l\'export CSV'));
+    } finally { setIsExporting(false); }
   }, [jobOffer, filteredCandidates, addToast]);
-
   const handleExportPDF = useCallback(async (candidate: Candidate) => {
     if (!jobOffer) return;
     try {
@@ -221,24 +257,11 @@ export function JobOfferCandidatsPage() {
         requiredExperience: jobOffer.requiredExperience || '',
         requiredEducation: jobOffer.requiredEducation || '',
       });
-      addToast(toastSuccess(
-        'Export PDF réussie',
-        `Analyse de ${candidate.firstName} ${candidate.lastName} exportée.`
-      ));
+      addToast(toastSuccess('Export PDF réussie', `Analyse de ${candidate.firstName} exportée`));
     } catch {
-      addToast(toastError('Export échoué', 'Une erreur est survenue lors de l\'export PDF.'));
+      addToast(toastError('Export échoué', 'Erreur lors de l\'export PDF'));
     }
   }, [jobOffer, addToast]);
-
-  const handleShareCandidate = useCallback(async (candidate: Candidate) => {
-    const link = generateShareableLink(candidate.id);
-    const success = await copyToClipboard(link);
-    addToast(success 
-      ? toastSuccess('Lien copié', 'Le lien de partage a été copié dans le presse-papiers.')
-      : toastError('Erreur', 'Impossible de copier le lien.')
-    );
-  }, [addToast]);
-
   const handlePrint = useCallback(() => { window.print(); }, []);
   const handleBack = useCallback(() => { navigate('/dashboard/rh/job-offers'); }, [navigate]);
 
@@ -249,59 +272,40 @@ export function JobOfferCandidatsPage() {
     requiredEducation: jobOffer.requiredEducation || '',
   } : null;
 
-  // ========== PHASE 3: EFFECTS (AFTER ALL HOOKS AND FUNCTIONS) ==========
   useEffect(() => {
     if (currentPage !== pageFromUrl) {
       setSearchParams({ page: currentPage.toString() }, { replace: true });
     }
   }, [currentPage, pageFromUrl, setSearchParams]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // ========== PHASE 4: CONDITIONAL EARLY RETURNS (AFTER ALL HOOKS) ==========
-  console.log('🎯 Job Offer ID:', id);
-
+  // ========== EARLY RETURNS ==========
   if (!id) {
     return (
       <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center p-6">
         <div className="text-center">
           <p className="text-red-500 text-lg">Erreur: ID de l'offre non trouvé</p>
-          <button onClick={handleBack} className="mt-4 text-purple-600 hover:underline">
-            ← Retour aux offres
-          </button>
+          <button onClick={handleBack} className="mt-4 text-purple-600 hover:underline">← Retour aux offres</button>
         </div>
       </div>
     );
   }
-
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-      </div>
-    );
+    return <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-purple-500" /></div>;
   }
-
-  if (!isAuthenticated) {
-    navigate('/login');
-    return null;
-  }
-
+  if (!isAuthenticated) { navigate('/login'); return null; }
   if (!isRH) {
     return (
       <div className="min-h-screen bg-[var(--bg-main)] flex flex-col items-center justify-center p-6">
         <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Accès refusé</h1>
         <p className="text-[var(--text-secondary)] mb-4">Vous n'avez pas l'autorisation d'accéder à cette page.</p>
-        <button onClick={() => navigate('/dashboard')} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-          Retour au tableau de bord
-        </button>
+        <button onClick={() => navigate('/dashboard')} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Retour au tableau de bord</button>
       </div>
     );
   }
 
-  // ========== PHASE 5: MAIN RENDER ==========
+  // ========== MAIN RENDER ==========
   return (
     <div className="min-h-screen bg-[var(--bg-main)] p-6">
       <div className="max-w-7xl mx-auto">
@@ -336,19 +340,15 @@ export function JobOfferCandidatsPage() {
             )}
           </div>
 
-          {/* Error State */}
           {error && (
             <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <p className="text-red-400 font-medium">{error === 'offre-404' ? 'Offre d\'emploi non trouvée' : 'Une erreur est survenue'}</p>
-                <button onClick={handleRetry} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg">
-                  Réessayer
-                </button>
+                <button onClick={handleRetry} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg">Réessayer</button>
               </div>
             </div>
           )}
 
-          {/* Job Info */}
           {jobOffer && (
             <div className="flex flex-wrap items-center gap-4 text-[var(--text-secondary)]">
               <div className="flex items-center gap-2"><Briefcase className="w-4 h-4 text-purple-500" /><span className="font-medium text-[var(--text-primary)]">{jobOffer.title}</span></div>
@@ -388,32 +388,42 @@ export function JobOfferCandidatsPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {paginatedCandidates.map((candidate) => (
-                <div key={candidate.id} className="space-y-4">
-                  <CandidateCard 
-                    candidate={candidate} 
-                    onViewAnalysis={handleViewAnalysis} 
-                    onSave={handleSave} 
-                    onDelete={handleDelete} 
-                    jobRequirements={jobRequirements?.requiredSkills || []} 
-                  />
-                  {jobRequirements && candidate.formData && (
-                    <LightAnalysisPreview 
-                      candidateId={candidate.id}
-                      jobOfferId={jobOffer?.id || ''}
-                      analysis={{
-                        overallScore: candidate.matchPercentage || 0,
-                        strengths: candidate.formData.skills?.slice(0, 3).map(s => `Compétence en ${s}`) || [],
-                        skillsMatch: {
-                          matched: candidate.formData.skills || [],
-                          missing: [],
-                          percentage: candidate.matchPercentage || 0
-                        }
-                      }}
+              {paginatedCandidates.map((candidate) => {
+                // ✅ استخراج aiAnalysis من المرشح (للاستخدام في LightAnalysisPreview)
+                const aiAnalysis = (candidate as any).aiAnalysis || null;
+                
+                return (
+                  <div key={candidate.id} className="space-y-4">
+                    <CandidateCard 
+                      candidate={candidate} 
+                      onViewAnalysis={handleViewAnalysis} 
+                      onViewCV={handleViewCV} 
+                      onSave={handleSave} 
+                      onDelete={handleDelete} 
+                      jobRequirements={jobRequirements?.requiredSkills || []} 
                     />
-                  )}
-                </div>
-              ))}
+                    {jobRequirements && candidate.formData && (
+                      <LightAnalysisPreview 
+  candidateId={candidate.id}
+  jobOfferId={jobOffer?.id || ''}
+  analysis={{
+    overallScore: aiAnalysis?.overallScore || candidate.matchPercentage || 0,
+    // ✅ فقط الحقول المدعومة في LightAnalysisData
+    strengths: aiAnalysis?.strengths?.slice(0, 3) || [],
+    weaknesses: aiAnalysis?.weaknesses?.slice(0, 3) || [],
+    recommendation: aiAnalysis?.recommendation,
+    // ✅ نحذف: priority, interviewQuestions, categoryScores (غير مدعومة)
+    skillsMatch: {
+      matched: candidate.formData?.skills || [],
+      missing: [],
+      percentage: candidate.matchPercentage || 0
+    }
+  }}
+/>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <div id="candidates-list" className="mt-6">
               <Pagination currentPage={currentPage} totalPages={totalPages} totalItems={candidates.length} itemsPerPage={itemsPerPage} onPageChange={setCurrentPage} isLoading={isLoading} />

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap, Briefcase, BarChart3, Network } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
+import { ForceChangePasswordModal } from '../components/ForceChangePasswordModal';
 import { ThemeSwitcher } from '@shared/components';
 import { usePermission } from '@shared/hooks/usePermission';
 import { RHJobOffersButton } from '@/features/rh/components';
@@ -42,6 +43,7 @@ export function DashboardLayout() {
 
     const [hasOrgInfo, setHasOrgInfo] = useState(true);
     const [showOnboarding, setShowOnboarding] = useState(false);
+    const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const navigate = useNavigate();
 
@@ -71,27 +73,37 @@ export function DashboardLayout() {
                 return;
             }
 
-            if (response.ok) {
-                const result = await response.json();
-                const user = result.data;
+        if (response.ok) {
+            const result = await response.json();
+            const user = result.data;
 
-                // Persist latest data
-                localStorage.setItem('user', JSON.stringify(user));
-                window.dispatchEvent(new Event('user-data-updated'));
+            // Persist latest data
+            localStorage.setItem('user', JSON.stringify(user));
+            window.dispatchEvent(new Event('user-data-updated'));
 
-                setUserData(user);
-                setOrgData(user.organisation);
+            setUserData(user);
+            setOrgData(user.organisation);
 
+            if (user.profileCompleted === false) {
                 if (user.organisation?.orgInfo) {
+                    // Collaborator's first login
+                    setShowForcePasswordChange(true);
                     setHasOrgInfo(true);
-                    setShowOnboarding(false);
-                    localStorage.setItem('onboarding_done', 'true');
-                    localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
-                } else {
+                } else if (user.role === 'ADMIN') {
+                    // Main Admin's onboarding
                     setHasOrgInfo(false);
                     setShowOnboarding(true);
-                    localStorage.setItem('onboarding_done', 'false');
                 }
+            } else if (user.organisation?.orgInfo) {
+                setHasOrgInfo(true);
+                setShowOnboarding(false);
+                setShowForcePasswordChange(false);
+                localStorage.setItem('onboarding_done', 'true');
+                localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
+            } else {
+                setHasOrgInfo(false);
+                setShowOnboarding(true);
+                localStorage.setItem('onboarding_done', 'false');
             }
         } catch (err) {
             console.error('Failed to fetch profile:', err);
@@ -152,7 +164,7 @@ export function DashboardLayout() {
                         Tableau de bord
                     </NavLink>
 
-                    {isUserAdmin && (
+                    {(isUserAdmin || isUserHR) && (
                         <NavLink to="/dashboard/equipe" className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
                             <Users className="w-5 h-5" />
                             Equipe
@@ -291,6 +303,13 @@ export function DashboardLayout() {
             </main>
 
             <OnboardingModal isOpen={showOnboarding} onSuccess={handleOnboardingSuccess} />
+            <ForceChangePasswordModal 
+                isOpen={showForcePasswordChange} 
+                onSuccess={() => {
+                    setShowForcePasswordChange(false);
+                    fetchProfile();
+                }} 
+            />
         </div>
     );
 }

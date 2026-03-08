@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { z } from "zod";
 import { userManagementService } from "../services/userManagement.service";
 import { AuthRequest } from "../middleware/auth.middleware";
@@ -22,9 +22,10 @@ const updateUserSchema = z.object({
 });
 
 export const userManagementController = {
-    async getUsers(req: AuthRequest, res: Response): Promise<void> {
+    async getUsers(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
             if (!organisationId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
@@ -38,20 +39,25 @@ export const userManagementController = {
         }
     },
 
-    async createUser(req: AuthRequest, res: Response): Promise<void> {
+    async createUser(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
-            // Real-time Admin check (Heritage Pattern)
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check (Heritage Pattern)
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 
@@ -77,21 +83,26 @@ export const userManagementController = {
         }
     },
 
-    async updateUser(req: AuthRequest, res: Response): Promise<void> {
+    async updateUser(req: Request, res: Response): Promise<void> {
         try {
+            const authReq = req as AuthRequest;
             const id = req.params.id as string;
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
-            // Real-time Admin check (Heritage Pattern)
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check (Heritage Pattern)
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 
@@ -125,21 +136,26 @@ export const userManagementController = {
         }
     },
 
-    async deleteUser(req: AuthRequest, res: Response): Promise<void> {
+    async deleteUser(req: Request, res: Response): Promise<void> {
         try {
+            const authReq = req as AuthRequest;
             const id = req.params.id as string;
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
-            // Real-time Admin check (Heritage Pattern)
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check (Heritage Pattern)
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 
@@ -158,20 +174,25 @@ export const userManagementController = {
         }
     },
 
-    async bulkImport(req: AuthRequest, res: Response): Promise<void> {
+    async bulkImport(req: Request, res: Response): Promise<void> {
         try {
-            const organisationId = req.user?.organisationId;
-            const userId = req.user?.userId;
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
+            const userId = authReq.user?.userId;
 
             if (!organisationId || !userId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
-            // Real-time Admin check
-            const admin = await prisma.admin.findUnique({ where: { userId } });
-            if (!admin) {
-                res.status(403).json({ error: "Forbidden: Admin access required" });
+            // Real-time access check
+            const [admin, rh] = await Promise.all([
+                prisma.admin.findUnique({ where: { userId } }),
+                prisma.rH.findUnique({ where: { userId } })
+            ]);
+
+            if (!admin && !rh) {
+                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
                 return;
             }
 

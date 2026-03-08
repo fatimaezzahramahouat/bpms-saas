@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { workflowEngineService } from "../services/workflowEngine.service";
 import { prisma } from "../lib/prisma";
@@ -12,8 +12,8 @@ export const processController = {
     startProcess: catchAsync(async (req: AuthRequest, res: Response) => {
         const { workflowId, metadata, startDate, endDate, reason } = req.body;
         const file = req.file;
-        const userId = req.user?.userId;
-        const organisationId = req.user?.organisationId;
+        const userId = authReq.user?.userId;
+        const organisationId = authReq.user?.organisationId;
 
         if (!userId || !organisationId) {
             return res.status(401).json({ error: "User not authenticated or missing organisation" });
@@ -55,8 +55,9 @@ export const processController = {
      * GET /api/process/my-requests
      * Returns all process instances initiated by the logged-in user.
      */
-    getMyRequests: catchAsync(async (req: AuthRequest, res: Response) => {
-        const userId = req.user?.userId;
+    getMyRequests: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const userId = authReq.user?.userId;
 
         if (!userId) {
             return res.status(401).json({ error: "User not authenticated" });

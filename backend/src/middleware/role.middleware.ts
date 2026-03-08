@@ -1,4 +1,4 @@
-import { Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { AuthRequest } from "./auth.middleware";
 import prisma from "../lib/prisma";
 
@@ -7,11 +7,12 @@ import prisma from "../lib/prisma";
  * Verifies if the authenticated user has an entry in the RH model.
  */
 export const requireRH = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const userId = req.user?.userId;
+  const authReq = req as AuthRequest;
+  const userId = authReq.user?.userId;
 
   if (!userId) {
     res.status(401).json({ error: "Unauthorized: User not found in request context" });

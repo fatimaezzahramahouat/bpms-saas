@@ -1,0 +1,5 @@
+﻿
+> frontend@0.0.0 lint
+> tsc --noEmit
+
+src/features/workflow/utils/workflowUtils.ts(1,19): error TS2307: Cannot find module 'dagre' or its corresponding type declarations.

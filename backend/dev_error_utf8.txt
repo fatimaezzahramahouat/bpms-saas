@@ -1,0 +1,95 @@
+﻿[INFO] 12:14:13 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+node.exe : 
+Compilation error 
+in D:\formation_jobi
+ntech\finally projec
+t\projet_final_BPMS\
+backend\src\server.t
+s
+At line:1 char:1
++ & "C:\Program File
+s\nodejs/node.exe" 
+"C:\Program Files\no
+dejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo  
+            : NotS  
+  pecified: (Comp   
+ ilation err...d    
+\src\server.ts:    
+String) [], Rem    
+oteException
+    + FullyQualifie 
+   dErrorId : Nati  
+  veCommandError
+ 
+Error: Must use 
+import to load ES 
+Module: D:\formation
+_jobintech\finally p
+roject\projet_final_
+BPMS\backend\src\ser
+ver.ts
+    at 
+Object.<anonymous> (
+D:\formation_jobinte
+ch\finally project\p
+rojet_final_BPMS\bac
+kend\src\server.ts:1
+:7)
+    at 
+Module.<anonymous> (
+node:internal/module
+s/cjs/loader:1761:14
+)
+    at 
+Module._compile (D:\
+formation_jobintech\
+finally project\proj
+et_final_BPMS\backen
+d\node_modules\sourc
+e-map-support\source
+-map-support.js:568:
+25)
+    at 
+Module.m._compile (C
+:\Users\jahid\AppDat
+a\Local\Temp\ts-node
+-dev-hook-3823433166
+0337717.js:69:33)
+    at node:internal
+/modules/cjs/loader:
+1893:10
+    at require.exten
+sions..jsx.require.e
+xtensions..js (C:\Us
+ers\jahid\AppData\Lo
+cal\Temp\ts-node-dev
+-hook-38234331660337
+717.js:114:20)
+    at require.exten
+sions.<computed> (C:
+\Users\jahid\AppData
+\Local\Temp\ts-node-
+dev-hook-38234331660
+337717.js:71:20)
+    at 
+Object.nodeDevHook 
+[as .ts] (D:\formati
+on_jobintech\finally
+ project\projet_fina
+l_BPMS\backend\node_
+modules\ts-node-dev\
+lib\hook.js:63:13)
+    at Module.load (
+node:internal/module
+s/cjs/loader:1481:32
+)
+    at Module._load 
+(node:internal/modul
+es/cjs/loader:1300:1
+2)
+[ERROR] 12:14:14 Error: Must use import to load ES Module: D:\formation_jobintech\finally project\projet_final_BPMS\backend\src\server.ts
