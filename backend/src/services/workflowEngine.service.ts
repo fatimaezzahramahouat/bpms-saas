@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma";
 import { notificationService } from "./notification.service";
+import { mailService } from "./mail.service";
 
 /**
  * Helper: Evaluates conditions like "Duree > 5 jours"
@@ -442,21 +443,90 @@ export const workflowEngineService = {
             }
 
             // 4. FIND OUTGOING PATHS (Edges)
-            const outgoingEdges = edges.filter(e => e.source === currentNode.id);
+            const resolveNextNode = (currentNodeId: string, currentContext: any): any => {
+                const nodeOutgoingEdges = edges.filter(e => e.source === currentNodeId);
+                const node = nodes.find(n => n.id === currentNodeId);
 
-            if (outgoingEdges.length === 0) {
-                await tx.processInstance.update({ where: { id: processInstance.id }, data: { status: 'COMPLETED' } });
-                return { status: 'COMPLETED' };
+                if (nodeOutgoingEdges.length === 0) return null;
+
+                // SPECIAL LOGIC FOR CONDITION NODES
+                if (node?.data?.variant === 'condition' || node?.data?.variant === 'decision') {
+                    const { condition } = node.data;
+                    if (condition && condition.variable) {
+                        const val = currentContext[condition.variable];
+                        const targetVal = condition.value;
+                        let isTrue = false;
+
+                        switch (condition.operator) {
+                            case '===': isTrue = String(val) === String(targetVal); break;
+                            case '>': isTrue = Number(val) > Number(targetVal); break;
+                            case '<': isTrue = Number(val) < Number(targetVal); break;
+                            case '!=': isTrue = String(val) !== String(targetVal); break;
+                            case 'contains': isTrue = String(val).includes(String(targetVal)); break;
+                        }
+
+                        const edge = nodeOutgoingEdges.find(e => e.sourceHandle === (isTrue ? 'true' : 'false'));
+                        return nodes.find(n => n.id === (edge?.target || nodeOutgoingEdges[0].target));
+                    }
+                }
+
+                // Default: First edge or simple condition evaluation
+                let selectedEdge = nodeOutgoingEdges[0];
+                if (nodeOutgoingEdges.length > 1) {
+                    selectedEdge = nodeOutgoingEdges.find(e => evaluateCondition(e.label || e.condition, currentContext)) || nodeOutgoingEdges[0];
+                }
+                return nodes.find(n => n.id === selectedEdge.target);
+            };
+
+            const executeAutomatedAction = async (node: any, instanceId: string, context: any) => {
+                console.log(`[WorkflowEngine] Executing automated action for node variant: ${node.data?.variant}`);
+                const variant = node.data?.variant;
+
+                switch (variant) {
+                    case 'email':
+                        if (node.data.to) {
+                            await mailService.sendGenericEmail(
+                                node.data.to,
+                                node.data.subject || "NexFlow Notification",
+                                node.data.body || "Vous avez une nouvelle notification de workflow."
+                            );
+                        }
+                        break;
+                    case 'webhook':
+                        console.log(`[Webhook] Calling ${node.data.url} with method ${node.data.method}`);
+                        break;
+                    case 'document':
+                        console.log(`[Document] Generating ${node.data.outputFormat} using template ${node.data.templateId}`);
+                        break;
+                }
+
+                await tx.eventLog.create({
+                    data: {
+                        action: `AUTO_${variant.toUpperCase()}: Executed for node ${node.id}`,
+                        processInstanceId: instanceId,
+                        userId: null
+                    }
+                });
+            };
+
+            let nextNode = resolveNextNode(currentNode.id, context);
+
+            // 5. LOOP: Automatically process all non-human nodes
+            while (nextNode && nextNode.data?.variant !== 'action' && nextNode.data?.variant !== 'end' && nextNode.type !== 'end') {
+                // Execute Logic (Condition is handled by resolveNextNode)
+                if (['email', 'webhook', 'document', 'timer'].includes(nextNode.data?.variant)) {
+                    await executeAutomatedAction(nextNode, processInstance.id, context);
+                }
+
+                // If it's a timer, we might want to STOP here and wait, but for MVP we might just log
+                if (nextNode.data?.variant === 'timer') {
+                    console.log(`[WorkflowEngine] Timer Node encountered. Waiting ${nextNode.data.duration} ${nextNode.data.unit}`);
+                    // In a real system, we'd schedule a delayed job here and return.
+                }
+
+                // Move to successor
+                nextNode = resolveNextNode(nextNode.id, context);
             }
-
-            // 5. EVALUATE BRANCHING (Condition Logic)
-            let selectedEdge = outgoingEdges[0];
-            if (outgoingEdges.length > 1) {
-                // Evaluate the 'label' or 'condition' property of the edge against the process context
-                selectedEdge = outgoingEdges.find(e => evaluateCondition(e.label || e.condition, context)) || outgoingEdges[0];
-            }
-
-            const nextNode = nodes.find(n => n.id === selectedEdge.target);
 
             // 6. CHECK FOR END OF WORKFLOW
             if (!nextNode || nextNode.data?.variant === 'end' || nextNode.type === 'end') {
@@ -466,32 +536,23 @@ export const workflowEngineService = {
 
             // 7. ROLE RESOLUTION & NEXT TASK CREATION
             const nextRole = nextNode.data?.role || nextNode.role || "MANAGER";
-
-            // Use the flexible role resolver to find the correct Admin/RH/Manager user
             const assignedUser = await findUserByFlexibleRole(nextRole, workflow.organisationId, tx);
-
             const nextStepName = nextNode.data?.title || nextNode.data?.label || "Next Validation";
 
-            // Find existing Step in DB or create a new one linked to the Node ID
             let targetStep = await tx.step.findFirst({ where: { workflowId: workflow.id, name: nextStepName } });
-
             if (!targetStep) {
-                const lastStep = await tx.step.findFirst({
-                    where: { workflowId: workflow.id },
-                    orderBy: { order: 'desc' }
-                });
+                const lastStep = await tx.step.findFirst({ where: { workflowId: workflow.id }, orderBy: { order: 'desc' } });
                 const nextOrder = (lastStep?.order || 0) + 1;
                 targetStep = await tx.step.create({
                     data: {
                         name: nextStepName,
                         workflowId: workflow.id,
                         order: nextOrder,
-                        metadata: { nodeId: nextNode.id, role: nextRole } // Crucial: Store the nodeId for the next transition
+                        metadata: { nodeId: nextNode.id, role: nextRole }
                     }
                 });
             }
 
-            // 8. CREATE THE NEXT TASK
             const nextTask = await tx.task.create({
                 data: {
                     title: nextStepName,
@@ -502,8 +563,6 @@ export const workflowEngineService = {
                     userId: assignedUser?.id || null
                 }
             });
-
-            console.log(`[WorkflowEngine] Advanced to [${nextStepName}]. Assigned to Role: ${nextRole} (${assignedUser?.email || 'Unassigned'})`);
 
             return { status: 'ADVANCED', nextTaskId: nextTask.id, assignedTo: nextRole };
         }, { maxWait: 10000, timeout: 20000 });
