@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ClipboardList, Plus, Calendar, FileText, X, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { ClipboardList, Plus, Calendar, FileText, X, CheckCircle, Clock, AlertCircle, Download } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import api from '../../../services/api';
 
@@ -10,6 +10,12 @@ interface ProcessInstance {
     createdAt: string;
     workflow: { name: string };
     context?: any;
+    documents?: {
+        id: string;
+        fileName: string;
+        fileUrl: string;
+        docType: string;
+    }[];
 }
 
 export function MyRequests() {
@@ -198,6 +204,19 @@ export function MyRequests() {
                                         <p className="text-xs text-zinc-400 italic">
                                             Du {new Date(request.context.startDate).toLocaleDateString('fr-FR')} au {new Date(request.context.endDate).toLocaleDateString('fr-FR')}
                                         </p>
+                                    )}
+                                    {request.status === 'COMPLETED' && request.documents && request.documents.some(d => d.docType === 'CERTIFICATE') && (
+                                        <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                                            <a
+                                                href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${request.documents.find(d => d.docType === 'CERTIFICATE')?.fileUrl}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl text-xs font-bold transition-all"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                Certificat
+                                            </a>
+                                        </div>
                                     )}
                                 </div>
                             </motion.div>

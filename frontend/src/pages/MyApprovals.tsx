@@ -157,77 +157,61 @@ export const MyApprovals: React.FC = () => {
                         const initiator = task.processInstance.user;
                         const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Employé Inconnu";
                         const context = task.processInstance.context || {};
-                        const isUrgent = context.reason?.toLowerCase().includes('urgent');
 
                         return (
                             <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.1 }}
                                 key={task.id}
-                                className="bg-slate-900/50 backdrop-blur-2xl border border-white/10 p-8 rounded-[2.5rem] flex flex-col gap-8 hover:border-purple-500/40 transition-all duration-500 group relative overflow-hidden"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="group relative bg-slate-900/40 backdrop-blur-xl rounded-[2.5rem] border border-white/5 p-8 transition-all hover:bg-slate-900/60 hover:border-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/10"
                             >
-                                <div className="absolute top-0 left-0 w-2 h-full bg-purple-500/40 group-hover:bg-purple-500 transition-colors" />
-
-                                <div className="flex justify-between items-start pl-2">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex items-center gap-2 text-purple-400 text-[10px] font-black uppercase tracking-[0.2em]">
-                                                <GitBranch size={12} strokeWidth={3} />
-                                                <span>Étape : {task.step.name}</span>
-                                            </div>
-                                            {isUrgent && (
-                                                <span className="px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded text-[9px] font-black text-red-500 uppercase tracking-wider animate-pulse">
-                                                    Priorité Haute
-                                                </span>
-                                            )}
+                                <div className="flex justify-between items-start mb-8">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
+                                            <GitBranch className="text-purple-400" size={24} />
                                         </div>
-                                        <h3 className="text-2xl font-black text-white group-hover:text-purple-400 transition-colors leading-tight">
-                                            Demande de : <span className="text-purple-500">{initiatorName}</span>
-                                        </h3>
+                                        <div>
+                                            <h3 className="text-xl font-black text-white tracking-tight group-hover:text-purple-400 transition-colors">
+                                                {task.processInstance.workflow.name}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span>
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{task.step.name}</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">En attente</span>
+                                    <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/5">
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Reçu le</p>
+                                        <p className="text-sm font-bold text-slate-300">{formatDate(task.createdAt)}</p>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
                                     <div className="space-y-3">
-                                        <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Détails du Processus</p>
+                                        <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Initié par</p>
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2.5 bg-slate-800 rounded-xl group-hover:bg-purple-500/20 group-hover:text-purple-400 transition-colors text-slate-400">
-                                                <Briefcase size={16} />
+                                            <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 border border-white/5">
+                                                <User size={18} />
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-slate-200">
-                                                    {task.processInstance.workflow?.name || "Workflow Interne"}
-                                                </span>
-                                                <div className="flex flex-col mt-0.5">
-                                                    {context.startDate && context.endDate && (
-                                                        <span className="text-xs text-slate-400">
-                                                            Du {formatDate(context.startDate)} au {formatDate(context.endDate)}
-                                                        </span>
-                                                    )}
-                                                    {context.duration && (
-                                                        <span className="text-xs font-semibold text-purple-400 mt-0.5">
-                                                            Durée: {context.duration} jour(s)
-                                                        </span>
-                                                    )}
-                                                </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-white leading-tight">{initiatorName}</p>
+                                                <p className="text-xs text-slate-500 font-medium">{initiator?.email || "Email non renseigné"}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Motif / Commentaire</p>
-                                        <div className="flex items-start gap-3">
-                                            <div className="p-2.5 bg-slate-800 rounded-xl text-slate-400 shrink-0">
-                                                <User size={16} />
-                                            </div>
-                                            <p className="text-sm font-medium text-slate-400 italic mt-1 line-clamp-3">
-                                                {context.reason || "Aucun motif précisé"}
-                                            </p>
+                                    <div className="space-y-4">
+                                        <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Détails de la demande</p>
+                                        <div className="grid grid-cols-2 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                                            {Object.entries(context).map(([key, value]) => (
+                                                <div key={key} className="flex flex-col">
+                                                    <span className="text-[9px] text-purple-400 uppercase font-bold">{key.replace('_', ' ')}</span>
+                                                    <span className="text-sm text-slate-200 font-medium">
+                                                        {typeof value === 'string' && value.includes('202') ? new Date(value as string).toLocaleDateString() : String(value)}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
@@ -251,8 +235,8 @@ export const MyApprovals: React.FC = () => {
                             </motion.div>
                         );
                     })}
-                </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 };

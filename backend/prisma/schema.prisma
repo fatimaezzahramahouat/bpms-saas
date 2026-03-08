@@ -136,16 +136,18 @@ model Application {
 }
 
 model Document {
-  id             String        @id @default(uuid())
-  fileName       String
-  fileUrl        String
-  docType        String
-  applicationId  String?
-  userId         String?
-  organisationId String?
-  application    Application?  @relation(fields: [applicationId], references: [id])
-  organisation   Organisation? @relation(fields: [organisationId], references: [id])
-  user           User?         @relation(fields: [userId], references: [id])
+  id                String           @id @default(uuid())
+  fileName          String
+  fileUrl           String
+  docType           String
+  applicationId     String?
+  userId            String?
+  organisationId    String?
+  processInstanceId String?
+  application       Application?     @relation(fields: [applicationId], references: [id])
+  organisation      Organisation?    @relation(fields: [organisationId], references: [id])
+  user              User?            @relation(fields: [userId], references: [id])
+  processInstance   ProcessInstance? @relation(fields: [processInstanceId], references: [id])
 }
 
 model Admin {
@@ -243,6 +245,7 @@ model ProcessInstance {
   workflow    Workflow     @relation(fields: [workflowId], references: [id])
   tasks       Task[]
   user        User?        @relation(fields: [userId], references: [id])
+  documents   Document[]
 }
 
 model AIAnalysis {

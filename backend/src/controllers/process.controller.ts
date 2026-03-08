@@ -68,6 +68,7 @@ export const processController = {
                 workflow: {
                     select: { name: true }
                 },
+                documents: true,
                 tasks: {
                     where: { status: 'PENDING' },
                     include: {

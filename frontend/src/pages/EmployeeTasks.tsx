@@ -10,7 +10,8 @@ import {
     Briefcase,
     User,
     ExternalLink,
-    Search
+    Search,
+    Download
 } from 'lucide-react';
 import { taskService } from '../services/task.service';
 import { workflowService, IWorkflow } from '../services/workflow.service';
@@ -60,6 +61,12 @@ interface ProcessInstanceRequest {
         name: string;
     };
     context?: any;
+    documents?: {
+        id: string;
+        fileName: string;
+        fileUrl: string;
+        docType: string;
+    }[];
     tasks: {
         title: string;
         user: {
@@ -455,6 +462,20 @@ export const EmployeeTasks: React.FC = () => {
                                                             {currentTask.user ? `${currentTask.user.firstName} ${currentTask.user.lastName}` : 'Manager'}
                                                         </strong></span>
                                                     </div>
+                                                </div>
+                                            )}
+
+                                            {request.status === 'COMPLETED' && request.documents && request.documents.some(d => d.docType === 'CERTIFICATE') && (
+                                                <div className="mt-4">
+                                                    <a
+                                                        href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${request.documents.find(d => d.docType === 'CERTIFICATE')?.fileUrl}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                                                    >
+                                                        <Download size={14} />
+                                                        Télécharger le Certificat
+                                                    </a>
                                                 </div>
                                             )}
                                         </div>

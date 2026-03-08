@@ -6,6 +6,7 @@ import { RegisterOrg } from '../features/auth/pages/RegisterOrg';
 import { DashboardLayout } from '../features/dashboard/layouts/DashboardLayout';
 import { DashboardHome } from '../features/dashboard/pages/DashboardHome';
 import { Dashboard } from '../features/dashboard/pages/Dashboard';
+import { WorkflowAnalytics } from '../features/dashboard/pages/WorkflowAnalytics';
 import { RecruitmentPage } from '@/pages/RecruitmentPage';
 import TeamPage from '@/pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
@@ -54,6 +55,7 @@ export function AppRouter() {
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
         <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
+        <Route path="analytics" element={<WorkflowAnalytics />} />
         <Route path="approvals" element={<MyApprovals />} />
         <Route path="tasks" element={<EmployeeTasks />} />
       </Route>
