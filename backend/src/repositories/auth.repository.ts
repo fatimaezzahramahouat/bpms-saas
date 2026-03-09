@@ -1,4 +1,19 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../lib/prisma";
+
+export type UserWithRoles = Prisma.UserGetPayload<{
+  include: {
+    organisation: {
+      include: {
+        orgInfo: true;
+      };
+    };
+    admin: true;
+    rh: true;
+    manager: true;
+    employee: true;
+  };
+}>;
 
 interface RegisterOrgData {
   organisationName: string;
@@ -69,7 +84,7 @@ export const authRepository = {
     });
   },
 
-  async findUserByEmail(email: string) {
+  async findUserByEmail(email: string): Promise<UserWithRoles | null> {
     return prisma.user.findUnique({
       where: { email },
       include: {
@@ -170,7 +185,7 @@ export const authRepository = {
       return { orgInfo, user };
     });
   },
-  
+
   async findOrganisationById(id: string) {
     return prisma.organisation.findUnique({
       where: { id },
@@ -238,7 +253,7 @@ export const authRepository = {
       },
     });
   },
-  
+
   async createSession(userId: string, userAgent?: string, ipAddress?: string) {
     return prisma.session.create({
       data: {
@@ -249,5 +264,5 @@ export const authRepository = {
     });
   },
 
-  
+
 };

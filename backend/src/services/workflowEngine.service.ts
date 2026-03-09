@@ -303,6 +303,10 @@ export const workflowEngineService = {
                 const edges = (workflow.edges as any[]) || [];
 
                 const triggerNode = nodes.find(n => n.type === 'trigger' || n.data?.variant === 'trigger' || n.data?.label === 'START');
+
+                if (!triggerNode) {
+                    throw new Error("Workflow graph is missing a START/Trigger node");
+                }
                 const firstEdge = edges.find(e => e.source === triggerNode?.id);
                 const firstTaskNode = nodes.find(n => n.id === firstEdge?.target);
 
