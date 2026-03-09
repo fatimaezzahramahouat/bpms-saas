@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authService } from "../services/auth.service";
 import { authRepository } from "../repositories/auth.repository";
 import { storageService } from "../services/storage.service";
+import { userManagementService } from "../services/userManagement.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 
 const onboardingSchema = z.object({
@@ -29,9 +30,9 @@ export const organisationController = {
             const parsed = onboardingSchema.safeParse(req.body);
             if (!parsed.success) {
                 console.log("Validation Errors:", JSON.stringify(parsed.error.flatten().fieldErrors, null, 2));
-                res.status(400).json({ 
-                    error: "Validation failed", 
-                    details: parsed.error.flatten().fieldErrors 
+                res.status(400).json({
+                    error: "Validation failed",
+                    details: parsed.error.flatten().fieldErrors
                 });
                 return;
             }
@@ -143,6 +144,22 @@ export const organisationController = {
 
             const logoData = await authService.getOrganisationLogo(organisationId);
             res.status(200).json({ logo: logoData });
+        } catch (error) {
+            res.status(500).json({ error: "Internal server error" });
+        }
+    },
+
+    async getMembers(req: Request, res: Response): Promise<void> {
+        try {
+            const authReq = req as AuthRequest;
+            const organisationId = authReq.user?.organisationId;
+            if (!organisationId) {
+                res.status(401).json({ error: "Unauthorized" });
+                return;
+            }
+
+            const users = await userManagementService.listUsers(organisationId);
+            res.status(200).json({ data: users });
         } catch (error) {
             res.status(500).json({ error: "Internal server error" });
         }

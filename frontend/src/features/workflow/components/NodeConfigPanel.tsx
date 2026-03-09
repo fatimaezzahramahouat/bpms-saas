@@ -3,6 +3,7 @@ import { X, Settings2, Trash2, Cpu, FileText, Globe, Split, Clock, Mail, CheckCi
 import { Node } from '@xyflow/react';
 import { WorkflowData, isDecisionNode, isAINode, isActionNode, isAPINode } from '../types';
 import { motion } from 'motion/react';
+import { organisationService } from '../../../services/organisation.service';
 
 interface NodeConfigPanelProps {
     node: Node<WorkflowData> | null;
@@ -18,9 +19,31 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
     onClose,
 }) => {
     const [saveState, setSaveState] = useState<'idle' | 'loading' | 'success'>('idle');
+    const [members, setMembers] = useState<any[]>([]);
+    const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
     if (!node) return null;
     const { data } = node;
+
+    React.useEffect(() => {
+        const fetchMembers = async () => {
+            setIsLoadingMembers(true);
+            try {
+                const response = await organisationService.getMembers();
+                if (response && response.data) {
+                    setMembers(response.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch members:', error);
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+
+        if (data && data.variant === 'action') {
+            fetchMembers();
+        }
+    }, [data?.variant]);
 
     const handleInputChange = (field: string, value: any) => {
         onUpdate(node.id, { [field]: value });
@@ -153,16 +176,24 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                                     <option value="">Choisir...</option>
                                     {data.assignmentType === 'ROLE' && (
                                         <>
-                                            <option value="RH">RH</option>
-                                            <option value="IT">IT</option>
-                                            <option value="Manager">Manager</option>
+                                            <option value="ADMIN">Administrateur</option>
+                                            <option value="RH">Responsable RH</option>
+                                            <option value="MANAGER">Manager</option>
+                                            <option value="EMPLOYE">Employé</option>
                                         </>
                                     )}
                                     {data.assignmentType === 'SPECIFIC' && (
-                                        <>
-                                            <option value="Mounir">Mounir</option>
-                                            <option value="Sarah">Sarah</option>
-                                        </>
+                                        isLoadingMembers ? (
+                                            <option value="" disabled>Chargement...</option>
+                                        ) : members.length > 0 ? (
+                                            members.map((member) => (
+                                                <option key={member.id} value={member.id}>
+                                                    {member.firstName} {member.lastName}
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <option value="" disabled>Aucun membre trouvé</option>
+                                        )
                                     )}
                                     {data.assignmentType === 'DYNAMIC' && (
                                         <option value="MANAGER_INIT">Manager de l'initiateur</option>

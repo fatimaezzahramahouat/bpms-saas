@@ -14,4 +14,7 @@ organisationRouter.get("/profile", authMiddleware, organisationController.profil
 // GET /api/organisation/logo
 organisationRouter.get("/logo", authMiddleware, organisationController.getLogo);
 
+// GET /api/organisation/members
+organisationRouter.get("/members", authMiddleware, organisationController.getMembers);
+
 export default organisationRouter;
