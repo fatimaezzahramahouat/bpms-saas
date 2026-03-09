@@ -121,14 +121,32 @@ export const candidateRepository = {
         status: true,
         // ⚠️ NE PAS inclure: skills, experience, education (n'existent pas en DB)
         applications: {
-          where: { jobOfferId },
-          select: {
-            id: true,
-            status: true,
-            createdAt: true,
-            documents: true,
-          },
-        },
+  where: { jobOfferId },
+  select: {
+    id: true,
+    status: true,
+    createdAt: true,
+    documents: true,
+    // ✅ أضيفي aiAnalyses لاستخراج نتائج الـ AI
+    aiAnalyses: {
+      orderBy: { createdAt: 'desc' },
+      take: 1,  // أخذ أحدث تحليل فقط
+      select: {
+        id: true,
+        overallScore: true,
+        result: true,        // يحتوي على: forces, faiblesses, recommandation, categoryScores
+        confidence: true,
+        matchedSkills: true,
+        strengths: true,
+        weaknesses: true,
+        recommendation: true,
+        priority: true,
+        interviewQuestions: true,
+        createdAt: true,
+      }
+    },
+  },
+},
       },
       orderBy: { createdAt: 'desc' },
     });

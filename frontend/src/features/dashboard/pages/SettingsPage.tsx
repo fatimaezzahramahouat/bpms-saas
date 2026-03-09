@@ -50,15 +50,44 @@ export function SettingsPage() {
   const [organisation, setOrganisation] = useState<OrganisationSettings>({
     name: orgData?.name || '',
     logo: orgData?.orgInfo?.logo || '',
-    domain: orgData?.orgInfo?.domain || '',
+    domaine: orgData?.orgInfo?.domaine || '',
     address: orgData?.orgInfo?.address || '',
     city: orgData?.orgInfo?.city || '',
-    website: orgData?.orgInfo?.website || ''
+    website: orgData?.orgInfo?.website || '',
+    phoneorg: orgData?.orgInfo?.phoneorg || '',
+    emailorg: orgData?.orgInfo?.emailorg || '',
   });
 
   useEffect(() => {
     fetchSessions();
   }, []);
+  
+  // Sync state when context data arrives
+  useEffect(() => {
+    if (userData) {
+      setProfile({
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        email: userData.email || '',
+        phone: userData.phone || ''
+      });
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    if (orgData) {
+      setOrganisation({
+        name: orgData.name || '',
+        logo: orgData.orgInfo?.logo || '',
+        domaine: orgData.orgInfo?.domaine || '',
+        address: orgData.orgInfo?.address || '',
+        city: orgData.orgInfo?.city || '',
+        website: orgData.orgInfo?.website || '',
+        phoneorg: orgData.orgInfo?.phoneorg || '',
+        emailorg: orgData.orgInfo?.emailorg || '',
+      });
+    }
+  }, [orgData]);
 
   const fetchSessions = async () => {
     try {
@@ -458,8 +487,8 @@ export function SettingsPage() {
                     <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                     <input
                       type="text"
-                      value={organisation.domain || ''}
-                      onChange={(e) => setOrganisation({ ...organisation, domain: e.target.value })}
+                      value={organisation.domaine || ''}
+                      onChange={(e) => setOrganisation({ ...organisation, domaine: e.target.value })}
                       className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-11 pr-4 py-3 text-sm focus:border-h1-blue outline-none transition-all"
                     />
                   </div>
@@ -501,6 +530,26 @@ export function SettingsPage() {
                   />
                 </div>
               </div>
+               <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-zinc-400"> Email</label>
+                  <input
+                    type="text"
+                    value={organisation.emailorg || ''}
+                    onChange={(e) => setOrganisation({ ...organisation, emailorg: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-sm focus:border-h1-blue outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-zinc-400">Téléphone</label>
+                  <input
+                    type="text"
+                    value={organisation.phoneorg|| ''}
+                    onChange={(e) => setOrganisation({ ...organisation, phoneorg: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3 text-sm focus:border-h1-blue outline-none transition-all"
+                  />
+                </div>
+               </div>
 
               <div className="flex justify-end">
                 <button

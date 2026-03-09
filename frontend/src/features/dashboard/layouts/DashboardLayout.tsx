@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap, Briefcase, BarChart3, Network, Library } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
+import { ForceChangePasswordModal } from '../components/ForceChangePasswordModal';
 import { ThemeSwitcher } from '@shared/components';
 import { usePermission } from '@shared/hooks/usePermission';
 import { RHJobOffersButton } from '@/features/rh/components';
@@ -42,6 +43,7 @@ export function DashboardLayout() {
 
     const [hasOrgInfo, setHasOrgInfo] = useState(true);
     const [showOnboarding, setShowOnboarding] = useState(false);
+    const [showForcePasswordChange, setShowForcePasswordChange] = useState(false);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const navigate = useNavigate();
 
@@ -82,9 +84,20 @@ export function DashboardLayout() {
                 setUserData(user);
                 setOrgData(user.organisation);
 
-                if (user.organisation?.orgInfo) {
+                if (user.profileCompleted === false) {
+                    if (user.organisation?.orgInfo) {
+                        // Collaborator's first login
+                        setShowForcePasswordChange(true);
+                        setHasOrgInfo(true);
+                    } else if (user.role === 'ADMIN') {
+                        // Main Admin's onboarding
+                        setHasOrgInfo(false);
+                        setShowOnboarding(true);
+                    }
+                } else if (user.organisation?.orgInfo) {
                     setHasOrgInfo(true);
                     setShowOnboarding(false);
+                    setShowForcePasswordChange(false);
                     localStorage.setItem('onboarding_done', 'true');
                     localStorage.setItem('org_logo', user.organisation.orgInfo.logo);
                 } else {
@@ -298,6 +311,13 @@ export function DashboardLayout() {
             </main>
 
             <OnboardingModal isOpen={showOnboarding} onSuccess={handleOnboardingSuccess} />
+            <ForceChangePasswordModal
+                isOpen={showForcePasswordChange}
+                onSuccess={() => {
+                    setShowForcePasswordChange(false);
+                    fetchProfile();
+                }}
+            />
         </div>
     );
 }

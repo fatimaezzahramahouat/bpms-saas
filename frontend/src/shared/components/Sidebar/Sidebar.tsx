@@ -74,7 +74,7 @@ export const Sidebar: React.FC = () => {
             return approvalsRoles.includes(roleFromStorage?.toUpperCase()) || approvalsRoles.includes(role?.toUpperCase());
         }
 
-        if (item.path.includes('equipe')) return canManageUsers;
+        if (item.path.includes('equipe')) return canManageUsers  || isHR;
 
         if (item.path === '/dashboard/architecte') {
             const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];

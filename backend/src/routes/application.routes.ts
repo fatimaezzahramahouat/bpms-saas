@@ -18,9 +18,7 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, 'cv-' + uniqueSuffix + path.extname(file.originalname));
@@ -31,51 +29,88 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF files are allowed'));
-    }
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Only PDF files are allowed'));
   }
 });
 
 // ============================================================================
-// ROUTES - ORDER IS CRITICAL: Most specific FIRST, generic LAST
+// Helper: حساب النسبة بدقة مع دعم أسماء مختلفة + fallback
+// ============================================================================
+function calculatePreciseScore(analysis: any): number {
+  // 🔍 تشخيص: طباعة مفاتيح الرد من الـ AI
+  console.log('🔍 [AI DEBUG] Keys:', Object.keys(analysis));
+  console.log('🔍 [AI DEBUG] overallScore:', analysis.overallScore);
+  console.log('🔍 [AI DEBUG] matchedRequirements:', analysis.matchedRequirements);
+  console.log('🔍 [AI DEBUG] missingRequirements:', analysis.missingRequirements);
+  console.log('🔍 [AI DEBUG] forces:', analysis.forces);
+  console.log('🔍 [AI DEBUG] faiblesses:', analysis.faiblesses);
+
+  // دالة مساعدة لاستخراج طول المصفوفة بأسماء مختلفة
+  const getLen = (val: any): number => {
+    if (Array.isArray(val)) return val.length;
+    if (typeof val === 'string' && val.trim()) return 1;
+    return 0;
+  };
+
+  // جرب أسماء مختلفة (إنجليزي/فرنسي)
+  const matched = 
+    getLen(analysis.matchedRequirements) ||
+    getLen(analysis['exigences correspondantes']) ||
+    getLen(analysis.matchedSkills) ||
+    getLen(analysis.strengths) ||
+    getLen(analysis.forces) ||
+    0;
+
+  const missing = 
+    getLen(analysis.missingRequirements) ||
+    getLen(analysis['exigences manquantes']) ||
+    getLen(analysis.missingSkills) ||
+    getLen(analysis.weaknesses) ||
+    getLen(analysis.faiblesses) ||
+    0;
+
+  const total = matched + missing;
+
+  // ✅ إذا وجدنا بيانات، احسب النسبة
+  if (total > 0) {
+    const score = Math.round((matched / total) * 100 * 100) / 100;
+    console.log('📊 [CALCULATED] Matched:', matched, 'Missing:', missing, '→ Score:', score);
+    return score;
+  }
+
+  // ❌ إذا لم نجد بيانات، استخدم نسبة الـ AI كـ fallback
+  const aiScore = Number(analysis.overallScore);
+  const fallback = (aiScore >= 0 && aiScore <= 100) ? aiScore : 75;
+  console.log('📊 [FALLBACK] Using AI score:', fallback);
+  return fallback;
+}
+
+// ============================================================================
+// ROUTES
 // ============================================================================
 
-// 🔍 1. Test route (للتأكد أن الملف يعمل)
 router.get('/test-debug', (req: Request, res: Response) => {
-  res.json({ 
-    message: '✅ application.routes.ts is loaded!',
-    timestamp: new Date().toISOString()
-  });
+  res.json({ message: '✅ application.routes.ts loaded!', timestamp: new Date().toISOString() });
 });
 
-// ✅ 2. POST /applications/:jobOfferId/apply - MOST SPECIFIC (يجب أن يأتي قبل /:id)
-// Simple test version - no Prisma/AI for now
-// ✅ POST /:jobOfferId/apply - FULL VERSION with Prisma + AI
+// ✅ POST /:jobOfferId/apply - مع رفع ملف CV
 router.post('/:jobOfferId/apply', upload.single('cv'), async (req: Request, res: Response) => {
   try {
     const jobOfferId = req.params.jobOfferId as string;
     const { fullName, email, phone } = req.body;
     const cvFile = req.file;
 
-    if (!email) {
-      return res.status(400).json({ error: 'email is required' });
-    }
-    if (!cvFile) {
-      return res.status(400).json({ error: 'CV file is required' });
-    }
+    if (!email) return res.status(400).json({ error: 'email is required' });
+    if (!cvFile) return res.status(400).json({ error: 'CV file is required' });
 
-    // Create CV URL for local storage
     const cvUrl = `/uploads/cvs/${cvFile.filename}`;
 
-    // Find or create candidate - ✅ CORRECT PRISMA SYNTAX
     let candidate = await prisma.candidate.findUnique({ where: { email } });
     
     if (!candidate) {
       candidate = await prisma.candidate.create({
-        data: {  // ✅ مهم: كلمة "data:"
+        data: {
           fullName: fullName || 'Unknown',
           email,
           phone: phone || null,
@@ -84,11 +119,8 @@ router.post('/:jobOfferId/apply', upload.single('cv'), async (req: Request, res:
         }
       });
       console.log('✅ Candidate created:', candidate.id, candidate.fullName);
-    } else {
-      console.log('✅ Candidate found:', candidate.id, candidate.fullName);
     }
 
-    // Check if already applied
     const existingApplication = await prisma.application.findUnique({
       where: {
         candidateId_jobOfferId: {
@@ -105,18 +137,13 @@ router.post('/:jobOfferId/apply', upload.single('cv'), async (req: Request, res:
       });
     }
 
-    // Get job offer details
-    const jobOffer = await prisma.jobOffer.findUnique({ 
-      where: { id: jobOfferId as string } 
-    });
     
-    if (!jobOffer) {
-      return res.status(404).json({ error: 'Job offer not found' });
-    }
 
-    // Create application - ✅ CORRECT PRISMA SYNTAX
+    const jobOffer = await prisma.jobOffer.findUnique({ where: { id: jobOfferId as string } });
+    if (!jobOffer) return res.status(404).json({ error: 'Job offer not found' });
+
     const application = await prisma.application.create({
-      data: {  // ✅ مهم: كلمة "data:"
+      data: {
         candidateId: candidate.id,
         jobOfferId: jobOffer.id,
         status: 'APPLIED'
@@ -126,12 +153,13 @@ router.post('/:jobOfferId/apply', upload.single('cv'), async (req: Request, res:
     console.log('✅ Application created:', application.id);
 
     // ========================================================================
-    // AUTOMATIC AI ANALYSIS - Run in background (do not wait for response)
+    // AUTOMATIC AI ANALYSIS - Background
     // ========================================================================
     setImmediate(async () => {
       try {
         console.log('🤖 Starting automatic AI analysis for application:', application.id);
         
+        // 🔧 [تعديل 1] Prompt محسّن لطلب categoryScores بشكل صريح
         const prompt = `
 Analyze the compatibility between this candidate and job offer:
 
@@ -145,8 +173,32 @@ Title: ${jobOffer.title}
 Required Skills: ${(jobOffer.skills || []).join(', ')}
 Level: ${jobOffer.level}
 
-Provide JSON with: overallScore (0-100), categoryScores (skills/experience/education/technicalFit), matchedRequirements, missingRequirements, strengths, weaknesses, recommendation (decision/priority/interviewQuestions/notes).
-Respond in French.
+Provide a detailed JSON analysis with EXACTLY this structure:
+{
+  "overallScore": number (0-100),
+  "categoryScores": {
+    "skills": number (0-100),
+    "experience": number (0-100),
+    "education": number (0-100),
+    "technicalFit": number (0-100)
+  },
+  "matchedRequirements": ["skill1", "skill2"],
+  "missingRequirements": ["skill3", "skill4"],
+  "strengths": ["point1", "point2"],
+  "weaknesses": ["point3", "point4"],
+  "recommendation": {
+    "decision": "Yes/No/Maybe",
+    "priority": "HIGH/MEDIUM/LOW",
+    "interviewQuestions": ["question1", "question2"],
+    "notes": "summary"
+  }
+}
+
+IMPORTANT: 
+- All scores MUST be numbers between 0-100
+- categoryScores MUST include all 4 categories with numeric values
+- Respond in French
+- Output ONLY valid JSON, no markdown formatting
 `;
 
         const analysisText = await generateContent(prompt);
@@ -154,44 +206,69 @@ Respond in French.
         const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
         const analysis = JSON.parse(jsonMatch ? jsonMatch[0] : cleanText);
 
+        // ✅ حساب النسبة بدقة مع fallback
+        const preciseScore = calculatePreciseScore(analysis);
+
         const ensureArray = (value: unknown): string[] => {
           if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
           if (typeof value === 'string') return value.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
           return [];
         };
 
+        // 🔧 [تعديل 2] قراءة categoryScores مع دعم الفرنسية والإنجليزية
+        const getCategoryScore = (obj: any, enKey: string, frKey: string): number | null => {
+          const val = obj?.categoryScores?.[enKey] ?? 
+                      obj?.categoryScores?.[frKey] ?? 
+                      obj?.result?.categoryScores?.[enKey] ?? 
+                      obj?.result?.categoryScores?.[frKey];
+          return val !== undefined ? Number(val) : null;
+        };
+
         await prisma.aIAnalysis.create({
-          data: {  // ✅ مهم: كلمة "data:"
+          data: {
             type: 'CANDIDATE_ANALYSIS',
             candidateId: candidate.id,
             jobOfferId: jobOffer.id,
             applicationId: application.id,
-            overallScore: Number(analysis.overallScore) || 0,
-            skillsScore: analysis.categoryScores?.skills ? Number(analysis.categoryScores.skills) : null,
-            experienceScore: analysis.categoryScores?.experience ? Number(analysis.categoryScores.experience) : null,
-            educationScore: analysis.categoryScores?.education ? Number(analysis.categoryScores.education) : null,
-            technicalFitScore: analysis.categoryScores?.technicalFit ? Number(analysis.categoryScores.technicalFit) : null,
-            matchedSkills: ensureArray(analysis.matchedRequirements),
-            missingSkills: ensureArray(analysis.missingRequirements),
-            strengths: ensureArray(analysis.strengths),
-            weaknesses: ensureArray(analysis.weaknesses),
+            
+            // ✅ النسبة المحسوبة بدقة
+            overallScore: preciseScore,
+            
+            // ✅ categoryScores مع دعم الفرنسية والإنجليزية
+            skillsScore: getCategoryScore(analysis, 'skills', 'compétences'),
+            experienceScore: getCategoryScore(analysis, 'experience', 'expérience'),
+            educationScore: getCategoryScore(analysis, 'education', 'éducation'),
+            technicalFitScore: getCategoryScore(analysis, 'technicalFit', 'adéquation technique'),
+            
+            matchedSkills: ensureArray(analysis.matchedRequirements || analysis.matchedSkills || analysis['exigences correspondantes'] || []),
+            missingSkills: ensureArray(analysis.missingRequirements || analysis.missingSkills || analysis['exigences manquantes'] || []),
+            strengths: ensureArray(analysis.strengths || analysis.forces || []),
+            weaknesses: ensureArray(analysis.weaknesses || analysis.faiblesses || []),
+            
             recommendation: analysis.recommendation?.decision || null,
             priority: analysis.recommendation?.priority || null,
-            interviewQuestions: ensureArray(analysis.recommendation?.interviewQuestions),
-            result: analysis,
-            confidence: analysis.overallScore ? Number(analysis.overallScore) / 100 : null
+            interviewQuestions: ensureArray(analysis.recommendation?.interviewQuestions || []),
+            result: {
+              ...analysis,
+              categoryScores: {
+                skills: analysis.categoryScores?.skills ?? analysis.categoryScores?.['compétences'] ?? analysis.result?.categoryScores?.skills ?? analysis.result?.categoryScores?.['compétences'],
+                experience: analysis.categoryScores?.experience ?? analysis.categoryScores?.['expérience'] ?? analysis.result?.categoryScores?.experience ?? analysis.result?.categoryScores?.['expérience'],
+                education: analysis.categoryScores?.education ?? analysis.categoryScores?.['éducation'] ?? analysis.result?.categoryScores?.education ?? analysis.result?.categoryScores?.['éducation'],
+                technicalFit: analysis.categoryScores?.technicalFit ?? analysis.categoryScores?.['adéquation technique'] ?? analysis.result?.categoryScores?.technicalFit ?? analysis.result?.categoryScores?.['adéquation technique']
+              }
+            },
+            confidence: preciseScore / 100
           }
         });
 
-        console.log('💾 Automatic analysis saved for application:', application.id);
+        console.log('💾 Analysis saved with score:', preciseScore, 'for application:', application.id);
 
       } catch (error) {
-        console.error('❌ Automatic AI analysis failed:', error);
+        console.error('❌ AI analysis failed:', error);
       }
     });
 
-    // Return success immediately (do not wait for AI)
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Application submitted successfully',
       application: {
@@ -200,36 +277,25 @@ Respond in French.
         jobOfferId: jobOffer.id,
         status: application.status,
         createdAt: application.createdAt
-      },
-      note: 'AI analysis is running in the background and will be available shortly'
+      }
     });
 
   } catch (error) {
-    console.error('❌ Error creating application:', error);
-    res.status(500).json({ 
-      error: 'Failed to submit application',
-      details: (error as Error).message
-    });
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to submit application', details: (error as Error).message });
   }
 });
 
-// ✅ 3. POST /applications - Generic endpoint (fallback)
+// ✅ POST / - مسار عام (بدون رفع ملف)
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { candidateId, jobOfferId, fullName, email, phone, cv, skills, experience, education } = req.body;
 
-    if (!jobOfferId || !email) {
-      return res.status(400).json({ error: 'jobOfferId and email are required' });
-    }
+    if (!jobOfferId || !email) return res.status(400).json({ error: 'jobOfferId and email are required' });
 
-    // Ensure jobOfferId is a string (handle string | string[] | undefined)
     const jobOfferIdStr = Array.isArray(jobOfferId) ? jobOfferId[0] : jobOfferId;
 
-    let candidate;
-    
-    if (candidateId) {
-      candidate = await prisma.candidate.findUnique({ where: { id: candidateId } });
-    }
+    let candidate = candidateId ? await prisma.candidate.findUnique({ where: { id: candidateId } }) : null;
     
     if (!candidate) {
       candidate = await prisma.candidate.create({
@@ -260,9 +326,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     const jobOffer = await prisma.jobOffer.findUnique({ where: { id: jobOfferIdStr } });
-    if (!jobOffer) {
-      return res.status(404).json({ error: 'Job offer not found' });
-    }
+    if (!jobOffer) return res.status(404).json({ error: 'Job offer not found' });
 
     const application = await prisma.application.create({
       data: {
@@ -279,61 +343,71 @@ router.post('/', async (req: Request, res: Response) => {
       try {
         console.log('🤖 Starting automatic AI analysis for application:', application.id);
         
-        const cvData = {
-          name: candidate.fullName,
-          email: candidate.email,
-          phone: candidate.phone,
-          cvUrl: candidate.cv,
-          skills: skills || [],
-          experience: experience || '',
-          education: education || ''
-        };
-        
-        const jobOfferData = {
-          title: jobOffer.title,
-          requiredSkills: jobOffer.skills || [],
-          requiredLevel: jobOffer.level,
-          contractType: jobOffer.contractType,
-          workMode: jobOffer.workMode,
-          description: jobOffer.description
-        };
-
+        // 🔧 [تعديل 1] Prompt محسّن لطلب categoryScores بشكل صريح (نفس الدالة الأولى)
         const prompt = `
 Analyze the compatibility between this candidate and job offer:
 
 CANDIDATE:
-Name: ${cvData.name}
-Email: ${cvData.email}
-Skills: ${cvData.skills?.join(', ') || 'Not specified'}
-Experience: ${cvData.experience || 'Not specified'}
-Education: ${cvData.education || 'Not specified'}
+Name: ${candidate.fullName}
+Email: ${candidate.email}
+Skills: ${Array.isArray(skills) ? skills.join(', ') : 'Not specified'}
+Experience: ${experience || 'Not specified'}
+Education: ${education || 'Not specified'}
 
 JOB OFFER:
-Title: ${jobOfferData.title}
-Required Skills: ${jobOfferData.requiredSkills.join(', ')}
-Level: ${jobOfferData.requiredLevel}
-Contract: ${jobOfferData.contractType}
-Work Mode: ${jobOfferData.workMode}
+Title: ${jobOffer.title}
+Required Skills: ${(jobOffer.skills || []).join(', ')}
+Level: ${jobOffer.level}
 
-Provide JSON with: overallScore, categoryScores (skills/experience/education/technicalFit), matchedRequirements, missingRequirements, strengths, weaknesses, recommendation (decision/priority/interviewQuestions/notes).
-Respond in French.
+Provide a detailed JSON analysis with EXACTLY this structure:
+{
+  "overallScore": number (0-100),
+  "categoryScores": {
+    "skills": number (0-100),
+    "experience": number (0-100),
+    "education": number (0-100),
+    "technicalFit": number (0-100)
+  },
+  "matchedRequirements": ["skill1", "skill2"],
+  "missingRequirements": ["skill3", "skill4"],
+  "strengths": ["point1", "point2"],
+  "weaknesses": ["point3", "point4"],
+  "recommendation": {
+    "decision": "Yes/No/Maybe",
+    "priority": "HIGH/MEDIUM/LOW",
+    "interviewQuestions": ["question1", "question2"],
+    "notes": "summary"
+  }
+}
+
+IMPORTANT: 
+- All scores MUST be numbers between 0-100
+- categoryScores MUST include all 4 categories with numeric values
+- Respond in French
+- Output ONLY valid JSON, no markdown formatting
 `;
 
-        console.log('🔄 Calling Groq AI...');
         const analysisText = await generateContent(prompt);
-        console.log('✅ Response received from Groq AI');
-
         const cleanText = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
         const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-        const jsonString = jsonMatch ? jsonMatch[0] : cleanText;
-        const analysis = JSON.parse(jsonString);
+        const analysis = JSON.parse(jsonMatch ? jsonMatch[0] : cleanText);
 
-        console.log('📊 Parsed analysis:', { overallScore: analysis.overallScore });
+        // ✅ حساب النسبة بدقة مع fallback
+        const preciseScore = calculatePreciseScore(analysis);
 
         const ensureArray = (value: unknown): string[] => {
           if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
           if (typeof value === 'string') return value.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
           return [];
+        };
+
+        // 🔧 [تعديل 2] قراءة categoryScores مع دعم الفرنسية والإنجليزية (نفس الدالة الأولى)
+        const getCategoryScore = (obj: any, enKey: string, frKey: string): number | null => {
+          const val = obj?.categoryScores?.[enKey] ?? 
+                      obj?.categoryScores?.[frKey] ?? 
+                      obj?.result?.categoryScores?.[enKey] ?? 
+                      obj?.result?.categoryScores?.[frKey];
+          return val !== undefined ? Number(val) : null;
         };
 
         await prisma.aIAnalysis.create({
@@ -342,31 +416,45 @@ Respond in French.
             candidateId: candidate.id,
             jobOfferId: jobOffer.id,
             applicationId: application.id,
-            overallScore: Number(analysis.overallScore) || 0,
-            skillsScore: analysis.categoryScores?.skills ? Number(analysis.categoryScores.skills) : null,
-            experienceScore: analysis.categoryScores?.experience ? Number(analysis.categoryScores.experience) : null,
-            educationScore: analysis.categoryScores?.education ? Number(analysis.categoryScores.education) : null,
-            technicalFitScore: analysis.categoryScores?.technicalFit ? Number(analysis.categoryScores.technicalFit) : null,
-            matchedSkills: ensureArray(analysis.matchedRequirements),
-            missingSkills: ensureArray(analysis.missingRequirements),
-            strengths: ensureArray(analysis.strengths),
-            weaknesses: ensureArray(analysis.weaknesses),
+            
+            // ✅ النسبة المحسوبة بدقة
+            overallScore: preciseScore,
+            
+            // ✅ categoryScores مع دعم الفرنسية والإنجليزية
+            skillsScore: getCategoryScore(analysis, 'skills', 'compétences'),
+            experienceScore: getCategoryScore(analysis, 'experience', 'expérience'),
+            educationScore: getCategoryScore(analysis, 'education', 'éducation'),
+            technicalFitScore: getCategoryScore(analysis, 'technicalFit', 'adéquation technique'),
+            
+            matchedSkills: ensureArray(analysis.matchedRequirements || analysis.matchedSkills || []),
+            missingSkills: ensureArray(analysis.missingRequirements || analysis.missingSkills || []),
+            strengths: ensureArray(analysis.strengths || analysis.forces || []),
+            weaknesses: ensureArray(analysis.weaknesses || analysis.faiblesses || []),
+            
             recommendation: analysis.recommendation?.decision || null,
             priority: analysis.recommendation?.priority || null,
-            interviewQuestions: ensureArray(analysis.recommendation?.interviewQuestions),
-            result: analysis,
-            confidence: analysis.overallScore ? Number(analysis.overallScore) / 100 : null
+            interviewQuestions: ensureArray(analysis.recommendation?.interviewQuestions || []),
+            result: {
+              ...analysis,
+              categoryScores: {
+                skills: analysis.categoryScores?.skills ?? analysis.categoryScores?.['compétences'] ?? analysis.result?.categoryScores?.skills ?? analysis.result?.categoryScores?.['compétences'],
+                experience: analysis.categoryScores?.experience ?? analysis.categoryScores?.['expérience'] ?? analysis.result?.categoryScores?.experience ?? analysis.result?.categoryScores?.['expérience'],
+                education: analysis.categoryScores?.education ?? analysis.categoryScores?.['éducation'] ?? analysis.result?.categoryScores?.education ?? analysis.result?.categoryScores?.['éducation'],
+                technicalFit: analysis.categoryScores?.technicalFit ?? analysis.categoryScores?.['adéquation technique'] ?? analysis.result?.categoryScores?.technicalFit ?? analysis.result?.categoryScores?.['adéquation technique']
+              }
+            },
+            confidence: preciseScore / 100
           }
         });
 
-        console.log('💾 Automatic analysis saved for application:', application.id);
+        console.log('💾 Analysis saved with score:', preciseScore, 'for application:', application.id);
 
       } catch (error) {
-        console.error('❌ Automatic AI analysis failed:', error);
+        console.error('❌ AI analysis failed:', error);
       }
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Application submitted successfully',
       application: {
@@ -375,55 +463,67 @@ Respond in French.
         jobOfferId: jobOffer.id,
         status: application.status,
         createdAt: application.createdAt
-      },
-      note: 'AI analysis is running in the background'
-    });
-
-  } catch (error) {
-    console.error('❌ Error creating application:', error);
-    res.status(500).json({ 
-      error: 'Failed to submit application',
-      details: (error as Error).message
-    });
-  }
-});
-
-// ❌ 4. GET /applications/:id - MOST GENERIC (يجب أن يأتي آخراً)
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const rawId = req.params.id;
-    const applicationId = Array.isArray(rawId) ? rawId[0] : rawId;
-    
-    if (!applicationId) {
-      return res.status(400).json({ error: 'Application ID is required' });
-    }
-
-    const application = await prisma.application.findUnique({
-      where: { id: applicationId },
-      include: {
-        candidate: true,
-        jobOffer: true,
-        aiAnalyses: {
-          orderBy: { createdAt: 'desc' },
-          take: 1
-        }
       }
     });
 
-    if (!application) {
-      return res.status(404).json({ error: 'Application not found' });
-    }
-
-    res.json({
-      success: true,
-      data: application
-    });
-
   } catch (error) {
-    console.error('❌ Error fetching application:', error);
-    res.status(500).json({ error: 'Failed to fetch application' });
+    console.error('❌ Error:', error);
+    res.status(500).json({ error: 'Failed to submit application', details: (error as Error).message });
   }
 });
 
-// ✅ Important: Export router at the end
+// ✅ GET /:id/analysis - جلب التحليل
+router.get('/:id/analysis', async (req: Request, res: Response) => {
+  try {
+    const applicationId = req.params.id as string;
+    
+    console.log('🔍 [Backend] Fetching AI analysis for application:', applicationId);
+    
+    const analysis = await prisma.aIAnalysis.findFirst({
+      where: { applicationId },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    if (!analysis) {
+      return res.status(404).json({ 
+        error: 'Analysis not found',
+        message: 'L\'analyse IA est encore en cours de traitement. Veuillez réessayer dans quelques secondes.'
+      });
+    }
+    
+    console.log('✅ [Backend] Analysis found:', {
+      id: analysis.id,
+      overallScore: analysis.overallScore,
+      type: analysis.type
+    });
+    
+    res.json({
+      id: analysis.id,
+      applicationId: analysis.applicationId,
+      overallScore: analysis.overallScore || 0,
+      confidence: analysis.confidence,
+      priority: analysis.priority,
+      recommendation: analysis.recommendation,
+      matchedSkills: analysis.matchedSkills || [],
+      missingSkills: analysis.missingSkills || [],
+      interviewQuestions: analysis.interviewQuestions || [],
+      result: analysis.result,
+      strengths: analysis.strengths || [],
+      weaknesses: analysis.weaknesses || [],
+      categoryScores: {
+        skills: analysis.skillsScore,
+        experience: analysis.experienceScore,
+        education: analysis.educationScore,
+        technicalFit: analysis.technicalFitScore
+      },
+      createdAt: analysis.createdAt,
+      updatedAt: analysis.updatedAt
+    });
+    
+  } catch (error) {
+    console.error('❌ [Backend] Error fetching analysis:', error);
+    res.status(500).json({ error: 'Failed to fetch analysis', details: (error as Error).message });
+  }
+});
+
 export default router;

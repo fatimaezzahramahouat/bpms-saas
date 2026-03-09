@@ -1,4 +1,4 @@
-import { Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { AuthRequest } from "./auth.middleware";
 
 /**
@@ -6,8 +6,9 @@ import { AuthRequest } from "./auth.middleware";
  * @param allowedRoles Array of strings representing roles allowed to access the route.
  */
 export const checkRole = (allowedRoles: string[]) => {
-    return (req: AuthRequest, res: Response, next: NextFunction) => {
-        const userRole = req.user?.role?.toUpperCase().trim();
+    return (req: Request, res: Response, next: NextFunction) => {
+        const authReq = req as AuthRequest;
+        const userRole = authReq.user?.role?.toUpperCase().trim();
 
         if (!userRole) {
             res.status(403).json({ error: "Forbidden: No role found for user" });
