@@ -190,7 +190,7 @@ export const authController = {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: serviceUser.role as string,
+            role: role as string,
             organisation: user.organisation,
             admin: user.admin,
             rh: user.rh,
