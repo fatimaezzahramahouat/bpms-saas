@@ -12,8 +12,8 @@ export const processController = {
     startProcess: catchAsync(async (req: AuthRequest, res: Response) => {
         const { workflowId, metadata, startDate, endDate, reason } = req.body;
         const file = req.file;
-        const userId = authReq.user?.userId;
-        const organisationId = authReq.user?.organisationId;
+        const userId = req.user?.userId;
+        const organisationId = req.user?.organisationId;
 
         if (!userId || !organisationId) {
             return res.status(401).json({ error: "User not authenticated or missing organisation" });

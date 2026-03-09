@@ -99,9 +99,10 @@ export const taskController = {
      * PATCH /api/tasks/:id/reject
      * Rejects the task and terminates the process.
      */
-    rejectTask: catchAsync(async (req: AuthRequest, res: Response) => {
+    rejectTask: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const id = req.params.id as string;
-        const userId = req.user?.userId;
+        const userId = authReq.user?.userId;
 
         if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
 

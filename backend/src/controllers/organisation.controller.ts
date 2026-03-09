@@ -20,10 +20,10 @@ const onboardingSchema = z.object({
 
 export const organisationController = {
     async onboarding(req: Request, res: Response): Promise<void> {
-        console.log(">>> ONBOARDING CONTROLLER START <<<");
-        console.log("Request Body:", req.body);
-        console.log("Request File:", req.file);
-        console.log("Content-Type:", req.headers["content-type"]);
+        // console.log(">>> ONBOARDING CONTROLLER START <<<");
+        // console.log("Request Body:", req.body);
+        // console.log("Request File:", req.file);
+        // console.log("Content-Type:", req.headers["content-type"]);
         try {
             const authReq = req as AuthRequest;
             const parsed = onboardingSchema.safeParse(req.body);
