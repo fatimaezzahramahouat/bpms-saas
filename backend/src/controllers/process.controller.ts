@@ -13,10 +13,10 @@ export const processController = {
         const authReq = req as AuthRequest;
         const { workflowId, metadata, startDate, endDate, reason } = req.body;
         const file = req.file;
-        const userId = req.user?.userId;
-        const organisationId = req.user?.organisationId;
+        const id = authReq.user?.id;
+        const organisationId = authReq.user?.organisationId;
 
-        if (!userId || !organisationId) {
+        if (!id || !organisationId) {
             return res.status(401).json({ error: "User not authenticated or missing organisation" });
         }
 
@@ -52,7 +52,7 @@ export const processController = {
 
             const result = await workflowEngineService.startProcessInstance(
                 workflowId,
-                userId,
+                id,
                 organisationId,
                 finalMetadata
             );
@@ -76,14 +76,14 @@ export const processController = {
      */
     getMyRequests: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
-        const userId = authReq.user?.userId;
+        const id = authReq.user?.id;
 
-        if (!userId) {
+        if (!id) {
             return res.status(401).json({ error: "User not authenticated" });
         }
 
         const requests = await prisma.processInstance.findMany({
-            where: { userId },
+            where: { userId: id },
             include: {
                 workflow: {
                     select: { name: true }

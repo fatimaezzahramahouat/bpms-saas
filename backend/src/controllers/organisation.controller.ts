@@ -36,11 +36,11 @@ export const organisationController = {
                 return;
             }
 
-            const userId = authReq.user?.userId;
+            const id = authReq.user?.id;
             const organisationId = authReq.user?.organisationId; // Might be null for Google users
             const userEmail = authReq.user?.email;
 
-            if (!userId || !userEmail) {
+            if (!id || !userEmail) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
@@ -71,7 +71,7 @@ export const organisationController = {
             if (req.file) {
                 console.log('File detected in request:', req.file.originalname);
                 // Use a safe ID for folder name if organisationId is missing
-                const uploadFolderId = organisationId || userId;
+                const uploadFolderId = organisationId || id;
                 logoUrl = await storageService.uploadLogo(req.file, uploadFolderId);
                 console.log('Logo uploaded successfully, URL:', logoUrl);
             } else {
@@ -80,7 +80,7 @@ export const organisationController = {
 
             const result = await authService.completeOnboarding({
                 organisationId: organisationId as string | null,
-                userId,
+                userId: id,
                 email: userEmail,
                 orgInfo: {
                     website: parsed.data.website,

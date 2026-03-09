@@ -3,15 +3,15 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
-export interface AuthRequest extends Request {
+export type AuthRequest = Request & {
   user?: {
-    userId: string;
+    id: string;
     email: string;
     organisationId: string;
     isAdmin: boolean;
     role: string;
   };
-}
+};
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const authReq = req as AuthRequest;
@@ -31,7 +31,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
+      id: string;
       email: string;
       organisationId: string;
       isAdmin: boolean;
