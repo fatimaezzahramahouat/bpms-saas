@@ -66,18 +66,14 @@ export const workflowRepository = {
     /**
      * Returns all workflows for a given organisation,
      * including step count via _count.
-     * Optionally filters by category and sorts by updatedAt descending.
      */
-    async findAllByOrg(organisationId: string, category?: string) {
+    async findAllByOrg(organisationId: string) {
         return prisma.workflow.findMany({
-            where: {
-                organisationId,
-                ...(category && { category })
-            },
+            where: { organisationId },
             include: {
                 _count: { select: { steps: true, instances: true } },
             },
-            orderBy: { updatedAt: "desc" },
+            orderBy: { name: "asc" },
         });
     },
 

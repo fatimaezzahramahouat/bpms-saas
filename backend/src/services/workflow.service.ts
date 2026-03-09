@@ -27,10 +27,9 @@ export const workflowService = {
 
     /**
      * Returns a list of all workflows for the organisation.
-     * Optionally filters by category and sorts by updatedAt descending.
      */
-    async getAllWorkflows(organisationId: string, category?: string) {
-        return workflowRepository.findAllByOrg(organisationId, category);
+    async getAllWorkflows(organisationId: string) {
+        return workflowRepository.findAllByOrg(organisationId);
     },
 
     /**
@@ -108,53 +107,6 @@ export const workflowService = {
      */
     async deleteWorkflow(id: string, organisationId: string) {
         return workflowRepository.deleteWorkflow(id, organisationId);
-    },
-
-    /**
-     * Duplicates an existing workflow.
-     */
-    async duplicateWorkflow(id: string, organisationId: string) {
-        const original = await workflowRepository.findByIdAndOrg(id, organisationId);
-        if (!original) return null;
-
-        // Create a new workflow copying key elements but resetting status/version
-        const duplicated = await workflowRepository.createWorkflowWithSteps(
-            organisationId,
-            {
-                name: `Copie de ${original.name}`,
-                description: original.description || undefined,
-                nodes: original.nodes,
-                edges: original.edges,
-                // Assuming "category" is part of the metadata or schema implicitly if added recently
-                // Here we just pass the steps, any category logic should be added to the input if it exists
-                steps: original.steps.map(s => ({
-                    name: s.name,
-                    order: s.order,
-                    metadata: s.metadata,
-                })),
-            }
-        );
-
-        // explicitly set status to DRAFT and version to 1 in case createWorkflow defaults differently
-        await workflowRepository.updateWorkflow(duplicated.id, organisationId, {
-            status: "DRAFT",
-            version: 1
-        });
-
-        return workflowRepository.findByIdAndOrg(duplicated.id, organisationId);
-    },
-
-    /**
-     * Toggles the active status of a workflow between ACTIVE and DRAFT.
-     */
-    async toggleWorkflowStatus(id: string, organisationId: string) {
-        const current = await workflowRepository.findByIdAndOrg(id, organisationId);
-        if (!current) return null;
-
-        const newStatus = current.status === "ACTIVE" ? "DRAFT" : "ACTIVE";
-        await workflowRepository.updateWorkflow(id, organisationId, { status: newStatus });
-
-        return workflowRepository.findByIdAndOrg(id, organisationId);
     },
 
     /**

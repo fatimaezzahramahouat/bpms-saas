@@ -21,11 +21,7 @@ workflowRouter.post("/", checkRole(EDITOR_ROLES), validate(createWorkflowSchema)
 workflowRouter.get("/", workflowController.getAllWorkflows);
 workflowRouter.get("/:id", workflowController.getWorkflowById);
 workflowRouter.put("/:id", checkRole(EDITOR_ROLES), validate(updateWorkflowSchema), workflowController.updateWorkflow);
-// PATCH /:id — alias for PUT (used by the frontend editor "Save" button)
-workflowRouter.patch("/:id", checkRole(EDITOR_ROLES), validate(updateWorkflowSchema), workflowController.updateWorkflow);
 workflowRouter.patch("/:id/publish", checkRole(EDITOR_ROLES), workflowController.publishWorkflow);
-workflowRouter.patch("/:id/toggle", checkRole(EDITOR_ROLES), workflowController.toggleStatus);
-workflowRouter.post("/:id/duplicate", checkRole(EDITOR_ROLES), workflowController.duplicateWorkflow);
 workflowRouter.delete("/:id", checkRole(EDITOR_ROLES), workflowController.deleteWorkflow);
 
 // ─── Step Management ──────────────────────────────────────

@@ -188,7 +188,6 @@ model Workflow {
   status         WorkflowStatus    @default(DRAFT)
   updatedAt      DateTime          @updatedAt
   version        Int               @default(1)
-  data_model     Json?             @default("[]")
   jobOffers      JobOffer[]
   instances      ProcessInstance[]
   steps          Step[]
