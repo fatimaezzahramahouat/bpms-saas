@@ -12,16 +12,16 @@ export const requireRH = async (
   next: NextFunction
 ) => {
   const authReq = req as AuthRequest;
-  const userId = authReq.user?.userId;
+  const id = authReq.user?.id;
 
-  if (!userId) {
+  if (!id) {
     res.status(401).json({ error: "Unauthorized: User not found in request context" });
     return;
   }
 
   try {
     const rhRecord = await prisma.rH.findUnique({
-      where: { userId },
+      where: { userId: id },
     });
 
     if (!rhRecord) {

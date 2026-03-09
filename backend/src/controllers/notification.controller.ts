@@ -10,13 +10,13 @@ export const notificationController = {
      */
     getNotifications: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
-        const userId = authReq.user?.userId;
+        const id = authReq.user?.id;
 
-        if (!userId) {
+        if (!id) {
             return res.status(401).json({ error: "User not authenticated" });
         }
 
-        const notifications = await notificationService.getUnreadNotifications(userId);
+        const notifications = await notificationService.getUnreadNotifications(id);
         res.status(200).json({ data: notifications });
     }),
 
@@ -26,13 +26,13 @@ export const notificationController = {
      */
     markAllAsRead: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
-        const userId = authReq.user?.userId;
+        const id = authReq.user?.id;
 
-        if (!userId) {
+        if (!id) {
             return res.status(401).json({ error: "User not authenticated" });
         }
 
-        await notificationService.markAllAsRead(userId);
+        await notificationService.markAllAsRead(id);
         res.status(200).json({ message: "All notifications marked as read" });
     }),
 };
