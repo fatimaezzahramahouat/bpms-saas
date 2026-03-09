@@ -50,7 +50,7 @@ export const jobOfferController = {
    */
   createOffer: catchAsync(async (req: Request, res: Response) => {
     const authReq = req as AuthRequest;
-    const { organisationId, userId } = authReq.user!;
+    const { organisationId, id: userId } = authReq.user!;
 
     const parsed = createJobOfferSchema.safeParse(req.body);
     if (!parsed.success) {

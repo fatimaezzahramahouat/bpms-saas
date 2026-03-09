@@ -43,17 +43,17 @@ export const userManagementController = {
         try {
             const authReq = req as AuthRequest;
             const organisationId = authReq.user?.organisationId;
-            const userId = authReq.user?.userId;
+            const id = authReq.user?.id;
 
-            if (!organisationId || !userId) {
+            if (!organisationId || !id) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
             // Real-time access check (Heritage Pattern)
             const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId } }),
-                prisma.rH.findUnique({ where: { userId } })
+                prisma.admin.findUnique({ where: { userId: id } }),
+                prisma.rH.findUnique({ where: { userId: id } })
             ]);
 
             if (!admin && !rh) {
@@ -88,17 +88,17 @@ export const userManagementController = {
             const authReq = req as AuthRequest;
             const id = req.params.id as string;
             const organisationId = authReq.user?.organisationId;
-            const userId = authReq.user?.userId;
+            const currentUserId = authReq.user?.id;
 
-            if (!organisationId || !userId) {
+            if (!organisationId || !currentUserId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
             // Real-time access check (Heritage Pattern)
             const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId } }),
-                prisma.rH.findUnique({ where: { userId } })
+                prisma.admin.findUnique({ where: { userId: currentUserId } }),
+                prisma.rH.findUnique({ where: { userId: currentUserId } })
             ]);
 
             if (!admin && !rh) {
@@ -141,17 +141,17 @@ export const userManagementController = {
             const authReq = req as AuthRequest;
             const id = req.params.id as string;
             const organisationId = authReq.user?.organisationId;
-            const userId = authReq.user?.userId;
+            const currentUserId = authReq.user?.id;
 
-            if (!organisationId || !userId) {
+            if (!organisationId || !currentUserId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
             // Real-time access check (Heritage Pattern)
             const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId } }),
-                prisma.rH.findUnique({ where: { userId } })
+                prisma.admin.findUnique({ where: { userId: currentUserId } }),
+                prisma.rH.findUnique({ where: { userId: currentUserId } })
             ]);
 
             if (!admin && !rh) {
@@ -178,17 +178,17 @@ export const userManagementController = {
         try {
             const authReq = req as AuthRequest;
             const organisationId = authReq.user?.organisationId;
-            const userId = authReq.user?.userId;
+            const currentUserId = authReq.user?.id;
 
-            if (!organisationId || !userId) {
+            if (!organisationId || !currentUserId) {
                 res.status(401).json({ error: "Unauthorized" });
                 return;
             }
 
             // Real-time access check
             const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId } }),
-                prisma.rH.findUnique({ where: { userId } })
+                prisma.admin.findUnique({ where: { userId: currentUserId } }),
+                prisma.rH.findUnique({ where: { userId: currentUserId } })
             ]);
 
             if (!admin && !rh) {

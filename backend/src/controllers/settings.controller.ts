@@ -21,8 +21,8 @@ export const settingsController = {
         return;
       }
 
-      const userId = authReq.user?.userId;
-      if (!userId) {
+      const id = authReq.user?.id;
+      if (!id) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
@@ -33,7 +33,7 @@ export const settingsController = {
       if (parsed.data.email !== undefined) updateData["email"] = parsed.data.email;
       if (parsed.data.phone !== undefined) updateData["phone"] = parsed.data.phone;
 
-      const user = await settingsService.updateProfile(userId, updateData);
+      const user = await settingsService.updateProfile(id as string, updateData);
       res.status(200).json({ message: "Profile updated successfully", data: user });
     } catch (error: any) {
       const status = error.status || 500;
@@ -52,13 +52,13 @@ export const settingsController = {
         return;
       }
 
-      const userId = authReq.user?.userId;
-      if (!userId) {
+      const id = authReq.user?.id;
+      if (!id) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
-      await settingsService.changePassword(userId, parsed.data.currentPassword, parsed.data.newPassword);
+      await settingsService.changePassword(id as string, parsed.data.currentPassword, parsed.data.newPassword);
       res.status(200).json({ message: "Password changed successfully" });
     } catch (error: any) {
       const status = error.status || 500;
@@ -77,8 +77,8 @@ export const settingsController = {
         return;
       }
 
-      const userId = authReq.user?.userId;
-      if (!userId) {
+      const id = authReq.user?.id;
+      if (!id) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
@@ -87,7 +87,7 @@ export const settingsController = {
       if (parsed.data.emailNotifications !== undefined) updateData["emailNotifications"] = parsed.data.emailNotifications;
       if (parsed.data.inAppNotifications !== undefined) updateData["inAppNotifications"] = parsed.data.inAppNotifications;
 
-      const result = await settingsService.updateNotifications(userId, updateData);
+      const result = await settingsService.updateNotifications(id as string, updateData);
       res.status(200).json({ message: "Notification preferences updated", data: result });
     } catch (error: any) {
       const status = error.status || 500;
@@ -106,13 +106,13 @@ export const settingsController = {
         return;
       }
 
-      const userId = authReq.user?.userId;
-      if (!userId) {
+      const id = authReq.user?.id;
+      if (!id) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
-      const result = await settingsService.updateTheme(userId, parsed.data.theme);
+      const result = await settingsService.updateTheme(id as string, parsed.data.theme);
       res.status(200).json({ message: "Theme updated successfully", data: result });
     } catch (error: any) {
       const status = error.status || 500;
@@ -125,13 +125,13 @@ export const settingsController = {
   async getSessions(req: Request, res: Response): Promise<void> {
     try {
       const authReq = req as AuthRequest;
-      const userId = authReq.user?.userId;
-      if (!userId) {
+      const id = authReq.user?.id;
+      if (!id) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
-      const sessions = await settingsService.getSessions(userId);
+      const sessions = await settingsService.getSessions(id as string);
       res.status(200).json({ data: sessions });
     } catch (error: any) {
       res.status(500).json({ error: "Internal server error" });
@@ -141,14 +141,14 @@ export const settingsController = {
   async revokeSession(req: Request, res: Response): Promise<void> {
     try {
       const authReq = req as AuthRequest;
-      const userId = authReq.user?.userId;
-      if (!userId) {
+      const id = authReq.user?.id;
+      if (!id) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
       const sessionId = req.params.id as string;
-      await settingsService.revokeSession(userId, sessionId);
+      await settingsService.revokeSession(id as string, sessionId);
       res.status(200).json({ message: "Session revoked successfully" });
     } catch (error: any) {
       const status = error.status || 500;
@@ -213,14 +213,14 @@ export const settingsController = {
   async leaveOrganisation(req: Request, res: Response): Promise<void> {
     try {
       const authReq = req as AuthRequest;
-      const userId = authReq.user?.userId;
+      const id = authReq.user?.id;
       const isAdmin = authReq.user?.isAdmin || false;
-      if (!userId) {
+      if (!id) {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
-      await settingsService.leaveOrganisation(userId, isAdmin);
+      await settingsService.leaveOrganisation(id as string, isAdmin);
       res.clearCookie("token");
       res.status(200).json({ message: "You have left the organisation" });
     } catch (error: any) {

@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
 import { statsService } from "../services/stats.service";
@@ -15,8 +15,9 @@ export const statsController = {
      * GET /api/stats/workflows
      * Returns comprehensive workflow analytics for the authenticated organisation.
      */
-    getWorkflowStats: catchAsync(async (req: AuthRequest, res: Response) => {
-        const organisationId = getOrgId(req);
+    getWorkflowStats: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const organisationId = getOrgId(authReq);
 
         console.log(`[StatsController] Fetching workflow stats for org ${organisationId}`);
         const stats = await statsService.getWorkflowStats(organisationId);

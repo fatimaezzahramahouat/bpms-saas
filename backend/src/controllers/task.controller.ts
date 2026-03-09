@@ -10,15 +10,15 @@ export const taskController = {
      */
     getTasks: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
-        const userId = authReq.user?.userId;
+        const currentUserId = authReq.user?.id;
 
-        if (!userId) {
+        if (!currentUserId) {
             return res.status(401).json({ error: "User not authenticated" });
         }
 
         const tasks = await prisma.task.findMany({
             where: {
-                userId: userId,
+                userId: currentUserId,
                 status: "PENDING"
             },
             include: {
@@ -62,13 +62,13 @@ export const taskController = {
         const authReq = req as AuthRequest;
         const { id } = req.params as { id: string };
         const { action } = req.body; // 'APPROVE' | 'REJECT'
-        const userId = authReq.user?.userId as string;
+        const currentUserId = authReq.user?.id as string;
 
         if (!['APPROVE', 'REJECT'].includes(action)) {
             return res.status(400).json({ error: "Invalid action. Must be 'APPROVE' or 'REJECT'." });
         }
 
-        const result = await workflowEngineService.completeTaskAndMoveToNext(id, action, userId);
+        const result = await workflowEngineService.completeTaskAndMoveToNext(id, action, currentUserId);
 
         res.status(200).json({
             message: `Task ${action === 'APPROVE' ? 'approved' : 'rejected'} successfully.`,
@@ -83,11 +83,11 @@ export const taskController = {
     approveTask: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
         const id = req.params.id as string;
-        const userId = authReq.user?.userId;
+        const currentUserId = authReq.user?.id;
 
-        if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
+        if (!id || !currentUserId) return res.status(401).json({ error: "Unauthorized or missing ID" });
 
-        const result = await workflowEngineService.approveTask(id, userId);
+        const result = await workflowEngineService.approveTask(id, currentUserId);
 
         res.status(200).json({
             message: "Task approved successfully",
@@ -99,13 +99,14 @@ export const taskController = {
      * PATCH /api/tasks/:id/reject
      * Rejects the task and terminates the process.
      */
-    rejectTask: catchAsync(async (req: AuthRequest, res: Response) => {
+    rejectTask: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const id = req.params.id as string;
-        const userId = req.user?.userId;
+        const currentUserId = authReq.user?.id;
 
-        if (!id || !userId) return res.status(401).json({ error: "Unauthorized or missing ID" });
+        if (!id || !currentUserId) return res.status(401).json({ error: "Unauthorized or missing ID" });
 
-        const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', userId);
+        const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', currentUserId);
 
         res.status(200).json({
             message: "Task rejected successfully",
@@ -119,17 +120,17 @@ export const taskController = {
      */
     getApprovals: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
-        const userId = authReq.user?.userId;
+        const currentUserId = authReq.user?.id;
         const organisationId = authReq.user?.organisationId;
 
-        if (!userId || !organisationId) {
+        if (!currentUserId || !organisationId) {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
       
 const tasks = await prisma.task.findMany({
     where: {
-        userId: userId,
+        userId: currentUserId,
         status: "PENDING"
     },
     include: {

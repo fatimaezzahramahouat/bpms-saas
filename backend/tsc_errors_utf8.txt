@@ -1,0 +1,16 @@
+﻿src/controllers/auth.controller.ts(219,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/jobOffer.controller.ts(53,29): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/notification.controller.ts(13,38): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/notification.controller.ts(29,38): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/settings.controller.ts(24,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/settings.controller.ts(55,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/settings.controller.ts(80,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/settings.controller.ts(109,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/settings.controller.ts(128,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/settings.controller.ts(144,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/settings.controller.ts(216,36): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/userManagement.controller.ts(46,42): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/userManagement.controller.ts(91,42): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/userManagement.controller.ts(144,42): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/controllers/userManagement.controller.ts(181,42): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.
+src/middleware/role.middleware.ts(15,32): error TS2339: Property 'userId' does not exist on type 'User & { id: string; email: string; organisationId: string; isAdmin: boolean; role: string; }'.

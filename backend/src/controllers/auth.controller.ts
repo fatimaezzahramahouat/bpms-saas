@@ -155,7 +155,7 @@ export const authController = {
       // 5. JWT Payload - RESTORE isAdmin for middleware compatibility
       const token = jwt.sign(
         {
-          userId: user.id,
+          id: user.id,
           email: user.email,
           role: role,
           organisationId: user.organisationId,
@@ -216,8 +216,8 @@ export const authController = {
   async getCurrentUser(req: Request, res: Response): Promise<void> {
     const authReq = req as AuthRequest;
     try {
-      const userId = authReq.user?.userId;
-      if (!userId) {
+      const id = authReq.user?.id;
+      if (!id) {
         res.status(401).json({ error: "Non autorisé" });
         return;
       }
@@ -297,7 +297,7 @@ export const authController = {
       // Generate JWT Token
       const token = jwt.sign(
         {
-          userId: user.id,
+          id: user.id,
           email: user.email,
           role: role,
           organisationId: user.organisationId,

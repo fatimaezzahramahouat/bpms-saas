@@ -57,20 +57,18 @@ export function AppRouter() {
         <Route path="mes-demandes" element={<EmployeeDashboard />} />
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
-        <Route path="rh/candidates/:id" element={<CandidateProfilePage />} />
         <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
         <Route path="analytics" element={<WorkflowAnalytics />} />
         <Route path="approvals" element={<MyApprovals />} />
         <Route path="tasks" element={<EmployeeTasks />} />
+        <Route path="/recrutement" element={<RecruitmentPage />} />
+        <Route path="/our-team" element={<TeamPage />} />
+        <Route path="workflow" element={<WorkflowPage />} />
+        <Route path="rh/candidates/:id" element={<CandidateProfilePage />} />       
+        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
+        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
-
-      {/* Recruitment Route */}
-      <Route path="/recrutement" element={<RecruitmentPage />} />
-
-      {/* Team Route */}
-      <Route path="/our-team" element={<TeamPage />} />
-
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />
     </Routes>
