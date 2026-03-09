@@ -9,7 +9,8 @@ export const processController = {
      * POST /api/process/start
      * Starts a new process instance for a workflow.
      */
-    startProcess: catchAsync(async (req: AuthRequest, res: Response) => {
+    startProcess: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
         const { workflowId, metadata, startDate, endDate, reason } = req.body;
         const file = req.file;
         const userId = req.user?.userId;
@@ -24,8 +25,22 @@ export const processController = {
         }
 
         try {
+            // Check Context/Metadata: Ensure it is a valid object and not null
+            let finalMetadata = metadata;
+
             // Parse metadata if sent as JSON string in FormData
-            let finalMetadata = metadata ? (typeof metadata === 'string' ? JSON.parse(metadata) : metadata) : {};
+            if (typeof metadata === 'string') {
+                try {
+                    finalMetadata = JSON.parse(metadata);
+                } catch (e) {
+                    finalMetadata = {};
+                }
+            }
+
+            // Ensure finalMetadata is an object and not null
+            if (!finalMetadata || typeof finalMetadata !== 'object' || Array.isArray(finalMetadata)) {
+                finalMetadata = {};
+            }
 
             // Backwards compatibility for legacy LeaveRequestForm
             if (startDate || endDate || reason) {
@@ -47,8 +62,12 @@ export const processController = {
                 data: result
             });
         } catch (error: any) {
-            console.error("[ProcessController] Error starting process:", error);
-            res.status(400).json({ error: error.message });
+            // Global Catch-All Logging: Capture Prisma and other internal errors
+            console.error("SERVER_500_ERROR:", error);
+            res.status(500).json({
+                error: "Internal Server Error",
+                message: error.message
+            });
         }
     }),
     /**
