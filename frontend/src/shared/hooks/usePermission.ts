@@ -51,10 +51,9 @@ export const usePermission = () => {
         canViewWorkflow: true,
         canManageUsers: canManageUsers(role),
         canApprove: canApprove(role),
-        isAdmin: role === 'ADMIN',
-        isManager: role === 'MANAGER',
-        isHR: role === 'RH',
-        isEmployee: role === 'EMPLOYEE',
+        isAdmin: ['ADMIN', 'ADMINISTRATEUR'].includes(role),
+        isHR: ['RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'].includes(role),
+        isEmployee: !['ADMIN', 'ADMINISTRATEUR', 'RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE', 'MANAGER'].includes(role),
     };
 };
 

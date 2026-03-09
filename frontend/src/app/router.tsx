@@ -19,8 +19,7 @@ import { CandidateProfilePage } from '../features/rh/pages/CandidateProfilePage'
 import { MyApprovals } from '@/pages/MyApprovals';
 import { EmployeeTasks } from '@/pages/EmployeeTasks';
 import { SettingsPage } from '../features/dashboard/pages/SettingsPage';
-
-
+import { ManageWorkflows } from '../features/workflow/pages/ManageWorkflows';
 
 /**
  * Application Router
@@ -50,14 +49,18 @@ export function AppRouter() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
         <Route path="equipe" element={<UsersManagement />} />
+        <Route path="manage-workflows" element={<ManageWorkflows />} />
+        <Route path="architecte" element={<ArchitecteBPMS />} />
         <Route path="workflow/:id?" element={<WorkflowPage />} />
         <Route path="mes-demandes" element={<EmployeeDashboard />} />
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
+        <Route path="rh/candidates/:id" element={<CandidateProfilePage />} />
         <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
         <Route path="analytics" element={<WorkflowAnalytics />} />
         <Route path="approvals" element={<MyApprovals />} />
         <Route path="tasks" element={<EmployeeTasks />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
       {/* Recruitment Route */}
@@ -65,19 +68,6 @@ export function AppRouter() {
 
       {/* Team Route */}
       <Route path="/our-team" element={<TeamPage />} />
-
-      {/* Dashboard Routes - Protected */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<DashboardHome />} />
-        <Route path="equipe" element={<UsersManagement />} />
-        <Route path="architecte" element={<ArchitecteBPMS />} />
-        <Route path="workflow" element={<WorkflowPage />} />
-        <Route path="rh/job-offers" element={<JobOffersManagement />} />
-        <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
-        <Route path="rh/candidates/:id" element={<CandidateProfilePage />} />        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
-        <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-      </Route>
 
       {/* 404 Catch-all - Must be last */}
       <Route path="*" element={<NotFound />} />

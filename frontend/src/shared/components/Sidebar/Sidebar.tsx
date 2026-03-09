@@ -10,13 +10,16 @@ import {
     BarChart3,
     Briefcase,
     CheckSquare,
-    Network
+    Network,
+    Library
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { usePermission } from '../../hooks/usePermission';
+import { canAccessWorkflow } from '../../utils/permissions.util';
 
 const menuItems = [
     { name: 'Tableau de bord', icon: LayoutDashboard, path: '/dashboard' },
+    { name: 'Gestion des Workflows', icon: Library, path: '/dashboard/manage-workflows' },
     { name: 'Offres d\'emploi', icon: Briefcase, path: '/dashboard/rh/job-offers' },
     { name: 'Statistiques', icon: BarChart3, path: '/dashboard/rh/statistics' },
     { name: 'Equipe', icon: Users, path: '/dashboard/equipe' },
@@ -41,25 +44,41 @@ export const Sidebar: React.FC = () => {
     console.log('Rôle depuis usePermission:', role);
 
     const filteredMenuItems = menuItems.filter(item => {
-        // Only Admin and RH can see Workflow Builder
-        if (item.path === '/dashboard/workflow') return isAdmin || isHR;
+        // Only Admin and RH can see Workflow Management and Builder
+        if (item.path === '/dashboard/manage-workflows' || item.path === '/dashboard/workflow') {
+            return canAccessWorkflow(roleFromStorage) || canAccessWorkflow(role);
+        }
         //Only  and RH can see Job Offers
-        if (item.path === '/dashboard/rh/job-offers') return isHR;
-        if (item.path === '/dashboard/rh/statistics') return isHR;
+        if (item.path === '/dashboard/rh/job-offers') {
+            const hrRoles = ['RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
+            return hrRoles.includes(roleFromStorage?.toUpperCase()) || hrRoles.includes(role?.toUpperCase());
+        }
+        if (item.path === '/dashboard/rh/statistics') {
+            const hrRoles = ['RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
+            return hrRoles.includes(roleFromStorage?.toUpperCase()) || hrRoles.includes(role?.toUpperCase());
+        }
         // Only Employees see "Mes Demandes" (or hide builder for them)
-        if (item.path === '/dashboard/mes-demandes') return !isAdmin && !isHR;
+        if (item.path === '/dashboard/mes-demandes') {
+            const hrRoles = ['RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
+            const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];
+            const isStaff = adminRoles.includes(roleFromStorage?.toUpperCase()) ||
+                hrRoles.includes(roleFromStorage?.toUpperCase()) ||
+                adminRoles.includes(role?.toUpperCase()) ||
+                hrRoles.includes(role?.toUpperCase());
+            return !isStaff;
+        }
 
         // Admin, Manager and RH can see "Mes Approbations"
         if (item.path === '/dashboard/approvals') {
-            const approvalsRoles = ['ADMIN', 'ADMINISTRATEUR', 'MANAGER', 'RH'];
-            return approvalsRoles.includes(roleFromStorage?.toUpperCase());
+            const approvalsRoles = ['ADMIN', 'ADMINISTRATEUR', 'MANAGER', 'RH', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
+            return approvalsRoles.includes(roleFromStorage?.toUpperCase()) || approvalsRoles.includes(role?.toUpperCase());
         }
 
         if (item.path.includes('equipe')) return canManageUsers;
 
         if (item.path === '/dashboard/architecte') {
             const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];
-            return isAdmin || adminRoles.includes(roleFromStorage?.toUpperCase()) || adminRoles.includes(role?.toUpperCase());
+            return adminRoles.includes(roleFromStorage?.toUpperCase()) || adminRoles.includes(role?.toUpperCase());
         }
 
         return true;
