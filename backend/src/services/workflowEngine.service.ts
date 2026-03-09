@@ -307,11 +307,6 @@ export const workflowEngineService = {
                 if (!triggerNode) {
                     throw new Error("Workflow graph is missing a START/Trigger node");
                 }
-                const firstEdge = edges.find(e => e.source === triggerNode?.id);
-                const firstTaskNode = nodes.find(n => n.id === firstEdge?.target);
-
-                if (!firstTaskNode) throw new Error("Could not find the first task in the workflow graph.");
-
                 let context: any = { ...metadata };
                 if (context.startDate && context.endDate && !context.duration) {
                     const start = new Date(context.startDate);
@@ -324,6 +319,35 @@ export const workflowEngineService = {
                     if (!isNaN(Number(val))) context[key] = Number(val);
                 });
 
+                const resolveNextNode = (nodeId: string): any => {
+                    const outgoingEdges = edges.filter(e => e.source === nodeId);
+                    if (outgoingEdges.length === 0) return null;
+
+                    const node = nodes.find(n => n.id === nodeId);
+                    if (node?.data?.variant === 'condition' || node?.data?.variant === 'decision') {
+                        const { condition } = node.data;
+                        if (condition && condition.variable) {
+                            const val = context[condition.variable];
+                            const targetVal = condition.value;
+                            let isTrue = false;
+                            switch (condition.operator) {
+                                case '===': isTrue = String(val) === String(targetVal); break;
+                                case '>': isTrue = Number(val) > Number(targetVal); break;
+                                case '<': isTrue = Number(val) < Number(targetVal); break;
+                                case '!=': isTrue = String(val) !== String(targetVal); break;
+                            }
+                            const edge = outgoingEdges.find(e => e.sourceHandle === (isTrue ? 'true' : 'false')) || outgoingEdges[0];
+                            return nodes.find(n => n.id === edge.target);
+                        }
+                    }
+
+                    let edge = outgoingEdges[0];
+                    if (outgoingEdges.length > 1) {
+                        edge = outgoingEdges.find(e => evaluateCondition(e.label || e.condition, context)) || outgoingEdges[0];
+                    }
+                    return nodes.find(n => n.id === edge.target);
+                };
+
                 const instance = await tx.processInstance.create({
                     data: {
                         workflowId: workflow.id,
@@ -333,7 +357,43 @@ export const workflowEngineService = {
                     }
                 });
 
-                const stepName = firstTaskNode.data?.title || firstTaskNode.data?.label || firstTaskNode.label;
+                let nextNode = resolveNextNode(triggerNode.id);
+
+                while (nextNode) {
+                    const isSystemNode = nextNode.role?.toLowerCase() === 'system' || nextNode.data?.role?.toLowerCase() === 'system';
+                    const isAutomatedVariant = ['email', 'webhook', 'document', 'timer', 'condition', 'decision'].includes(nextNode.data?.variant);
+
+                    if (isAutomatedVariant || isSystemNode) {
+                        console.log(`[WorkflowEngine] Processing automated node: ${nextNode.id} (Role: ${nextNode.role || 'N/A'})`);
+
+                        if (nextNode.data?.variant === 'document' || isSystemNode) {
+                            sideEffects.push({ type: 'CERTIFICATE', instanceId: instance.id });
+                        }
+                        if (nextNode.data?.variant === 'email') {
+                            sideEffects.push({ type: 'EMAIL', to: nextNode.data.to, subject: nextNode.data.subject, body: nextNode.data.body });
+                        }
+
+                        await tx.eventLog.create({
+                            data: {
+                                action: `AUTO_STEP: Executed for node ${nextNode.id}`,
+                                processInstanceId: instance.id
+                            }
+                        });
+
+                        nextNode = resolveNextNode(nextNode.id);
+                    } else {
+                        break;
+                    }
+                }
+
+                if (!nextNode || nextNode.data?.variant === 'end' || nextNode.type === 'end') {
+                    await tx.processInstance.update({ where: { id: instance.id }, data: { status: 'COMPLETED' } });
+                    sideEffects.push({ type: 'CERTIFICATE', instanceId: instance.id });
+                    return { instanceId: instance.id, status: 'COMPLETED' };
+                }
+
+                const firstTaskNode = nextNode;
+                const stepName = firstTaskNode.data?.title || firstTaskNode.data?.label || firstTaskNode.label || "Validation";
                 const nodeRole = firstTaskNode.role || firstTaskNode.data?.role || "MANAGER";
 
                 const assignedUser = await findUserByFlexibleRole(nodeRole, organisationId, tx);
@@ -476,7 +536,7 @@ export const workflowEngineService = {
             // Automated nodes processing (including 'system' role check in next steps)
             while (nextNode) {
                 const isSystemNode = nextNode.role?.toLowerCase() === 'system' || nextNode.data?.role?.toLowerCase() === 'system';
-                const isAutomatedVariant = ['email', 'webhook', 'document', 'timer'].includes(nextNode.data?.variant);
+                const isAutomatedVariant = ['email', 'webhook', 'document', 'timer', 'condition', 'decision'].includes(nextNode.data?.variant);
 
                 if (isAutomatedVariant || isSystemNode) {
                     console.log(`[WorkflowEngine] Processing automated node: ${nextNode.id} (Role: ${nextNode.role || 'N/A'})`);

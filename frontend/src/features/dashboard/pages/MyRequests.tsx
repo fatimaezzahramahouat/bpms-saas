@@ -157,7 +157,10 @@ export function MyRequests() {
                         Rafraîchir
                     </button>
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={async () => {
+                            await fetchRequests();
+                            setIsModalOpen(true);
+                        }}
                         className="group relative flex items-center gap-2 bg-h1-blue hover:bg-h1-blue/90 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-h1-blue/20 hover:scale-105 active:scale-95 overflow-hidden"
                     >
                         <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" />
