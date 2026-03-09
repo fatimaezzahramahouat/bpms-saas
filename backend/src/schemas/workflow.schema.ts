@@ -18,7 +18,7 @@ const stepInputSchema = z.object({
  * Creates a workflow with its initial graph (nodes/edges) and steps.
  */
 export const createWorkflowSchema = z.object({
-    name: z.string().optional().default('Nouveau Workflow'),
+    name: z.string().min(1, "Workflow name is required"),
     description: z.string().optional(),
     nodes: z.any().optional().default([]), // Expected to be an array of XYFlow nodes
     edges: z.any().optional().default([]), // Expected to be an array of XYFlow edges

@@ -145,17 +145,34 @@ export const authController = {
         return;
       }
 
-      // 4. Use the Service for login (it handles role and token generation)
-      const result = await authService.login({ email, password });
-      const { token, user: serviceUser } = result;
+      // 4. Role Identification (Heritage Pattern safety)
+      let role = "EMPLOYEE";
+      if (user.admin) role = "ADMIN";
+      else if (user.rh) role = "RH";
+      else if (user.manager) role = "MANAGER";
+      else if (user.employee) role = "EMPLOYEE";
 
+      // 5. JWT Payload - RESTORE isAdmin for middleware compatibility
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          role: role,
+          organisationId: user.organisationId,
+          firstName: user.firstName,
+          isAdmin: !!user.admin,
+        },
+        JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+     
       // 5. Create Session record
       await authRepository.createSession(
         user.id,
         req.headers["user-agent"] as string,
         req.ip
       );
-
+     
       res.cookie("token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

@@ -221,14 +221,33 @@ const WorkflowEditor: React.FC = () => {
 
         if (!workflowName || workflowName.trim() === '') {
             toast.error("Veuillez donner un nom à votre workflow avant de sauvegarder.");
+            alert("Veuillez donner un nom à votre workflow avant de sauvegarder.");
             return;
         }
 
-        // Warn (but don't block) if Trigger is missing
+        // Validation logic
         const startNode = flow.nodes.find(n => n.data.variant === 'trigger');
+        const endNode = flow.nodes.find(n => n.data.variant === 'end');
+
         if (!startNode) {
-            toast.warn("Attention : aucun nœud 'Début' (Trigger) n'a été trouvé dans le canvas.");
+            toast.error("Erreur : Aucun nœud 'Début' (Trigger) trouvé !");
+            return;
         }
+
+        const steps = flow.nodes.map((node, index) => ({
+            name: node.data.title || 'Étape sans titre',
+            order: index + 1,
+            metadata: {
+                variant: node.data.variant,
+                role: (node.data as any).role,
+                slaDuration: (node.data as any).slaDuration,
+                requiredDocuments: (node.data as any).requiredDocuments,
+                autoEmail: (node.data as any).autoEmail,
+                actionType: (node.data as any).actionType,
+                position: node.position,
+                nodeId: node.id
+            }
+        }));
 
         const payload = {
             name: workflowName,
@@ -259,14 +278,9 @@ const WorkflowEditor: React.FC = () => {
                 }
             }
         } catch (error: any) {
-            console.error('[WorkflowPage] Create error:', error);
+            console.error('Save Error:', error);
             const msg = error.response?.data?.message || error.message;
-            toast.update(loadingToast, {
-                render: `Échec de la création : ${msg}`,
-                type: "error",
-                isLoading: false,
-                autoClose: 5000,
-            });
+            toast.update(loadingToast, { render: `Échec : ${msg}`, type: "error", isLoading: false, autoClose: 5000 });
         }
     };
 
