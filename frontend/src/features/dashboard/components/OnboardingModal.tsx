@@ -1,6 +1,8 @@
 import { useState, ChangeEvent, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Building2, Globe, MapPin, Layout, Home, X, Upload, Check } from 'lucide-react';
+import { Building2, Globe, MapPin, Layout, Home, X, Upload, Check, Mail, Phone, Users } from 'lucide-react';
+import { getCurrentUser } from '../../auth/services/authService';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 interface OnboardingModalProps {
     isOpen: boolean;
@@ -8,13 +10,22 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
+    const { showModal } = useGlobalModal();
     const [formData, setFormData] = useState({
         website: '',
         city: '',
         domaine: '',
         address: '',
-        logo: ''
+        logo: '',
+        emailorg: '',
+        phoneorg: '',
+        name: '',
+        nb_employers: ''
     });
+
+    // Attempting to resolve isGoogleProvider using imported user service
+    const currentUser = getCurrentUser();
+    const isGoogleProvider = (currentUser as any)?.provider === 'google' || (currentUser as any)?.isGoogle === true;
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -76,7 +87,14 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
         formDataToSend.append('city', formData.city);
         formDataToSend.append('domaine', formData.domaine);
         formDataToSend.append('address', formData.address);
-        
+        formDataToSend.append('emailorg', formData.emailorg);
+        formDataToSend.append('phoneorg', formData.phoneorg);
+
+        if (isGoogleProvider) {
+            formDataToSend.append('name', formData.name);
+            formDataToSend.append('nb_employers', formData.nb_employers);
+        }
+
         if (logoFile) {
             formDataToSend.append('logo', logoFile);
         } else if (formData.logo) {
@@ -97,11 +115,13 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
                 onSuccess(result.data);
             } else {
                 const error = await response.json();
-                alert(error.error || 'Une erreur est survenue');
+                console.log("Error Response Body:", JSON.stringify(error, null, 2));
+                const firstError = error.details ? Object.values(error.details)[0] : error.error;
+                showModal(Array.isArray(firstError) ? firstError[0] : (firstError || 'Une erreur est survenue'), 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Erreur de connexion au serveur');
+            showModal('Erreur de connexion au serveur', 'error');
         } finally {
             setLoading(false);
         }

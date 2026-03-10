@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Mail, User, Check, Eye, EyeOff } from 'lucide-react';
 import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
 import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 /**
  * Login Page Component
@@ -16,6 +17,7 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const navigate = useNavigate();
+  const { showModal } = useGlobalModal();
 
   const handleLoginChange = (e: ChangeEvent<HTMLInputElement>) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
@@ -42,11 +44,11 @@ export function Login() {
         navigate('/dashboard');
       } else {
         const error = await response.json();
-        alert(error.error || 'Connexion échouée');
+        showModal(error.error || 'Connexion échouée', 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('Erreur réseau');
+      showModal('Erreur réseau', 'error');
     }
   };
 

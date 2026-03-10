@@ -29,6 +29,7 @@ import { WorkflowHeader } from '../components/WorkflowHeader';
 import { NodeConfigPanel } from '../components/NodeConfigPanel';
 import ConditionNode from '../components/turbo/ConditionNode';
 import { usePermission } from '../../../shared/hooks/usePermission';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 const nodeTypes = {
     turbo: TurboNode,
@@ -70,8 +71,10 @@ const WorkflowEditor: React.FC = () => {
     const [nodes, setNodes, onNodesChange] = useNodesState<Node<WorkflowData>>(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const { isAdmin, canEditWorkflow: canEdit } = usePermission();
+    const { showModal, showConfirm } = useGlobalModal();
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [workflowName, setWorkflowName] = useState('Nouveau Workflow');
+    const [dataModel, setDataModel] = useState<any>(null);
 
     const selectedNode = useMemo(
         () => nodes.find((n) => n.id === selectedNodeId) || null,
@@ -168,11 +171,19 @@ const WorkflowEditor: React.FC = () => {
     }, [setNodes, setEdges]);
 
     const resetWorkflow = useCallback(() => {
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-        setSelectedNodeId(null);
-        toast.info("Canvas réinitialisé.");
-    }, [setNodes, setEdges]);
+        showConfirm({
+            message: 'Êtes-vous sûr de vouloir tout effacer ? Cette action est irréversible.',
+            title: 'Réinitialiser le Workflow',
+            confirmLabel: 'Tout effacer',
+            variant: 'danger',
+            onConfirm: () => {
+                setNodes(initialNodes);
+                setEdges(initialEdges);
+                setSelectedNodeId(null);
+                toast.info("Canvas réinitialisé.");
+            }
+        });
+    }, [setNodes, setEdges, showConfirm]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
@@ -229,6 +240,7 @@ const WorkflowEditor: React.FC = () => {
             name: workflowName,
             nodes: flow.nodes,
             edges: flow.edges,
+            data_model: dataModel,
         };
 
         // ── PATCH (update) if we already have an ID in the URL ──
@@ -263,14 +275,12 @@ const WorkflowEditor: React.FC = () => {
             const response = await workflowService.createWorkflow(payload);
             const newWf = response.data;
             console.log("[WorkflowPage] Succès ! Nouvel ID :", newWf?.id);
-            toast.update(loadingToast, {
-                render: "Workflow créé avec succès !",
-                type: "success",
-                isLoading: false,
-                autoClose: 3000,
-            });
+            showModal('Workflow créé avec succès !', 'success');
+
+            toast.update(loadingToast, { render: "Workflow créé !", type: "success", isLoading: false, autoClose: 3000 });
+
             if (newWf?.id) {
-                navigate(`/dashboard/workflow/editor/${newWf.id}`, { replace: true });
+                navigate(`/dashboard/workflow/${newWf.id}`, { replace: true });
             }
         } catch (error: any) {
             console.error('[WorkflowPage] Create error:', error);
