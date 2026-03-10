@@ -134,20 +134,18 @@ export const workflowRepository = {
                     where: { workflowId: id }
                 });
 
-                // Upsert steps based on node names/labels
-                for (let i = 0; i < stepNodes.length; i++) {
-                    const node = stepNodes[i];
+                // Upsert steps based on node names/labels using Promise.all to avoid transaction timeouts
+                const promises = stepNodes.map((node, i) => {
                     const name = node.data?.title || node.data?.label || `Step ${i + 1}`;
-
                     const existingStep = existingSteps.find(s => s.name === name);
 
                     if (existingStep) {
-                        await tx.step.update({
+                        return tx.step.update({
                             where: { id: existingStep.id },
                             data: { order: i + 1 }
                         });
                     } else {
-                        await tx.step.create({
+                        return tx.step.create({
                             data: {
                                 name,
                                 order: i + 1,
@@ -155,7 +153,9 @@ export const workflowRepository = {
                             }
                         });
                     }
-                }
+                });
+
+                await Promise.all(promises);
 
                 // Optional: Remove steps that are no longer in the nodes list
                 // (Be careful with this if tasks are already linked to them)
@@ -163,6 +163,9 @@ export const workflowRepository = {
             }
 
             return workflow;
+        }, {
+            maxWait: 5000,
+            timeout: 10000
         });
     },
 

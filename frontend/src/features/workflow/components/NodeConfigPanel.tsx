@@ -3,6 +3,7 @@ import { X, Settings2, Trash2, Cpu, FileText, Globe, Split, Clock, Mail, CheckCi
 import { Node } from '@xyflow/react';
 import { WorkflowData, isDecisionNode, isAINode, isActionNode, isAPINode } from '../types';
 import { motion } from 'motion/react';
+import { organisationService } from '../../../services/organisation.service';
 
 interface NodeConfigPanelProps {
     node: Node<WorkflowData> | null;
@@ -18,9 +19,31 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
     onClose,
 }) => {
     const [saveState, setSaveState] = useState<'idle' | 'loading' | 'success'>('idle');
+    const [members, setMembers] = useState<any[]>([]);
+    const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
     if (!node) return null;
     const { data } = node;
+
+    React.useEffect(() => {
+        const fetchMembers = async () => {
+            setIsLoadingMembers(true);
+            try {
+                const response = await organisationService.getMembers();
+                if (response && response.data) {
+                    setMembers(response.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch members:', error);
+            } finally {
+                setIsLoadingMembers(false);
+            }
+        };
+
+        if (data && data.variant === 'action') {
+            fetchMembers();
+        }
+    }, [data?.variant]);
 
     const handleInputChange = (field: string, value: any) => {
         onUpdate(node.id, { [field]: value });
@@ -153,16 +176,24 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                                     <option value="">Choisir...</option>
                                     {data.assignmentType === 'ROLE' && (
                                         <>
-                                            <option value="RH">RH</option>
-                                            <option value="IT">IT</option>
-                                            <option value="Manager">Manager</option>
+                                            <option value="ADMIN">Administrateur</option>
+                                            <option value="RH">Responsable RH</option>
+                                            <option value="MANAGER">Manager</option>
+                                            <option value="EMPLOYE">Employé</option>
                                         </>
                                     )}
                                     {data.assignmentType === 'SPECIFIC' && (
-                                        <>
-                                            <option value="Mounir">Mounir</option>
-                                            <option value="Sarah">Sarah</option>
-                                        </>
+                                        isLoadingMembers ? (
+                                            <option value="" disabled>Chargement...</option>
+                                        ) : members.length > 0 ? (
+                                            members.map((member) => (
+                                                <option key={member.id} value={member.id}>
+                                                    {member.firstName} {member.lastName}
+                                                </option>
+                                            ))
+                                        ) : (
+                                            <option value="" disabled>Aucun membre trouvé</option>
+                                        )
                                     )}
                                     {data.assignmentType === 'DYNAMIC' && (
                                         <option value="MANAGER_INIT">Manager de l'initiateur</option>
@@ -316,6 +347,66 @@ export const NodeConfigPanel: React.FC<NodeConfigPanelProps> = ({
                                 >
                                     + Ajouter un document
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'trigger':
+                return (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Configuration du Formulaire</label>
+                            </div>
+                            <div className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-3">
+                                <div className="space-y-2">
+                                    {(data.data_model || []).map((field: any, idx: number) => (
+                                        <div key={idx} className="flex gap-2 items-center bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
+                                            <input
+                                                type="text"
+                                                value={field.name || ''}
+                                                className="flex-1 bg-transparent text-xs text-slate-900 dark:text-white outline-none"
+                                                placeholder="Nom du champ (ex: amount)"
+                                                onChange={(e) => {
+                                                    const newModel = [...(data.data_model || [])];
+                                                    newModel[idx] = { ...newModel[idx], name: e.target.value };
+                                                    handleInputChange('data_model', newModel);
+                                                }}
+                                            />
+                                            <select
+                                                value={field.type || 'string'}
+                                                onChange={(e) => {
+                                                    const newModel = [...(data.data_model || [])];
+                                                    newModel[idx] = { ...newModel[idx], type: e.target.value };
+                                                    handleInputChange('data_model', newModel);
+                                                }}
+                                                className="bg-slate-100 dark:bg-slate-800 rounded px-2 py-1 text-xs outline-none"
+                                            >
+                                                <option value="string">Texte</option>
+                                                <option value="number">Nombre</option>
+                                                <option value="date">Date</option>
+                                                <option value="boolean">Oui/Non</option>
+                                            </select>
+                                            <button
+                                                onClick={() => {
+                                                    const newModel = [...(data.data_model || [])];
+                                                    newModel.splice(idx, 1);
+                                                    handleInputChange('data_model', newModel);
+                                                }}
+                                                className="text-red-500 hover:text-red-600 transition-colors p-1"
+                                                title="Supprimer ce champ"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={() => handleInputChange('data_model', [...(data.data_model || []), { name: '', type: 'string' }])}
+                                        className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 transition-colors pt-2 block"
+                                    >
+                                        + Ajouter un champ
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

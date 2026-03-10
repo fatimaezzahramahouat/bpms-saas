@@ -26,7 +26,11 @@ export const DynamicRequestForm: React.FC<DynamicRequestFormProps> = ({ workflow
     const [loading, setLoading] = useState(false);
 
     // Explicit array cast/fallback to ensure mapped safely
-    const dataModel: FieldDef[] = Array.isArray(workflow.data_model) ? workflow.data_model : [];
+    const rawDataModel = workflow.data_model || (workflow as any).dataModel || [];
+    const dataModel: FieldDef[] = (Array.isArray(rawDataModel) ? rawDataModel : []).map(f => ({
+        ...f,
+        name: f.name?.trim() || ''
+    }));
 
     const handleChange = (name: string, value: string) => {
         setFormData(prev => ({ ...prev, [name]: value }));
