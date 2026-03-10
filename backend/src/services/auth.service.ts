@@ -21,6 +21,19 @@ interface CompleteOrgInfoInput {
   city: string;
   domaine: string;
   address: string;
+  emailorg: string;
+  phoneorg: string;
+}
+
+interface CompleteOnboardingInput {
+  organisationId: string | null;
+  userId: string;
+  email: string;
+  orgInfo: CompleteOrgInfoInput;
+  organisation?: {
+    name: string;
+    nb_employers: string;
+  };
 }
 
 interface LoginInput {
@@ -69,7 +82,8 @@ export const authService = {
         userId: result.user.id,
         email: result.user.email,
         organisationId: result.organisation.id,
-        isAdmin: true, // Organization admin by default
+        role: "ADMIN", // Organization admin by default
+        isAdmin: true,
       },
       JWT_SECRET,
       { expiresIn: "24h" }
@@ -90,14 +104,35 @@ export const authService = {
 
   async completeOrganisationInfo(organisationId: string, input: CompleteOrgInfoInput) {
     const orgInfo = await authRepository.createOrgInfo(organisationId, {
-      logo: input.logo ?? "",
-      website: input.website ?? "",
-      city: input.city ?? "",
-      domaine: input.domaine ?? "",
-      address: input.address ?? "",
+      logo: input.logo,
+      website: input.website,
+      city: input.city,
+      domaine: input.domaine,
+      address: input.address,
+      emailorg: input.emailorg,
+      phoneorg: input.phoneorg,
     });
 
     return orgInfo;
+  },
+
+  async completeOnboarding(input: CompleteOnboardingInput) {
+    const nb_employers = input.organisation?.nb_employers 
+      ? mapNbEmployers(input.organisation.nb_employers) 
+      : undefined;
+
+    const result = await authRepository.completeOnboardingTransaction({
+      organisationId: input.organisationId,
+      userId: input.userId,
+      orgInfo: input.orgInfo,
+      organisation: input.organisation && nb_employers !== undefined ? {
+        name: input.organisation.name,
+        nb_employers: nb_employers,
+        email: input.email,
+      } : undefined,
+    });
+
+    return result;
   },
 
   async login(input: LoginInput) {
@@ -109,19 +144,28 @@ export const authService = {
 
     // 2. Compare password
     if (!user.password) {
-      throw new Error("Invalid email or password");
+      throw new Error("No password set for this account. If you signed up via Google, please use the forgot password flow to set one.");
     }
+
     const isMatch = await bcrypt.compare(input.password, user.password);
     if (!isMatch) {
       throw new Error("Invalid email or password");
     }
 
-    // 3. Generate JWT token
+    // 3. Determine Role (Heritage Pattern)
+    let role = "EMPLOYEE";
+    if (user.admin) role = "ADMIN";
+    else if (user.rh) role = "RH";
+    else if (user.manager) role = "MANAGER";
+    else if (user.employee) role = "EMPLOYEE";
+
+    // 4. Generate JWT token
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
         organisationId: user.organisationId,
+        role: role,
         isAdmin: !!user.admin,
       },
       JWT_SECRET,
@@ -135,6 +179,7 @@ export const authService = {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        role: role,
         isAdmin: !!user.admin,
         isRH: !!user.rh,
         isManager: !!user.manager,

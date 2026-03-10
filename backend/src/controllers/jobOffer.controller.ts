@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
 import { jobOfferService } from "../services/jobOffer.service";
@@ -13,7 +13,8 @@ export const jobOfferController = {
    * GET /api/joboffers
    * Public: search job offers with pagination and filters.
    */
-  getPublicOffers: catchAsync(async (req: AuthRequest, res: Response) => {
+  getPublicOffers: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const parsed = jobOfferQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
@@ -27,8 +28,9 @@ export const jobOfferController = {
    * GET /api/joboffers/rh
    * RH: fetch this organisation's job offers with status filter support.
    */
-  getRHOffers: catchAsync(async (req: AuthRequest, res: Response) => {
-    const organisationId = req.user?.organisationId;
+  getRHOffers: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const organisationId = authReq.user?.organisationId;
     if (!organisationId) throw new Error("Missing organisationId");
 
     const parsed = jobOfferQuerySchema.safeParse(req.query);
@@ -46,8 +48,9 @@ export const jobOfferController = {
    * [RH - MANUAL] Create a new job offer.
    * Always starts as DRAFT with statusSource = MANUAL.
    */
-  createOffer: catchAsync(async (req: AuthRequest, res: Response) => {
-    const { organisationId, userId } = req.user!;
+  createOffer: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const { organisationId, id: userId } = authReq.user!;
 
     const parsed = createJobOfferSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -69,8 +72,9 @@ export const jobOfferController = {
    * statusSource is automatically set to MANUAL.
    * FILLED and CLOSED are FORBIDDEN here — they are system-only.
    */
-  updateOffer: catchAsync(async (req: AuthRequest, res: Response) => {
-    const { organisationId } = req.user!;
+  updateOffer: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const { organisationId } = authReq.user!;
     const { id } = req.params;
 
     const parsed = updateJobOfferSchema.safeParse(req.body);
@@ -94,8 +98,9 @@ export const jobOfferController = {
    * ❌ Forbidden if statusSource = AUTOMATIC (i.e., FILLED or CLOSED by system).
    * ✅ Allowed only if statusSource = MANUAL.
    */
-  deleteOffer: catchAsync(async (req: AuthRequest, res: Response) => {
-    const { organisationId } = req.user!;
+  deleteOffer: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const { organisationId } = authReq.user!;
     const { id } = req.params;
 
     const result = await jobOfferService.deleteOffer(id as string, organisationId);
@@ -120,7 +125,8 @@ export const jobOfferController = {
    * GET /api/joboffers/:id
    * Public: get a single job offer by ID.
    */
-  getOfferById: catchAsync(async (req: AuthRequest, res: Response) => {
+  getOfferById: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
     const offer = await jobOfferService.getOfferById(id as string);
     if (!offer) {
@@ -134,8 +140,9 @@ export const jobOfferController = {
    * GET /api/joboffers/rh/:id/candidates
    * RH: get all candidates for a specific job offer.
    */
-  getCandidates: catchAsync(async (req: AuthRequest, res: Response) => {
-    const { organisationId } = req.user!;
+  getCandidates: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
+    const { organisationId } = authReq.user!;
     const { id } = req.params;
 
     const candidates = await jobOfferService.getCandidates(id as string, organisationId);
@@ -150,7 +157,8 @@ export const jobOfferController = {
    * Triggered when a candidate is accepted.
    * statusSource = AUTOMATIC → cannot be deleted by RH.
    */
-  markAsFilled: catchAsync(async (req: AuthRequest, res: Response) => {
+  markAsFilled: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
     const offer = await jobOfferService.markAsFilled(id as string);
     res.status(200).json({ message: "Job offer marked as FILLED (automatic)", data: offer });
@@ -162,7 +170,8 @@ export const jobOfferController = {
    * Triggered by deadline expiry or other system condition.
    * statusSource = AUTOMATIC → cannot be deleted by RH.
    */
-  markAsClosed: catchAsync(async (req: AuthRequest, res: Response) => {
+  markAsClosed: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
     const offer = await jobOfferService.markAsClosed(id as string);
     res.status(200).json({ message: "Job offer marked as CLOSED (automatic)", data: offer });

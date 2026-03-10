@@ -1,16 +1,18 @@
 // /home/manal/projet_final_BPMS/frontend/src/features/rh/pages/JobOfferCandidatsPage.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, Printer } from 'lucide-react';
+import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, Printer, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useToast, toastSuccess, toastError } from '../../../shared/components/Toast';
 import { CandidateCard, Candidate, CandidateStatus } from '../components/CandidateCard';
-import { LightAnalysisPreview } from '../components/LightAnalysisPreview';
 import { Pagination } from '../components/Pagination';
 import { SearchBar, CandidateFilters, ActiveFilters } from '../components';
 import { useCandidateFilters } from '../hooks/useCandidateFilters';
 import { exportCandidatesToCSV, exportAnalysisToPDF } from '../utils/exportUtils';
 import { jobOfferService } from '../../../services/jobOffer.service';
+
+// Get API URL for static file serving
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ========== INTERFACES ==========
 interface JobOffer {
@@ -24,22 +26,6 @@ interface JobOffer {
   requiredSkills?: string[];
   requiredExperience?: string;
   requiredEducation?: string;
-}
-
-// ✅ واجهة التحليل المصغر (جديدة)
-export interface AIAnalysisPreview {
-  overallScore: number;
-  strengths: string[];
-  weaknesses: string[];
-  recommendation?: string;
-  priority?: string;
-  interviewQuestions: string[];
-  categoryScores?: {
-    skills?: number;
-    experience?: number;
-    education?: number;
-    technicalFit?: number;
-  };
 }
 
 // ========== SKELETON COMPONENT ==========
@@ -95,12 +81,15 @@ export function JobOfferCandidatsPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { addToast } = useToast();
 
+  // ✅ BroadcastChannel for real-time updates across routes/tabs
+  const [channel, setChannel] = useState<BroadcastChannel | null>(null);
   const [jobOffer, setJobOffer] = useState<JobOffer | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [lastCandidateCount, setLastCandidateCount] = useState(0);
 
   const itemsPerPage = 4;
   const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
@@ -110,9 +99,12 @@ export function JobOfferCandidatsPage() {
   const paginatedCandidates = filteredCandidates.slice(startIndex, startIndex + itemsPerPage);
   const isRH = user?.role === 'RH' || user?.rh;
 
-  const loadData = useCallback(async () => {
+  // ✅ loadData function must be defined BEFORE the useEffect that uses it
+  const loadData = useCallback(async (silent = false) => {
     if (!id) return;
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const [offerRes, candidatesRes] = await Promise.all([
@@ -155,17 +147,32 @@ const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
     lastName,
     email: c.email,
     phone: c.phone || 'Non renseigné',
+    cv: c.cv || null,  // Direct CV path from candidate.cv field
     appliedDate: app?.createdAt || c.createdAt,
     status: (app?.status === 'APPLIED' ? 'Nouveau' : 
              app?.status === 'INTERVIEW' ? 'En cours' : 
              app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as CandidateStatus,
     jobOfferId: id,
     
-    // ✅ النسبة المئوية - من عدة مصادر محتملة
-    matchPercentage: result?.overallScore || 
+    // ✅ النسبة المئوية - prioritize advanced scoring (analysis.overallScore) over raw AI (result.overallScore)
+    matchPercentage: analysis?.overallScore || 
+                    result?.overallScore ||
                     result?.scoreGlobal ||
-                    analysis?.overallScore ||
                     (analysis?.confidence ? Math.round(analysis.confidence * 100) : 0),
+    
+    // ✅ إضافة aiAnalysis للتصحيح
+    aiAnalysis: analysis ? {
+      id: analysis.id,
+      overallScore: analysis.overallScore || 0,
+      result: analysis.result,
+      confidence: analysis.confidence,
+      matchedSkills: analysis.matchedSkills,
+      strengths: analysis.strengths,
+      weaknesses: analysis.weaknesses,
+      recommendation: analysis.recommendation,
+      priority: analysis.priority,
+      interviewQuestions: analysis.interviewQuestions
+    } : undefined,
     
     // ✅ البيانات الديناميكية من التحليل
     formData: {
@@ -206,12 +213,19 @@ const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
 });
 
 setCandidates(mappedCandidates);
+      
+      // Track candidate count for auto-refresh
+      setLastCandidateCount(mappedCandidates.length);
 
     } catch (err: any) {
       console.error('Error loading candidates data:', err);
-      setError(err.response?.data?.error || 'Erreur lors du chargement des données');
+      if (!silent) {
+        setError(err.response?.data?.error || 'Erreur lors du chargement des données');
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [id]);
 
@@ -220,17 +234,17 @@ setCandidates(mappedCandidates);
     navigate(`/dashboard/rh/candidates/${candidate.id}`);
   }, [navigate]);
   const handleViewCV = useCallback((candidate: Candidate) => {
-  if (candidate.formData?.cvFileName) {
-    // إذا كان الرابط كاملاً (يبدأ بـ http)
-    if (candidate.formData.cvFileName.startsWith('http')) {
-      window.open(candidate.formData.cvFileName, '_blank');
-    } else {
-      // إذا كان اسم ملف فقط، نضيف مسار الـ uploads
-      const cvUrl = `/uploads/cvs/${candidate.formData.cvFileName}`;
-      window.open(cvUrl, '_blank');
+    if (candidate.formData?.cvFileName) {
+      // إذا كان الرابط كاملاً (يبدأ بـ http)
+      if (candidate.formData.cvFileName.startsWith('http')) {
+        window.open(candidate.formData.cvFileName, '_blank');
+      } else {
+        // Use full backend URL to access static files
+        const cvUrl = `${API_URL}/uploads/cvs/${candidate.formData.cvFileName}`;
+        window.open(cvUrl, '_blank');
+      }
     }
-  }
-}, []);
+  }, []);
   const handleSave = useCallback((candidate: Candidate) => {
     addToast(toastSuccess('Candidature sauvegardée', `${candidate.firstName} ${candidate.lastName}`));
   }, [addToast]);
@@ -280,6 +294,80 @@ setCandidates(mappedCandidates);
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Auto-refresh candidates list every 3 seconds to catch new applications
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // Only refresh if there was a previous candidate count and loading is not in progress
+      if (lastCandidateCount > 0 && !isLoading) {
+        loadData(true); // Silent refresh without loading indicator
+      }
+    }, 3000); // Refresh every 3 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [loadData, lastCandidateCount, isLoading]);
+
+  // Listen for custom refresh-candidates event from ApplicationModal
+  useEffect(() => {
+    const handleRefreshCandidates = (event: Event) => {
+      const customEvent = event as CustomEvent<{ jobId?: string }>;
+      console.log('📥 [EVENT] Received refresh-candidates event:', customEvent.detail);
+      // Only refresh if the event is for this job offer
+      if (!customEvent.detail?.jobId || customEvent.detail.jobId === id) {
+        loadData(true); // Silent refresh
+      }
+    };
+
+    window.addEventListener('refresh-candidates', handleRefreshCandidates);
+    return () => window.removeEventListener('refresh-candidates', handleRefreshCandidates);
+  }, [id, loadData]);
+
+  // Listen for application-submitted events to immediately refresh the list
+  useEffect(() => {
+    const handleApplicationSubmitted = (event: Event) => {
+      const customEvent = event as CustomEvent<{ jobId: string; timestamp: number }>;
+      console.log('\n🔔 ===== APPLICATION SUBMITTED EVENT RECEIVED =====');
+      console.log('1. Event detail:', customEvent.detail);
+      console.log('2. Current job offer id:', id);
+      console.log('3. Refreshing candidates list...');
+      // Refresh immediately when a new application is submitted
+      loadData(true); // Silent refresh
+      console.log('========================================\n');
+    };
+
+    window.addEventListener('application-submitted', handleApplicationSubmitted);
+    
+    return () => {
+      window.removeEventListener('application-submitted', handleApplicationSubmitted);
+    };
+  }, [loadData, id]);
+
+  // Listen for localStorage changes (for cross-tab/route communication)
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'application-submitted' && event.newValue) {
+        try {
+          const data = JSON.parse(event.newValue);
+          console.log('\n🔔 ===== STORAGE EVENT RECEIVED =====');
+          console.log('1. Storage event data:', data);
+          console.log('2. Current job offer id:', id);
+          if (data.jobId === id) {
+            console.log('3. Refreshing candidates list...');
+            loadData(true); // Silent refresh
+            console.log('========================================\n');
+          }
+        } catch (e) {
+          console.error('Failed to parse storage event:', e);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadData, id]);
+
   // ========== EARLY RETURNS ==========
   if (!id) {
     return (
@@ -328,6 +416,10 @@ setCandidates(mappedCandidates);
             </div>
             {!isLoading && candidates.length > 0 && (
               <div className="flex items-center gap-2">
+                <button onClick={() => loadData()} disabled={isLoading} className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white text-sm font-medium rounded-lg">
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                  Actualiser
+                </button>
                 <button onClick={handleExportCSV} disabled={isExporting} className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white text-sm font-medium rounded-lg">
                   {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
                   CSV
@@ -389,8 +481,8 @@ setCandidates(mappedCandidates);
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {paginatedCandidates.map((candidate) => {
-                // ✅ استخراج aiAnalysis من المرشح (للاستخدام في LightAnalysisPreview)
-                const aiAnalysis = (candidate as any).aiAnalysis || null;
+                // ✅ استخدام aiAnalysis من الكائن المحمل بالفعل
+                const aiAnalysis = candidate.aiAnalysis || null;
                 
                 return (
                   <div key={candidate.id} className="space-y-4">
@@ -402,25 +494,6 @@ setCandidates(mappedCandidates);
                       onDelete={handleDelete} 
                       jobRequirements={jobRequirements?.requiredSkills || []} 
                     />
-                    {jobRequirements && candidate.formData && (
-                      <LightAnalysisPreview 
-  candidateId={candidate.id}
-  jobOfferId={jobOffer?.id || ''}
-  analysis={{
-    overallScore: aiAnalysis?.overallScore || candidate.matchPercentage || 0,
-    // ✅ فقط الحقول المدعومة في LightAnalysisData
-    strengths: aiAnalysis?.strengths?.slice(0, 3) || [],
-    weaknesses: aiAnalysis?.weaknesses?.slice(0, 3) || [],
-    recommendation: aiAnalysis?.recommendation,
-    // ✅ نحذف: priority, interviewQuestions, categoryScores (غير مدعومة)
-    skillsMatch: {
-      matched: candidate.formData?.skills || [],
-      missing: [],
-      percentage: candidate.matchPercentage || 0
-    }
-  }}
-/>
-                    )}
                   </div>
                 );
               })}

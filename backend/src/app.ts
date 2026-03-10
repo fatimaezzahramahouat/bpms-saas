@@ -3,6 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import path from "path";
+import passport from "passport";
+import "./config/passport"; // Import passport configuration
 
 import authRouter from "./routes/auth.routes";
 import organisationRouter from "./routes/organisation.routes";
@@ -17,11 +19,21 @@ import notificationRouter from "./routes/notification.routes";
 import settingsRouter from "./routes/settings.routes";
 import analyzeRoutes from "./routes/analyze-candidate";
 import bpmsArchitectRouter from "./routes/bpmsArchitect.routes";
+import statsRouter from "./routes/stats.routes";
 
 import { errorMiddleware } from "./middleware/error.middleware";
 
 const app = express();
 
+// Global Logger for Debugging
+app.use((req, _res, next) => {
+  // console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  // console.log("Headers:", JSON.stringify(req.headers, null, 2));
+  // Only log body if it's already parsed (might be empty/missing for multipart)
+  next();
+});
+
+// Security
 // ============================================================================
 // Security & Middleware
 // ============================================================================
@@ -56,6 +68,8 @@ app.use(
 
 // Body parsers
 app.use(cookieParser());
+app.use(passport.initialize());
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }));
 
@@ -79,6 +93,7 @@ app.use("/api/process", processRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/generate-bpms", bpmsArchitectRouter);
+app.use("/api/stats", statsRouter);
 
 // ============================================================================
 // Health Check & Root

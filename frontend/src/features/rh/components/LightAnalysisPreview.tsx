@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo } from 'react';
 import { ThumbsUp, AlertTriangle, XCircle, CheckCircle, TrendingUp, Star, Target, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -89,23 +90,87 @@ const getRecommendationStatus = (score: number, recommendation?: string): { labe
 };
 
 export function LightAnalysisPreview({ analysis, candidateId, jobOfferId }: LightAnalysisPreviewProps) {
-  // Get score from analysis (handle both old and new formats)
-  const score = analysis?.overallScore ?? analysis?.score ?? 0;
-  
+  // ✅ Diagnostic logs - log when component receives new analysis
+  console.log('🔍 [LightAnalysisPreview] Received:', {
+    candidateId,
+    score: analysis?.overallScore ?? analysis?.score,
+    hasData: !!analysis,
+    timestamp: new Date().toISOString()
+  });
+
+  // ✅ Force re-calculation when analysis changes using useMemo
+  const score = useMemo(() => {
+    const result = analysis?.overallScore ?? analysis?.score ?? 0;
+    console.log('🔍 [LightAnalysisPreview] Score calculated:', {
+      candidateId,
+      overallScore: analysis?.overallScore,
+      score: analysis?.score,
+      result,
+      timestamp: new Date().toISOString()
+    });
+    return result;
+  }, [analysis?.overallScore, analysis?.score, candidateId, analysis]);
+
   // Get strengths (handle backward compatibility)
-  const strengths = analysis?.strengths || analysis?.pointsForts || [];
+  const strengths = useMemo(() => {
+    return analysis?.strengths || analysis?.pointsForts || [];
+  }, [analysis?.strengths, analysis?.pointsForts]);
   
   // Get weaknesses/missing skills (handle backward compatibility)
-  const missingSkills = analysis?.weaknesses || analysis?.pointsFaibles || analysis?.skillsMatch?.missing || [];
+  const missingSkills = useMemo(() => {
+    return analysis?.weaknesses || analysis?.pointsFaibles || analysis?.skillsMatch?.missing || [];
+  }, [analysis?.weaknesses, analysis?.pointsFaibles, analysis?.skillsMatch]);
   
   // Get recommendation
-  const status = getRecommendationStatus(score, analysis?.recommendation);
+  const status = useMemo(() => {
+    return getRecommendationStatus(score, analysis?.recommendation);
+  }, [score, analysis?.recommendation]);
   
   // Get top 3 strengths (truncated if needed)
-  const displayStrengths = strengths.slice(0, 3);
+  const displayStrengths = useMemo(() => {
+    return strengths.slice(0, 3);
+  }, [strengths]);
   
   // Get top missing skill
-  const topMissingSkill = missingSkills[0];
+  const topMissingSkill = useMemo(() => {
+    return missingSkills[0];
+  }, [missingSkills]);
+
+  // ✅ Add revalidation when page becomes visible
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('👁️ [LightAnalysisPreview] Page visible, triggering refresh:', {
+          candidateId,
+          jobOfferId,
+          timestamp: new Date().toISOString()
+        });
+        // Trigger parent to refresh via custom event
+        window.dispatchEvent(new CustomEvent('refresh-analysis', {
+          detail: { candidateId, jobOfferId }
+        }));
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('🎯 [LightAnalysisPreview] Window focused, triggering refresh:', {
+        candidateId,
+        jobOfferId,
+        timestamp: new Date().toISOString()
+      });
+      window.dispatchEvent(new CustomEvent('refresh-analysis', {
+        detail: { candidateId, jobOfferId }
+      }));
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [candidateId, jobOfferId]);
 
   // If no analysis data, show a placeholder state
   if (!analysis || score === 0) {

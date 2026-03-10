@@ -11,39 +11,21 @@
     ],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "types": [
-      "vite/client"
-    ],
+    "types": ["vite/client"],
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@app/*": [
-        "./src/app/*"
-      ],
-      "@features/*": [
-        "./src/features/*"
-      ],
-      "@shared/*": [
-        "./src/shared/*"
-      ],
-      "@layouts/*": [
-        "./src/layouts/*"
-      ],
-      "@assets/*": [
-        "./src/assets/*"
-      ],
-      "@styles/*": [
-        "./src/styles/*"
-      ]
+      "@/*": ["./src/*"],
+      "@app/*": ["./src/app/*"],
+      "@features/*": ["./src/features/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@layouts/*": ["./src/layouts/*"],
+      "@assets/*": ["./src/assets/*"],
+      "@styles/*": ["./src/styles/*"]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "noEmit": true
   }
 }

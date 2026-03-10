@@ -3,17 +3,18 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
-export interface AuthRequest extends Request {
+export type AuthRequest = Request & {
   user?: {
-    userId: string;
+    id: string;
     email: string;
     organisationId: string;
     isAdmin: boolean;
     role: string;
   };
-}
+};
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  const authReq = req as AuthRequest;
   let token = req.cookies?.token;
 
   if (!token) {
@@ -30,13 +31,13 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as {
-      userId: string;
+      id: string;
       email: string;
       organisationId: string;
       isAdmin: boolean;
       role: string;
     };
-    req.user = decoded;
+    authReq.user = decoded;
     next();
   } catch (error) {
     res.status(401).json({ error: "Invalid or expired token." });

@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
 import { candidateService } from "../services/candidate.service";
@@ -14,7 +14,8 @@ export const candidateController = {
   /**
    * POST /api/candidates
    */
-  createCandidate: catchAsync(async (req: AuthRequest, res: Response) => {
+  createCandidate: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     // 1. Validate body
     const parsed = createCandidateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -39,7 +40,8 @@ export const candidateController = {
   /**
    * GET /api/candidates
    */
-  getAllCandidates: catchAsync(async (req: AuthRequest, res: Response) => {
+  getAllCandidates: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { page, limit, search } = req.query;
     
     const result = await candidateService.getAllCandidates({
@@ -54,7 +56,8 @@ export const candidateController = {
   /**
    * GET /api/candidates/:id
    */
-  getCandidateById: catchAsync(async (req: AuthRequest, res: Response) => {
+  getCandidateById: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
     if (typeof id !== 'string') throw new Error("Invalid ID type");
     const candidate = await candidateService.getCandidateById(id);
@@ -64,7 +67,8 @@ export const candidateController = {
   /**
    * PUT /api/candidates/:id
    */
-  updateCandidate: catchAsync(async (req: AuthRequest, res: Response) => {
+  updateCandidate: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
     if (typeof id !== 'string') throw new Error("Invalid ID type");
     
@@ -92,7 +96,8 @@ export const candidateController = {
   /**
    * DELETE /api/candidates/:id
    */
-  deleteCandidate: catchAsync(async (req: AuthRequest, res: Response) => {
+  deleteCandidate: catchAsync(async (req: Request, res: Response) => {
+    const authReq = req as AuthRequest;
     const { id } = req.params;
     if (typeof id !== 'string') throw new Error("Invalid ID type");
     await candidateService.deleteCandidate(id);

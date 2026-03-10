@@ -42,6 +42,7 @@ export interface AuthUser {
   role: UserRole;
   organizationId?: string;
   token?: string;
+  provider?: 'LOCAL' | 'GOOGLE';
 }
 
 /**

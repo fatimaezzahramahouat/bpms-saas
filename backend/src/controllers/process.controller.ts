@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { workflowEngineService } from "../services/workflowEngine.service";
 import { prisma } from "../lib/prisma";
@@ -9,13 +9,14 @@ export const processController = {
      * POST /api/process/start
      * Starts a new process instance for a workflow.
      */
-    startProcess: catchAsync(async (req: AuthRequest, res: Response) => {
-        const { workflowId, startDate, endDate, reason } = req.body;
+    startProcess: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const { workflowId, metadata, startDate, endDate, reason } = req.body;
         const file = req.file;
-        const userId = req.user?.userId;
-        const organisationId = req.user?.organisationId;
+        const id = authReq.user?.id;
+        const organisationId = authReq.user?.organisationId;
 
-        if (!userId || !organisationId) {
+        if (!id || !organisationId) {
             return res.status(401).json({ error: "User not authenticated or missing organisation" });
         }
 
@@ -24,11 +25,36 @@ export const processController = {
         }
 
         try {
+            // Check Context/Metadata: Ensure it is a valid object and not null
+            let finalMetadata = metadata;
+
+            // Parse metadata if sent as JSON string in FormData
+            if (typeof metadata === 'string') {
+                try {
+                    finalMetadata = JSON.parse(metadata);
+                } catch (e) {
+                    finalMetadata = {};
+                }
+            }
+
+            // Ensure finalMetadata is an object and not null
+            if (!finalMetadata || typeof finalMetadata !== 'object' || Array.isArray(finalMetadata)) {
+                finalMetadata = {};
+            }
+
+            // Backwards compatibility for legacy LeaveRequestForm
+            if (startDate || endDate || reason) {
+                finalMetadata = { ...finalMetadata, startDate, endDate, reason };
+            }
+            if (file) {
+                finalMetadata.file = file;
+            }
+
             const result = await workflowEngineService.startProcessInstance(
                 workflowId,
-                userId,
+                id,
                 organisationId,
-                { startDate, endDate, reason, file }
+                finalMetadata
             );
 
             res.status(201).json({
@@ -36,27 +62,33 @@ export const processController = {
                 data: result
             });
         } catch (error: any) {
-            console.error("[ProcessController] Error starting process:", error);
-            res.status(400).json({ error: error.message });
+            // Global Catch-All Logging: Capture Prisma and other internal errors
+            console.error("SERVER_500_ERROR:", error);
+            res.status(500).json({
+                error: "Internal Server Error",
+                message: error.message
+            });
         }
     }),
     /**
      * GET /api/process/my-requests
      * Returns all process instances initiated by the logged-in user.
      */
-    getMyRequests: catchAsync(async (req: AuthRequest, res: Response) => {
-        const userId = req.user?.userId;
+    getMyRequests: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const id = authReq.user?.id;
 
-        if (!userId) {
+        if (!id) {
             return res.status(401).json({ error: "User not authenticated" });
         }
 
         const requests = await prisma.processInstance.findMany({
-            where: { userId },
+            where: { userId: id },
             include: {
                 workflow: {
                     select: { name: true }
                 },
+                documents: true,
                 tasks: {
                     where: { status: 'PENDING' },
                     include: {

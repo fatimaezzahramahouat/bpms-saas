@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Users, GitMerge, FileText, Settings, LogOut, Bell, Search, Zap, Briefcase, BarChart3, Network, Menu, X as CloseIcon } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { OnboardingModal } from '../components/OnboardingModal';
+import { ForceChangePasswordModal } from '../components/ForceChangePasswordModal';
 import { ThemeSwitcher } from '@shared/components';
 import { usePermission } from '@shared/hooks/usePermission';
 import { RHJobOffersButton } from '@/features/rh/components';

@@ -1,4 +1,4 @@
-import { Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { AuthRequest } from "./auth.middleware";
 
 /**
@@ -6,11 +6,12 @@ import { AuthRequest } from "./auth.middleware";
  * Checks the isAdmin flag from the JWT payload.
  */
 export const requireAdmin = (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): void => {
-  if (!req.user?.isAdmin) {
+  const authReq = req as AuthRequest;
+  if (!authReq.user?.isAdmin) {
     res.status(403).json({ error: "Forbidden: Admin role required" });
     return;
   }

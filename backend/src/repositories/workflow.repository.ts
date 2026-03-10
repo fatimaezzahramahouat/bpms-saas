@@ -8,6 +8,7 @@ interface CreateWorkflowData {
     description?: string | undefined;
     nodes?: any;
     edges?: any;
+    data_model?: any;
     steps: StepInput[];
 }
 
@@ -16,6 +17,7 @@ interface UpdateWorkflowData {
     description?: string | undefined;
     nodes?: any;
     edges?: any;
+    data_model?: any;
     status?: "DRAFT" | "ACTIVE" | "ARCHIVED" | undefined;
     version?: number | undefined;
 }
@@ -43,6 +45,7 @@ export const workflowRepository = {
                 description: data.description ?? null,
                 nodes: data.nodes || [],
                 edges: data.edges || [],
+                data_model: data.data_model || [],
                 organisationId,
                 steps: {
                     create: data.steps.map((step) => ({
@@ -63,18 +66,14 @@ export const workflowRepository = {
     /**
      * Returns all workflows for a given organisation,
      * including step count via _count.
-     * Optionally filters by category and sorts by updatedAt descending.
      */
-    async findAllByOrg(organisationId: string, category?: string) {
+    async findAllByOrg(organisationId: string) {
         return prisma.workflow.findMany({
-            where: {
-                organisationId,
-                ...(category && { category })
-            },
+            where: { organisationId },
             include: {
                 _count: { select: { steps: true, instances: true } },
             },
-            orderBy: { updatedAt: "desc" },
+            orderBy: { name: "asc" },
         });
     },
 
@@ -113,6 +112,7 @@ export const workflowRepository = {
                     ...(data.description !== undefined && { description: data.description }),
                     ...(data.nodes !== undefined && { nodes: data.nodes }),
                     ...(data.edges !== undefined && { edges: data.edges }),
+                    ...(data.data_model !== undefined && { data_model: data.data_model }),
                     ...(data.status && { status: data.status }),
                     ...(data.version && { version: data.version }),
                 },
@@ -134,20 +134,18 @@ export const workflowRepository = {
                     where: { workflowId: id }
                 });
 
-                // Upsert steps based on node names/labels
-                for (let i = 0; i < stepNodes.length; i++) {
-                    const node = stepNodes[i];
+                // Upsert steps based on node names/labels using Promise.all to avoid transaction timeouts
+                const promises = stepNodes.map((node, i) => {
                     const name = node.data?.title || node.data?.label || `Step ${i + 1}`;
-
                     const existingStep = existingSteps.find(s => s.name === name);
 
                     if (existingStep) {
-                        await tx.step.update({
+                        return tx.step.update({
                             where: { id: existingStep.id },
                             data: { order: i + 1 }
                         });
                     } else {
-                        await tx.step.create({
+                        return tx.step.create({
                             data: {
                                 name,
                                 order: i + 1,
@@ -155,7 +153,9 @@ export const workflowRepository = {
                             }
                         });
                     }
-                }
+                });
+
+                await Promise.all(promises);
 
                 // Optional: Remove steps that are no longer in the nodes list
                 // (Be careful with this if tasks are already linked to them)
@@ -163,6 +163,9 @@ export const workflowRepository = {
             }
 
             return workflow;
+        }, {
+            maxWait: 5000,
+            timeout: 10000
         });
     },
 

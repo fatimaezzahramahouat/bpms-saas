@@ -34,6 +34,8 @@ model OrgInfo {
   address        String?
   city           String?
   website        String?
+  phoneorg       String?
+  emailorg       String?
   organisationId String       @unique
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @default(now()) @updatedAt
@@ -48,7 +50,7 @@ model User {
   firstName          String
   lastName           String
   phone              String?
-  organisationId     String
+  organisationId     String?
   resetExpires       DateTime?
   resetToken         String?      @unique
   admin              Admin?
@@ -70,7 +72,7 @@ model User {
   sessions         Session[]
   tasks            Task[]
   processInstances ProcessInstance[]
-  organisation     Organisation      @relation(fields: [organisationId], references: [id])
+organisation   Organisation? @relation(fields: [organisationId], references: [id])
 
   @@index([organisationId])
 }
@@ -136,16 +138,18 @@ model Application {
 }
 
 model Document {
-  id             String        @id @default(uuid())
-  fileName       String
-  fileUrl        String
-  docType        String
-  applicationId  String?
-  userId         String?
-  organisationId String?
-  application    Application?  @relation(fields: [applicationId], references: [id])
-  organisation   Organisation? @relation(fields: [organisationId], references: [id])
-  user           User?         @relation(fields: [userId], references: [id])
+  id                String           @id @default(uuid())
+  fileName          String
+  fileUrl           String
+  docType           String
+  applicationId     String?
+  userId            String?
+  organisationId    String?
+  processInstanceId String?
+  application       Application?     @relation(fields: [applicationId], references: [id])
+  organisation      Organisation?    @relation(fields: [organisationId], references: [id])
+  user              User?            @relation(fields: [userId], references: [id])
+  processInstance   ProcessInstance? @relation(fields: [processInstanceId], references: [id])
 }
 
 model Admin {
@@ -178,6 +182,7 @@ model Workflow {
   organisationId String
   createdAt      DateTime          @default(now())
   description    String?
+  data_model     Json?             @default("[]")
   edges          Json?             @default("[]")
   nodes          Json?             @default("[]")
   status         WorkflowStatus    @default(DRAFT)
@@ -242,6 +247,7 @@ model ProcessInstance {
   workflow    Workflow     @relation(fields: [workflowId], references: [id])
   tasks       Task[]
   user        User?        @relation(fields: [userId], references: [id])
+  documents   Document[]
 }
 
 model AIAnalysis {

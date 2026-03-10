@@ -15,14 +15,20 @@ export type UserRole = typeof ROLES[keyof typeof ROLES] | string;
 export const canAccessWorkflow = (role: UserRole): boolean => {
     if (!role) return false;
     const normalizedRole = role.toString().toUpperCase().trim();
-    return normalizedRole === 'ADMIN' || normalizedRole === 'RH';
+
+    const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];
+    const hrRoles = ['RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
+
+    return adminRoles.includes(normalizedRole) || hrRoles.includes(normalizedRole);
 };
 
 /**
  * Checks if a user has permission to manage users/team (Admin only).
  */
 export const canManageUsers = (role: UserRole): boolean => {
-    return role.toString().toUpperCase().trim() === 'ADMIN';
+    if (!role) return false;
+    const normalizedRole = role.toString().toUpperCase().trim();
+    return ['ADMIN', 'ADMINISTRATEUR'].includes(normalizedRole);
 };
 
 /**

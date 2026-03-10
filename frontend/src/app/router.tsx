@@ -6,80 +6,74 @@ import { RegisterOrg } from '../features/auth/pages/RegisterOrg';
 import { DashboardLayout } from '../features/dashboard/layouts/DashboardLayout';
 import { DashboardHome } from '../features/dashboard/pages/DashboardHome';
 import { Dashboard } from '../features/dashboard/pages/Dashboard';
+import { WorkflowAnalytics } from '../features/dashboard/pages/WorkflowAnalytics';
 import { RecruitmentPage } from '@/pages/RecruitmentPage';
 import TeamPage from '@/pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
-import { WorkflowListPage } from '../features/workflow/pages/WorkflowListPage';
 import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
 import { ArchitecteBPMS } from '../features/management/pages/ArchitecteBPMS';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
+import { GoogleSuccess } from '../features/auth/pages/GoogleSuccess';
 import { JobOffersManagement, JobOfferCandidatsPage, CandidateStatisticsPage } from '../features/rh/pages';
 import { CandidateProfilePage } from '../features/rh/pages/CandidateProfilePage';
 import { MyApprovals } from '@/pages/MyApprovals';
 import { EmployeeTasks } from '@/pages/EmployeeTasks';
 import { SettingsPage } from '../features/dashboard/pages/SettingsPage';
-import { ManagerValidationPage } from '@/pages/ManagerValidationPage';
+import { ManageWorkflows } from '../features/workflow/pages/ManageWorkflows';
 
-
-
-/**
- * Application Router
- * 
- * This is the central routing configuration for the application.
- * Routes are organized by feature modules.
- * 
- * Future scalability:
- * - Add lazy loading with React.lazy() for code splitting
- * - Add route guards for protected routes (RBAC)
- * - Add nested routes for complex features
- */
 export function AppRouter() {
   return (
     <Routes>
-      {/* Public Routes - Home/Landing */}
+      {/* 🔓 Public Routes */}
       <Route path="/" element={<Home />} />
       <Route path="/pricing" element={<Pricing />} />
 
-      {/* Auth Routes */}
+      {/* 🔐 Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register-org" element={<RegisterOrg />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/google-success" element={<GoogleSuccess />} />
 
+      {/* 🌐 Recruitment & Team (Public) */}
+      <Route path="/recrutement" element={<RecruitmentPage />} />
+      <Route path="/our-team" element={<TeamPage />} />
 
-      {/* Dashboard Routes - Protected */}
+      {/* 🔐 Dashboard Routes - Protected (Wrapper WAHED) */}
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<DashboardHome />} />
+        
+        {/* 👥 Management */}
         <Route path="equipe" element={<UsersManagement />} />
+        <Route path="manage-workflows" element={<ManageWorkflows />} />
         <Route path="architecte" element={<ArchitecteBPMS />} />
-
-        {/* Workflow Pages */}
-        <Route path="workflow" element={<WorkflowListPage />} />
-        <Route path="workflow/editor" element={<WorkflowPage />} />
-        <Route path="workflow/editor/:id" element={<WorkflowPage />} />
-
+        
+        {/* ⚙️ Workflow */}
+        <Route path="workflow/:id?" element={<WorkflowPage />} />
         <Route path="mes-demandes" element={<EmployeeDashboard />} />
+        <Route path="analytics" element={<WorkflowAnalytics />} />
+        
+        {/* 👔 RH / Recruitment */}
         <Route path="rh/job-offers" element={<JobOffersManagement />} />
         <Route path="rh/job-offers/:id/candidats" element={<JobOfferCandidatsPage />} />
         <Route path="rh/candidates/:id" element={<CandidateProfilePage />} />
         <Route path="rh/statistics" element={<CandidateStatisticsPage />} />
-        <Route path="approvals" element={<ManagerValidationPage />} />
+        
+        {/* 📋 Employee */}
+        <Route path="approvals" element={<MyApprovals />} />
         <Route path="tasks" element={<EmployeeTasks />} />
+        
+        {/* ⚙️ Settings */}
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
-      {/* Recruitment Route */}
-      <Route path="/recrutement" element={<RecruitmentPage />} />
-
-      {/* Team Route */}
-      <Route path="/our-team" element={<TeamPage />} />
-      {/* 404 Catch-all - Must be last */}
+      {/* 🚫 404 Catch-all - Dima f l'akher */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
 
-// Simple 404 Not Found component
+// 🧱 404 Component
 function NotFound() {
   return (
     <div className="min-h-screen bg-h1-black flex flex-col items-center justify-center text-white">

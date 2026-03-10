@@ -93,6 +93,7 @@ const WorkflowEditor: React.FC = () => {
                         setNodes(wf.nodes || initialNodes);
                         setEdges(wf.edges || initialEdges);
                         setWorkflowName(wf.name || 'Workflow Sans Titre');
+                        setDataModel(wf.data_model || []);
                         setTimeout(() => fitView({ duration: 800 }), 300);
                     }
                 } catch (err) {
@@ -109,13 +110,16 @@ const WorkflowEditor: React.FC = () => {
         const storedData = localStorage.getItem('ai_generated_workflow');
         if (storedData && (!id || id === 'new')) {
             try {
-                const { nodes, edges, metadata } = JSON.parse(storedData);
+                const { nodes, edges, metadata, data_model } = JSON.parse(storedData);
 
                 if (nodes && edges) {
                     setNodes(nodes);
                     setEdges(edges);
                     if (metadata && metadata.name) {
                         setWorkflowName(metadata.name);
+                    }
+                    if (data_model) {
+                        setDataModel(data_model);
                     }
                     setTimeout(() => fitView({ duration: 800 }), 300);
                 }
@@ -227,46 +231,54 @@ const WorkflowEditor: React.FC = () => {
 
         if (!workflowName || workflowName.trim() === '') {
             toast.error("Veuillez donner un nom à votre workflow avant de sauvegarder.");
+            alert("Veuillez donner un nom à votre workflow avant de sauvegarder.");
             return;
         }
 
-        // Warn (but don't block) if Trigger is missing
+        // Validation logic
         const startNode = flow.nodes.find(n => n.data.variant === 'trigger');
+        const endNode = flow.nodes.find(n => n.data.variant === 'end');
+
         if (!startNode) {
-            toast.warn("Attention : aucun nœud 'Début' (Trigger) n'a été trouvé dans le canvas.");
+            toast.error("Erreur : Aucun nœud 'Début' (Trigger) trouvé !");
+            return;
         }
+
+        const manualFields = (startNode.data as any).data_model || [];
+
+        const steps = flow.nodes.map((node, index) => ({
+            name: node.data.title || 'Étape sans titre',
+            order: index + 1,
+            metadata: {
+                variant: node.data.variant,
+                role: (node.data as any).role,
+                slaDuration: (node.data as any).slaDuration,
+                requiredDocuments: (node.data as any).requiredDocuments,
+                autoEmail: (node.data as any).autoEmail,
+                actionType: (node.data as any).actionType,
+                position: node.position,
+                nodeId: node.id
+            }
+        }));
 
         const payload = {
             name: workflowName,
             nodes: flow.nodes,
             edges: flow.edges,
-            data_model: dataModel,
+            steps: steps,
+            data_model: manualFields.length > 0 ? manualFields : dataModel,
         };
 
-        // ── PATCH (update) if we already have an ID in the URL ──
-        if (id && id !== 'new') {
-            const loadingToast = toast.loading("Sauvegarde en cours...");
-            try {
-                console.log(`[WorkflowPage] Mise à jour du workflow existant (id: ${id})...`);
+        const loadingToast = toast.loading(id && id !== 'new' ? "Mise à jour du workflow..." : "Création du workflow...");
+        try {
+            if (id && id !== 'new') {
+                console.log("[WorkflowPage] Mise à jour du workflow...");
                 await workflowService.updateWorkflow(id, payload);
-                toast.update(loadingToast, {
-                    render: "Workflow sauvegardé avec succès !",
-                    type: "success",
-                    isLoading: false,
-                    autoClose: 3000,
-                });
-            } catch (error: any) {
-                console.error('[WorkflowPage] Update error:', error);
-                const msg = error.response?.data?.message || error.response?.data?.error || error.message;
-                toast.update(loadingToast, {
-                    render: `Échec de la sauvegarde : ${msg}`,
-                    type: "error",
-                    isLoading: false,
-                    autoClose: 5000,
-                });
-            }
-            return;
-        }
+                toast.update(loadingToast, { render: "Workflow mis à jour !", type: "success", isLoading: false, autoClose: 3000 });
+            } else {
+                console.log("[WorkflowPage] Création d'un nouveau workflow...");
+                const response = await workflowService.createWorkflow(payload);
+                const newWf = response.data;
 
         // ── POST (create) when no ID yet ──
         const loadingToast = toast.loading("Création du workflow...");
@@ -283,14 +295,9 @@ const WorkflowEditor: React.FC = () => {
                 navigate(`/dashboard/workflow/${newWf.id}`, { replace: true });
             }
         } catch (error: any) {
-            console.error('[WorkflowPage] Create error:', error);
+            console.error('Save Error:', error);
             const msg = error.response?.data?.message || error.message;
-            toast.update(loadingToast, {
-                render: `Échec de la création : ${msg}`,
-                type: "error",
-                isLoading: false,
-                autoClose: 5000,
-            });
+            toast.update(loadingToast, { render: `Échec : ${msg}`, type: "error", isLoading: false, autoClose: 5000 });
         }
     };
 
@@ -306,7 +313,7 @@ const WorkflowEditor: React.FC = () => {
                 {canEdit && (
                     <div className="pt-20 absolute inset-y-0 left-0 z-30 pointer-events-none">
                         <div className="h-full pointer-events-auto">
-                            <WorkflowSidebar />
+                            <WorkflowSidebar dataModel={dataModel} />
                         </div>
                     </div>
                 )}
