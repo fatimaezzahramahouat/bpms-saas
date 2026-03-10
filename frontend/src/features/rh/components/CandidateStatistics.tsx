@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Users, TrendingUp, Star, Clock, Target, PieChart, BarChart3, Calendar, ArrowDownUp } from 'lucide-react';
+import { Users, TrendingUp, Star, Clock, Target, PieChart, Calendar, ArrowDownUp } from 'lucide-react';
 import { Candidate } from './CandidateCard';
 
 // Statistics cards component
@@ -31,14 +31,6 @@ export function StatisticsCards({ candidates, savedCount }: StatisticsCardsProps
       trendUp: true,
     },
     {
-      label: 'Score Moyen',
-      value: `${stats.avgScore}%`,
-      icon: Target,
-      color: 'blue',
-      trend: '+5%',
-      trendUp: true,
-    },
-    {
       label: "Nouveaux Aujourd'hui",
       value: stats.newToday,
       icon: Clock,
@@ -57,7 +49,7 @@ export function StatisticsCards({ candidates, savedCount }: StatisticsCardsProps
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         const colorClasses = {
@@ -201,69 +193,6 @@ export function StatusDistribution({ candidates }: StatusDistributionProps) {
             );
           })}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Match score distribution histogram
-interface ScoreDistributionProps {
-  candidates: Candidate[];
-}
-
-export function ScoreDistribution({ candidates }: ScoreDistributionProps) {
-  const scoreRanges = useMemo(() => {
-    const ranges = [
-      { min: 0, max: 20, label: '0-20%', count: 0, color: '#ef4444' },
-      { min: 21, max: 40, label: '21-40%', count: 0, color: '#f97316' },
-      { min: 41, max: 60, label: '41-60%', count: 0, color: '#eab308' },
-      { min: 61, max: 80, label: '61-80%', count: 0, color: '#22c55e' },
-      { min: 81, max: 100, label: '81-100%', count: 0, color: '#8b5cf6' },
-    ];
-    
-    candidates.forEach(c => {
-      const score = c.matchPercentage || 0;
-      const range = ranges.find(r => score >= r.min && score <= r.max);
-      if (range) range.count++;
-    });
-    
-    return ranges;
-  }, [candidates]);
-
-  const maxCount = Math.max(...scoreRanges.map(r => r.count), 1);
-
-  return (
-    <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <BarChart3 className="w-5 h-5 text-purple-400" />
-        <h3 className="font-semibold text-[var(--text-primary)]">Distribution des Scores</h3>
-      </div>
-      
-      <div className="space-y-3">
-        {scoreRanges.map((range) => {
-          const height = maxCount > 0 ? (range.count / maxCount) * 100 : 0;
-          return (
-            <div key={range.label} className="flex items-center gap-3">
-              <span className="text-xs text-[var(--text-secondary)] w-14 flex-shrink-0">
-                {range.label}
-              </span>
-              <div className="flex-1 h-6 bg-[var(--input-bg)] rounded-lg overflow-hidden relative">
-                <div
-                  className="h-full rounded-lg transition-all duration-500"
-                  style={{
-                    width: `${height}%`,
-                    backgroundColor: range.color,
-                  }}
-                />
-                {range.count > 0 && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-white">
-                    {range.count}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );

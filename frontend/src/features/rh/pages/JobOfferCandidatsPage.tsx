@@ -1,7 +1,7 @@
 // /home/manal/projet_final_BPMS/frontend/src/features/rh/pages/JobOfferCandidatsPage.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, Printer, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useToast, toastSuccess, toastError } from '../../../shared/components/Toast';
 import { CandidateCard, Candidate, CandidateStatus } from '../components/CandidateCard';
@@ -279,7 +279,6 @@ setCandidates(mappedCandidates);
       addToast(toastError('Export échoué', 'Erreur lors de l\'export PDF'));
     }
   }, [jobOffer, addToast]);
-  const handlePrint = useCallback(() => { window.print(); }, []);
   const handleBack = useCallback(() => { navigate('/dashboard/rh/job-offers'); }, [navigate]);
 
   const jobRequirements = jobOffer ? {
@@ -426,10 +425,6 @@ setCandidates(mappedCandidates);
                 <button onClick={handleExportCSV} disabled={isExporting} className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white text-sm font-medium rounded-lg">
                   {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
                   CSV
-                </button>
-                <button onClick={handlePrint} className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--input-bg)] hover:bg-[var(--border-color)] text-[var(--text-primary)] text-sm font-medium rounded-lg">
-                  <Printer className="w-4 h-4" />
-                  Imprimer
                 </button>
               </div>
             )}
