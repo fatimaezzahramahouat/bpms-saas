@@ -16,6 +16,8 @@ export interface TextExtractionResult {
   error?: string;
   charCount: number;
   qualityScore?: 'HIGH' | 'MEDIUM' | 'LOW' | 'FAILED';
+  isImageBased?: boolean;
+  warning?: string;
   metadata?: {
     pageCount?: number;
     emptyLineRatio?: number;
@@ -58,14 +60,18 @@ export async function convertPDFtoText(pdfPath: string): Promise<TextExtractionR
     console.log('📝 [PDF→TXT] Page count:', pageCount);
     
     // 4. Quality validation - Check if text is too short (indicates scanned/image PDF)
-    if (!rawText || rawText.length < 50) {
-      console.warn('⚠️ [PDF→TXT] Warning: Extracted text is very short:', rawText.length, 'chars');
+    // ✅ CONTINUE instead of failing - return warning for image-based PDFs
+    const isImageBased = !rawText || rawText.length < 50;
+    
+    if (isImageBased) {
+      console.warn('⚠️ [PDF→TXT] Warning: PDF appears image-based/scanned, extracted only', rawText.length, 'chars');
       return {
-        success: false,
-        text: rawText,
+        success: true, // ✅ Continue instead of failing
+        text: rawText || '',
         charCount: rawText.length,
-        error: 'PDF appears to be image-based/scanned. Please upload a text-based PDF, .txt, or .docx file.',
-        qualityScore: 'FAILED',
+        isImageBased: true,
+        warning: 'CV partiellement lisible - contient des images scannées. Veuillez uploader un PDF texte pour une meilleure analyse.',
+        qualityScore: 'LOW',
         metadata: {
           pageCount,
           emptyLineRatio: 1
@@ -133,11 +139,13 @@ export async function convertPDFtoText(pdfPath: string): Promise<TextExtractionR
       errorMessage = 'PDF file appears to be corrupted. Please try another file.';
     }
     
+    // ✅ Return with warning instead of failing completely
     return {
-      success: false,
+      success: true, // Continue processing
       text: '',
       charCount: 0,
-      error: errorMessage,
+      isImageBased: true,
+      warning: errorMessage,
       qualityScore: 'FAILED'
     };
   }

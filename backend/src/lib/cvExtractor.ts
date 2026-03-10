@@ -143,6 +143,7 @@ export interface CVData {
     extractionMethod?: string;
     textQuality?: 'HIGH' | 'MEDIUM' | 'LOW' | 'FAILED';
     charCount?: number;
+    warning?: string;
   };
 }
 
@@ -927,7 +928,7 @@ export async function extractCVDataFromPDF(filePath: string): Promise<CVData> {
     // ✅ 2. استخراج النص باستخدام pdf-parse v2.x API
     const pdfParser = new PDFParse({ data: pdfBuffer });
     const pdfData = await pdfParser.getText();
-    const rawText = pdfData.text;
+    const rawText = pdfData.text || '';
     
     // ===== DIAGNOSTIC LOGS FOR PROBLEM 1 =====
     console.log('\n🔍 ===== CV EXTRACTION DIAGNOSTIC =====');
@@ -939,6 +940,53 @@ export async function extractCVDataFromPDF(filePath: string): Promise<CVData> {
     });
     console.log('4. Raw text preview (first 300 chars):', pdfData?.text?.substring(0, 300));
     // =========================================
+    
+    // ✅ Check for image-based PDFs and continue with warning
+    const isImageBased = !rawText || rawText.length < 50;
+    let extractionWarning: string | undefined;
+    
+    if (isImageBased) {
+      extractionWarning = 'CV partiellement lisible - contient des images scannées. Veuillez uploader un PDF texte pour une meilleure analyse.';
+      console.warn('⚠️ [CV Extractor] Warning: PDF appears image-based, extracted only', rawText.length, 'chars');
+    }
+    
+    // If very limited text, return minimal CVData
+    if (isImageBased || rawText.length < 50) {
+      console.warn('⚠️ [CV Extractor] Very limited text available, returning minimal data with warning');
+      
+      return {
+        personalInfo: { 
+          fullName: 'Candidat (CV image)', 
+          email: '', 
+          phone: '', 
+          location: '' 
+        },
+        workExperiences: [],
+        education: [],
+        technicalSkills: { 
+          frontend: [], backend: [], databases: [], devops: [], 
+          security: [], cms: [], tools: [], automation: [], 
+          methodologies: [], testing: [] 
+        },
+        achievements: [],
+        projects: [],
+        certifications: [],
+        languages: [],
+        interests: [],
+        rawText: rawText,
+        technologiesWithExperience: [],
+        softSkills: [],
+        publicLinks: [],
+        publicProjects: [],
+        metadata: {
+          extractionDate: new Date().toISOString(),
+          totalYearsExperience: 0,
+          expertiseLevel: 'Inconnu (CV image)',
+          technologiesCount: 0,
+          warning: extractionWarning
+        }
+      };
+    }
     
     // ✅ 3. استخراج جميع أقسام الـ CV
     const personalInfo = extractPersonalInfo(rawText);

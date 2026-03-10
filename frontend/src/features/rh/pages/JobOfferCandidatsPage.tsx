@@ -5,12 +5,14 @@ import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, P
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useToast, toastSuccess, toastError } from '../../../shared/components/Toast';
 import { CandidateCard, Candidate, CandidateStatus } from '../components/CandidateCard';
-import { LightAnalysisPreview } from '../components/LightAnalysisPreview';
 import { Pagination } from '../components/Pagination';
 import { SearchBar, CandidateFilters, ActiveFilters } from '../components';
 import { useCandidateFilters } from '../hooks/useCandidateFilters';
 import { exportCandidatesToCSV, exportAnalysisToPDF } from '../utils/exportUtils';
 import { jobOfferService } from '../../../services/jobOffer.service';
+
+// Get API URL for static file serving
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ========== INTERFACES ==========
 interface JobOffer {
@@ -24,22 +26,6 @@ interface JobOffer {
   requiredSkills?: string[];
   requiredExperience?: string;
   requiredEducation?: string;
-}
-
-// ✅ واجهة التحليل المصغر (جديدة)
-export interface AIAnalysisPreview {
-  overallScore: number;
-  strengths: string[];
-  weaknesses: string[];
-  recommendation?: string;
-  priority?: string;
-  interviewQuestions: string[];
-  categoryScores?: {
-    skills?: number;
-    experience?: number;
-    education?: number;
-    technicalFit?: number;
-  };
 }
 
 // ========== SKELETON COMPONENT ==========
@@ -161,6 +147,7 @@ const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
     lastName,
     email: c.email,
     phone: c.phone || 'Non renseigné',
+    cv: c.cv || null,  // Direct CV path from candidate.cv field
     appliedDate: app?.createdAt || c.createdAt,
     status: (app?.status === 'APPLIED' ? 'Nouveau' : 
              app?.status === 'INTERVIEW' ? 'En cours' : 
@@ -247,17 +234,17 @@ setCandidates(mappedCandidates);
     navigate(`/dashboard/rh/candidates/${candidate.id}`);
   }, [navigate]);
   const handleViewCV = useCallback((candidate: Candidate) => {
-  if (candidate.formData?.cvFileName) {
-    // إذا كان الرابط كاملاً (يبدأ بـ http)
-    if (candidate.formData.cvFileName.startsWith('http')) {
-      window.open(candidate.formData.cvFileName, '_blank');
-    } else {
-      // إذا كان اسم ملف فقط، نضيف مسار الـ uploads
-      const cvUrl = `/uploads/cvs/${candidate.formData.cvFileName}`;
-      window.open(cvUrl, '_blank');
+    if (candidate.formData?.cvFileName) {
+      // إذا كان الرابط كاملاً (يبدأ بـ http)
+      if (candidate.formData.cvFileName.startsWith('http')) {
+        window.open(candidate.formData.cvFileName, '_blank');
+      } else {
+        // Use full backend URL to access static files
+        const cvUrl = `${API_URL}/uploads/cvs/${candidate.formData.cvFileName}`;
+        window.open(cvUrl, '_blank');
+      }
     }
-  }
-}, []);
+  }, []);
   const handleSave = useCallback((candidate: Candidate) => {
     addToast(toastSuccess('Candidature sauvegardée', `${candidate.firstName} ${candidate.lastName}`));
   }, [addToast]);
@@ -507,25 +494,6 @@ setCandidates(mappedCandidates);
                       onDelete={handleDelete} 
                       jobRequirements={jobRequirements?.requiredSkills || []} 
                     />
-                    {jobRequirements && candidate.formData && (
-                      <LightAnalysisPreview 
-  candidateId={candidate.id}
-  jobOfferId={jobOffer?.id || ''}
-  analysis={{
-    overallScore: aiAnalysis?.overallScore || candidate.matchPercentage || 0,
-    // ✅ فقط الحقول المدعومة في LightAnalysisData
-    strengths: aiAnalysis?.strengths?.slice(0, 3) || [],
-    weaknesses: aiAnalysis?.weaknesses?.slice(0, 3) || [],
-    recommendation: aiAnalysis?.recommendation,
-    // ✅ نحذف: priority, interviewQuestions, categoryScores (غير مدعومة)
-    skillsMatch: {
-      matched: candidate.formData?.skills || [],
-      missing: [],
-      percentage: candidate.matchPercentage || 0
-    }
-  }}
-/>
-                    )}
                   </div>
                 );
               })}

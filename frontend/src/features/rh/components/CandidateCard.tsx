@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Mail, Phone, Calendar, Eye, Save as SaveIcon, Trash2, ChevronDown, ChevronUp, FileText, Download, Heart, StickyNote } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Eye, Save as SaveIcon, Trash2, ChevronDown, ChevronUp, FileText, Download, Heart, StickyNote, X } from 'lucide-react';
 import { MatchingPercentage } from './MatchingPercentage';
 import { ComparisonTable, MatchItem } from './ComparisonTable';
 import { Label, DEFAULT_LABELS } from '../hooks/useSavedCandidates';
 import { CandidateNotes } from './CandidateNotes';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
+
+// Get API URL for static file serving
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Candidate status types
 export type CandidateStatus = 'Nouveau' | 'En cours' | 'Archivé' | 'Rejeté';
@@ -46,6 +49,7 @@ export interface Candidate {
   appliedDate: string;
   status: CandidateStatus;
   jobOfferId: string;
+  cv?: string;  // Direct CV path from candidate.cv field
   formData?: CandidateFormData;
   matchPercentage?: number;
   matchItems?: MatchItem[];
@@ -148,14 +152,52 @@ export function CandidateCard({
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCvModal, setShowCvModal] = useState(false);
   const statusColors = getStatusColors(candidate.status);
   const fullName = `${candidate.firstName} ${candidate.lastName}`;
 
   // Default form data if not provided
+  const formData = candidate.formData;
+  const matchPercentage = candidate.matchPercentage || 0;
+  const matchItems: MatchItem[] = candidate.matchItems || [];
 
-const formData = candidate.formData;
-const matchPercentage = candidate.matchPercentage || 0;
-const matchItems: MatchItem[] = candidate.matchItems || [];
+  // Build CV URL - use full backend URL for static file serving
+  const getCvUrl = (): string => {
+    // First try formData.cvFileName
+    if (formData?.cvFileName && formData.cvFileName !== 'cv.pdf') {
+      const fileName = formData.cvFileName;
+      // If already a full URL, use it directly
+      if (fileName.startsWith('http')) {
+        return fileName;
+      }
+      // Use full backend URL to access static files
+      return `${API_URL}/uploads/cvs/${fileName}`;
+    }
+    
+    // Fallback: check if candidate has direct cv path (from candidate.cv field)
+    if (candidate.cv) {
+      const cvPath = candidate.cv;
+      if (cvPath.startsWith('http')) {
+        return cvPath;
+      }
+      // If path starts with /uploads, prepend API_URL
+      if (cvPath.startsWith('/uploads')) {
+        return `${API_URL}${cvPath}`;
+      }
+      return `${API_URL}/uploads/cvs/${cvPath}`;
+    }
+    
+    return '';
+  };
+
+  const cvUrl = getCvUrl();
+
+  // Handle download click
+  const handleDownloadCV = () => {
+    if (cvUrl) {
+      window.open(cvUrl, '_blank');
+    }
+  };
 
   return (
     <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -234,19 +276,19 @@ const matchItems: MatchItem[] = candidate.matchItems || [];
       {/* Candidate Form Data - CV only */}
       <div className="mb-4 space-y-3">
         {/* CV - clickable */}
-        <div className="flex items-center justify-between p-2 bg-[var(--bg-main)] rounded-lg">
+        <div 
+          className="flex items-center justify-between p-2 bg-[var(--bg-main)] rounded-lg cursor-pointer hover:bg-purple-500/10 transition-colors"
+          onClick={() => cvUrl && setShowCvModal(true)}
+        >
           <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
             <FileText className="w-4 h-4 text-purple-500" />
             <span>CV</span>
           </div>
           {formData?.cvFileName ? (
-            <button 
-              onClick={() => onViewCV?.(candidate)}
-              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
-            >
+            <div className="flex items-center gap-1 text-xs text-purple-400">
               <Download className="w-3 h-3" />
               <span className="max-w-[150px] truncate">{formData.cvFileName}</span>
-            </button>
+            </div>
           ) : (
             <span className="text-xs text-[var(--text-secondary)]">Non fourni</span>
           )}
@@ -319,6 +361,86 @@ const matchItems: MatchItem[] = candidate.matchItems || [];
             onUpdateNote={(noteId, content) => onUpdateNote?.(candidate.id, noteId, content)}
             onDeleteNote={(noteId) => onDeleteNote?.(candidate.id, noteId)}
           />
+        </div>
+      )}
+
+      {/* CV Modal */}
+      {showCvModal && cvUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCvModal(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative w-full max-w-4xl h-[80vh] bg-[var(--card-bg)] rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-500" />
+                <h3 className="font-semibold text-[var(--text-primary)]">
+                  CV - {fullName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCvModal(false)}
+                className="p-2 rounded-lg hover:bg-[var(--input-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* PDF Viewer */}
+            <div className="flex-1 overflow-hidden bg-gray-100">
+              {cvUrl ? (
+                <object
+                  data={cvUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                  title={`CV - ${fullName}`}
+                >
+                  {/* Fallback for browsers that don't support object tag */}
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <FileText className="w-16 h-16 text-purple-500 mb-4" />
+                    <p className="text-[var(--text-secondary)] mb-4">
+                      Votre navigateur ne peut pas afficher le PDF directement.
+                    </p>
+                    <a
+                      href={cvUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+                    >
+                      <Download className="w-4 h-4" />
+                      Ouvrir dans un nouvel onglet
+                    </a>
+                  </div>
+                </object>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-[var(--text-secondary)]">CV non disponible</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-[var(--border-color)]">
+              <button
+                onClick={handleDownloadCV}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Télécharger
+              </button>
+              <button
+                onClick={() => setShowCvModal(false)}
+                className="px-4 py-2 bg-[var(--input-bg)] hover:bg-[var(--border-color)] text-[var(--text-primary)] text-sm font-medium rounded-lg transition-colors"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

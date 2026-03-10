@@ -427,13 +427,46 @@ if (cvUrl) {
     // =========================================
     
     // ✅ 1. Verify CV data quality before building prompt
+    // For image-based CVs, skip analysis and save with 0 score
     if (!extractedCVData.rawText || extractedCVData.rawText.length < 100) {
-      console.error('❌ [AI] CV data too short:', extractedCVData.rawText?.length || 0, 'chars');
-      return res.status(400).json({ 
-        success: false, 
-        error: 'CV content insufficient for analysis',
-        details: 'Please upload a text-based CV with more content',
-        candidateId
+      console.warn('⚠️ [AI] CV is image-based - skipping analysis, candidate saved anyway');
+      
+      // Save minimal analysis record with 0 score
+      await prisma.aIAnalysis.create({
+        data: {
+          applicationId: applicationId,
+          type: 'CANDIDATE_ANALYSIS',
+          overallScore: 0,
+          result: {
+            overallScore: 0,
+            matchedRequirements: [],
+            missingRequirements: [],
+            strengths: [],
+            weaknesses: ['CV non analysable - contient des images'],
+            recommendation: {
+              decision: 'Pending',
+              priority: 'Low',
+              reason: 'CV doit être reuploadé en format texte'
+            }
+          },
+          confidence: 0,
+          matchedSkills: [],
+          strengths: [],
+          weaknesses: [],
+          interviewQuestions: [],
+          priority: 'Low',
+          recommendation: 'Demander un nouveau CV'
+        }
+      });
+      
+      // Continue - don't throw, don't stop
+      return res.json({
+        success: true,
+        message: 'CV saved but not analyzed (image-based)',
+        warning: 'CV contains scanned images - please upload text-based PDF for analysis',
+        candidateId,
+        applicationId,
+        analysis: null
       });
     }
     
