@@ -1,7 +1,7 @@
 // /home/manal/projet_final_BPMS/frontend/src/features/rh/pages/JobOfferCandidatsPage.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, Printer } from 'lucide-react';
+import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, Printer, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useToast, toastSuccess, toastError } from '../../../shared/components/Toast';
 import { CandidateCard, Candidate, CandidateStatus } from '../components/CandidateCard';
@@ -97,60 +97,6 @@ export function JobOfferCandidatsPage() {
 
   // ✅ BroadcastChannel for real-time updates across routes/tabs
   const [channel, setChannel] = useState<BroadcastChannel | null>(null);
-  
-  useEffect(() => {
-    // Method 1: BroadcastChannel (works across tabs and same-origin frames)
-    const bc = new BroadcastChannel('candidate-updates');
-    bc.onmessage = (event) => {
-      if (event.data?.jobId === id) {
-        console.log('\n📡 ===== BROADCAST CHANNEL RECEIVED =====');
-        console.log('1. Event data:', event.data);
-        console.log('2. Refreshing candidates list...');
-        loadData(true); // Silent refresh
-        console.log('========================================\n');
-      }
-    };
-    setChannel(bc);
-    
-    // Method 2: localStorage event listener (fallback for same-tab cross-route)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'application-submitted' && e.newValue) {
-        try {
-          const data = JSON.parse(e.newValue);
-          if (data.jobId === id) {
-            console.log('\n📡 ===== LOCALSTORAGE EVENT RECEIVED =====');
-            console.log('1. Event data:', data);
-            console.log('2. Refreshing candidates list...');
-            loadData(true); // Silent refresh
-            console.log('========================================\n');
-          }
-        } catch (err) {
-          console.warn('Failed to parse localStorage event:', err);
-        }
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Method 3: CustomEvent listener (for same-tab, same-route communication)
-    const handleCustomEvent = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      if (customEvent.detail?.jobId === id) {
-        console.log('\n📡 ===== CUSTOM EVENT RECEIVED =====');
-        console.log('1. Event data:', customEvent.detail);
-        console.log('2. Refreshing candidates list...');
-        loadData(true); // Silent refresh
-        console.log('========================================\n');
-      }
-    };
-    window.addEventListener('application-submitted', handleCustomEvent);
-    
-    return () => {
-      bc.close();
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('application-submitted', handleCustomEvent);
-    };
-  }, [id]);
-
   const [jobOffer, setJobOffer] = useState<JobOffer | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,6 +113,7 @@ export function JobOfferCandidatsPage() {
   const paginatedCandidates = filteredCandidates.slice(startIndex, startIndex + itemsPerPage);
   const isRH = user?.role === 'RH' || user?.rh;
 
+  // ✅ loadData function must be defined BEFORE the useEffect that uses it
   const loadData = useCallback(async (silent = false) => {
     if (!id) return;
     if (!silent) {
@@ -174,21 +121,10 @@ export function JobOfferCandidatsPage() {
     }
     setError(null);
     try {
-      // ===== DIAGNOSTIC LOGS FOR PROBLEM 2 =====
-      console.log('\n📥 ===== FRONTEND FETCH DIAGNOSTIC =====');
-      console.log('1. Fetch URL for job offer:', `/joboffers/rh/${id}/candidates`);
-      // =========================================
-      
       const [offerRes, candidatesRes] = await Promise.all([
         jobOfferService.getOfferById(id),
         jobOfferService.getJobCandidates(id)
       ]);
-      
-      // ===== DIAGNOSTIC LOGS FOR PROBLEM 2 =====
-      console.log('2. Candidates count:', candidatesRes?.data?.length || 0);
-      console.log('3. First candidate:', candidatesRes?.data?.[0]?.fullName || 'none');
-      console.log('========================================\n');
-      // =========================================
       
       if (!offerRes.data) {
         setError('offre-404');
@@ -493,6 +429,10 @@ setCandidates(mappedCandidates);
             </div>
             {!isLoading && candidates.length > 0 && (
               <div className="flex items-center gap-2">
+                <button onClick={() => loadData()} disabled={isLoading} className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white text-sm font-medium rounded-lg">
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                  Actualiser
+                </button>
                 <button onClick={handleExportCSV} disabled={isExporting} className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white text-sm font-medium rounded-lg">
                   {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
                   CSV

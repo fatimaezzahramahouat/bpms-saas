@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Mail, Phone, Calendar, Eye, Save as SaveIcon, Trash2, ChevronDown, ChevronUp, FileText, GraduationCap, Briefcase, Clock, DollarSign, Download, Heart, Bookmark, StickyNote } from 'lucide-react';
+import { User, Mail, Phone, Calendar, Eye, Save as SaveIcon, Trash2, ChevronDown, ChevronUp, FileText, Download, Heart, StickyNote } from 'lucide-react';
 import { MatchingPercentage } from './MatchingPercentage';
 import { ComparisonTable, MatchItem } from './ComparisonTable';
 import { Label, DEFAULT_LABELS } from '../hooks/useSavedCandidates';
@@ -9,6 +9,20 @@ import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 // Candidate status types
 export type CandidateStatus = 'Nouveau' | 'En cours' | 'Archivé' | 'Rejeté';
+
+// AI Analysis interface
+export interface AIAnalysis {
+  id: string;
+  overallScore: number;
+  result?: any;
+  confidence?: number;
+  matchedSkills?: string[];
+  strengths?: string[];
+  weaknesses?: string[];
+  recommendation?: string;
+  priority?: string;
+  interviewQuestions?: string[];
+}
 
 // Candidate form data interface
 export interface CandidateFormData {
@@ -35,6 +49,7 @@ export interface Candidate {
   formData?: CandidateFormData;
   matchPercentage?: number;
   matchItems?: MatchItem[];
+  aiAnalysis?: AIAnalysis;
 }
 
 // Status badge colors based on status
@@ -216,85 +231,26 @@ const matchItems: MatchItem[] = candidate.matchItems || [];
         <MatchingPercentage percentage={matchPercentage} showCircular={true} size="sm" />
       </div>
 
-      {/* Candidate Form Data */}
+      {/* Candidate Form Data - CV only */}
       <div className="mb-4 space-y-3">
-        <h4 className="font-medium text-[var(--text-primary)] text-sm flex items-center gap-2">
-          <FileText className="w-4 h-4 text-purple-500" />
-          Données du candidat
-        </h4>
-        
         {/* CV - clickable */}
-<div className="flex items-center justify-between p-2 bg-[var(--bg-main)] rounded-lg">
-  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-    <FileText className="w-4 h-4 text-purple-500" />
-    <span>CV</span>
-  </div>
-  {formData?.cvFileName ? (
-    <button 
-      onClick={() => onViewCV?.(candidate)}
-      className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
-    >
-      <Download className="w-3 h-3" />
-      <span className="max-w-[150px] truncate">{formData.cvFileName}</span>
-    </button>
-  ) : (
-    <span className="text-xs text-[var(--text-secondary)]">Non fourni</span>
-  )}
-</div>
-
-        {/* Skills */}
-
-<div>
-  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-2">
-    <Briefcase className="w-4 h-4 text-purple-500" />
-    <span>Compétences</span>
-  </div>
-  <div className="flex flex-wrap gap-1">
-    {formData?.skills?.slice(0, 3).map((skill, index) => (
-      <SkillTag key={index} skill={skill} />
-    ))}
-    {(!formData?.skills || formData.skills.length === 0) && (
-      <span className="text-xs text-[var(--text-secondary)]">Non spécifié</span>
-    )}
-  </div>
-</div>
-
-        {/* Experience */}
-        <div className="flex items-center justify-between text-sm">
-  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-    <Briefcase className="w-4 h-4 text-purple-500" />
-    <span>Expérience</span>
-  </div>
-  <span className="text-[var(--text-primary)]">
-    {formData?.experienceLevel || 'Non spécifié'}
-  </span>
-</div>
-
-        {/* Education */}
-      <div className="flex items-center justify-between text-sm">
-  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-    <GraduationCap className="w-4 h-4 text-purple-500" />
-    <span>Formation</span>
-  </div>
-  <span className="text-[var(--text-primary)]">
-    {formData?.education || 'Non spécifié'}
-  </span>
-</div>
-
-
-        {/* Availability */}
-        <div className="flex items-center justify-between text-sm">
-  <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-    <Clock className="w-4 h-4 text-purple-500" />
-    <span>Disponibilité</span>
-  </div>
-  <span className="text-[var(--text-primary)]">
-    {formData?.availability || 'Non spécifié'}
-  </span>
-</div>
-
-        
-    
+        <div className="flex items-center justify-between p-2 bg-[var(--bg-main)] rounded-lg">
+          <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+            <FileText className="w-4 h-4 text-purple-500" />
+            <span>CV</span>
+          </div>
+          {formData?.cvFileName ? (
+            <button 
+              onClick={() => onViewCV?.(candidate)}
+              className="flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              <span className="max-w-[150px] truncate">{formData.cvFileName}</span>
+            </button>
+          ) : (
+            <span className="text-xs text-[var(--text-secondary)]">Non fourni</span>
+          )}
+        </div>
       </div>
 
   
