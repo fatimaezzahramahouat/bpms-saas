@@ -127,31 +127,31 @@ export const taskController = {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-      
-const tasks = await prisma.task.findMany({
-    where: {
-        userId: currentUserId,
-        status: "PENDING"
-    },
-    include: {
-        
-        user: {
-            select: {
-                firstName: true,
-                lastName: true,
-                email: true
-            }
-        },
-        processInstance: {
+
+        const tasks = await prisma.task.findMany({
+            where: {
+                userId: currentUserId,
+                status: "PENDING"
+            },
             include: {
-                workflow: true
-                
-            }
-        },
-        step: true
-    },
-    orderBy: { createdAt: "desc" }
-});
+
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true
+                    }
+                },
+                processInstance: {
+                    include: {
+                        user: true,
+                        workflow: true
+                    }
+                },
+                step: true
+            },
+            orderBy: { createdAt: "desc" }
+        });
 
         res.status(200).json(tasks);
     })
