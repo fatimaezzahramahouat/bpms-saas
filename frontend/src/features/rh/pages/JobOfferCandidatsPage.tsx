@@ -149,9 +149,12 @@ const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
     phone: c.phone || 'Non renseigné',
     cv: c.cv || null,  // Direct CV path from candidate.cv field
     appliedDate: app?.createdAt || c.createdAt,
-    status: (app?.status === 'APPLIED' ? 'Nouveau' : 
-             app?.status === 'INTERVIEW' ? 'En cours' : 
-             app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as CandidateStatus,
+    // ✅ FIX: Read from candidate.status (CANDIDATE, CONTACTED, ACCEPTED, REJECTED) instead of application.status
+    // The StatusDropdown updates candidate.status, so we need to read from there
+    status: (c.status === 'CANDIDATE' ? 'Nouveau' : 
+             c.status === 'CONTACTED' || c.status === 'INTERVIEW' ? 'En cours' : 
+             c.status === 'ACCEPTED' ? 'Archivé' : 
+             c.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as CandidateStatus,
     jobOfferId: id,
     
     // ✅ النسبة المئوية - prioritize advanced scoring (analysis.overallScore) over raw AI (result.overallScore)
