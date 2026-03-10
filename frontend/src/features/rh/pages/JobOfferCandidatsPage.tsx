@@ -95,12 +95,69 @@ export function JobOfferCandidatsPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { addToast } = useToast();
 
+  // ✅ BroadcastChannel for real-time updates across routes/tabs
+  const [channel, setChannel] = useState<BroadcastChannel | null>(null);
+  
+  useEffect(() => {
+    // Method 1: BroadcastChannel (works across tabs and same-origin frames)
+    const bc = new BroadcastChannel('candidate-updates');
+    bc.onmessage = (event) => {
+      if (event.data?.jobId === id) {
+        console.log('\n📡 ===== BROADCAST CHANNEL RECEIVED =====');
+        console.log('1. Event data:', event.data);
+        console.log('2. Refreshing candidates list...');
+        loadData(true); // Silent refresh
+        console.log('========================================\n');
+      }
+    };
+    setChannel(bc);
+    
+    // Method 2: localStorage event listener (fallback for same-tab cross-route)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'application-submitted' && e.newValue) {
+        try {
+          const data = JSON.parse(e.newValue);
+          if (data.jobId === id) {
+            console.log('\n📡 ===== LOCALSTORAGE EVENT RECEIVED =====');
+            console.log('1. Event data:', data);
+            console.log('2. Refreshing candidates list...');
+            loadData(true); // Silent refresh
+            console.log('========================================\n');
+          }
+        } catch (err) {
+          console.warn('Failed to parse localStorage event:', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Method 3: CustomEvent listener (for same-tab, same-route communication)
+    const handleCustomEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.jobId === id) {
+        console.log('\n📡 ===== CUSTOM EVENT RECEIVED =====');
+        console.log('1. Event data:', customEvent.detail);
+        console.log('2. Refreshing candidates list...');
+        loadData(true); // Silent refresh
+        console.log('========================================\n');
+      }
+    };
+    window.addEventListener('application-submitted', handleCustomEvent);
+    
+    return () => {
+      bc.close();
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('application-submitted', handleCustomEvent);
+    };
+  }, [id]);
+
   const [jobOffer, setJobOffer] = useState<JobOffer | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [lastCandidateCount, setLastCandidateCount] = useState(0);
 
   const itemsPerPage = 4;
   const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
@@ -110,15 +167,28 @@ export function JobOfferCandidatsPage() {
   const paginatedCandidates = filteredCandidates.slice(startIndex, startIndex + itemsPerPage);
   const isRH = user?.role === 'RH' || user?.rh;
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     if (!id) return;
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
+      // ===== DIAGNOSTIC LOGS FOR PROBLEM 2 =====
+      console.log('\n📥 ===== FRONTEND FETCH DIAGNOSTIC =====');
+      console.log('1. Fetch URL for job offer:', `/joboffers/rh/${id}/candidates`);
+      // =========================================
+      
       const [offerRes, candidatesRes] = await Promise.all([
         jobOfferService.getOfferById(id),
         jobOfferService.getJobCandidates(id)
       ]);
+      
+      // ===== DIAGNOSTIC LOGS FOR PROBLEM 2 =====
+      console.log('2. Candidates count:', candidatesRes?.data?.length || 0);
+      console.log('3. First candidate:', candidatesRes?.data?.[0]?.fullName || 'none');
+      console.log('========================================\n');
+      // =========================================
       
       if (!offerRes.data) {
         setError('offre-404');
@@ -161,11 +231,25 @@ const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
              app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as CandidateStatus,
     jobOfferId: id,
     
-    // ✅ النسبة المئوية - من عدة مصادر محتملة
-    matchPercentage: result?.overallScore || 
+    // ✅ النسبة المئوية - prioritize advanced scoring (analysis.overallScore) over raw AI (result.overallScore)
+    matchPercentage: analysis?.overallScore || 
+                    result?.overallScore ||
                     result?.scoreGlobal ||
-                    analysis?.overallScore ||
                     (analysis?.confidence ? Math.round(analysis.confidence * 100) : 0),
+    
+    // ✅ إضافة aiAnalysis للتصحيح
+    aiAnalysis: analysis ? {
+      id: analysis.id,
+      overallScore: analysis.overallScore || 0,
+      result: analysis.result,
+      confidence: analysis.confidence,
+      matchedSkills: analysis.matchedSkills,
+      strengths: analysis.strengths,
+      weaknesses: analysis.weaknesses,
+      recommendation: analysis.recommendation,
+      priority: analysis.priority,
+      interviewQuestions: analysis.interviewQuestions
+    } : undefined,
     
     // ✅ البيانات الديناميكية من التحليل
     formData: {
@@ -206,12 +290,19 @@ const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
 });
 
 setCandidates(mappedCandidates);
+      
+      // Track candidate count for auto-refresh
+      setLastCandidateCount(mappedCandidates.length);
 
     } catch (err: any) {
       console.error('Error loading candidates data:', err);
-      setError(err.response?.data?.error || 'Erreur lors du chargement des données');
+      if (!silent) {
+        setError(err.response?.data?.error || 'Erreur lors du chargement des données');
+      }
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [id]);
 
@@ -279,6 +370,80 @@ setCandidates(mappedCandidates);
   }, [currentPage, pageFromUrl, setSearchParams]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-refresh candidates list every 3 seconds to catch new applications
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // Only refresh if there was a previous candidate count and loading is not in progress
+      if (lastCandidateCount > 0 && !isLoading) {
+        loadData(true); // Silent refresh without loading indicator
+      }
+    }, 3000); // Refresh every 3 seconds
+    
+    return () => clearInterval(intervalId);
+  }, [loadData, lastCandidateCount, isLoading]);
+
+  // Listen for custom refresh-candidates event from ApplicationModal
+  useEffect(() => {
+    const handleRefreshCandidates = (event: Event) => {
+      const customEvent = event as CustomEvent<{ jobId?: string }>;
+      console.log('📥 [EVENT] Received refresh-candidates event:', customEvent.detail);
+      // Only refresh if the event is for this job offer
+      if (!customEvent.detail?.jobId || customEvent.detail.jobId === id) {
+        loadData(true); // Silent refresh
+      }
+    };
+
+    window.addEventListener('refresh-candidates', handleRefreshCandidates);
+    return () => window.removeEventListener('refresh-candidates', handleRefreshCandidates);
+  }, [id, loadData]);
+
+  // Listen for application-submitted events to immediately refresh the list
+  useEffect(() => {
+    const handleApplicationSubmitted = (event: Event) => {
+      const customEvent = event as CustomEvent<{ jobId: string; timestamp: number }>;
+      console.log('\n🔔 ===== APPLICATION SUBMITTED EVENT RECEIVED =====');
+      console.log('1. Event detail:', customEvent.detail);
+      console.log('2. Current job offer id:', id);
+      console.log('3. Refreshing candidates list...');
+      // Refresh immediately when a new application is submitted
+      loadData(true); // Silent refresh
+      console.log('========================================\n');
+    };
+
+    window.addEventListener('application-submitted', handleApplicationSubmitted);
+    
+    return () => {
+      window.removeEventListener('application-submitted', handleApplicationSubmitted);
+    };
+  }, [loadData, id]);
+
+  // Listen for localStorage changes (for cross-tab/route communication)
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'application-submitted' && event.newValue) {
+        try {
+          const data = JSON.parse(event.newValue);
+          console.log('\n🔔 ===== STORAGE EVENT RECEIVED =====');
+          console.log('1. Storage event data:', data);
+          console.log('2. Current job offer id:', id);
+          if (data.jobId === id) {
+            console.log('3. Refreshing candidates list...');
+            loadData(true); // Silent refresh
+            console.log('========================================\n');
+          }
+        } catch (e) {
+          console.error('Failed to parse storage event:', e);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadData, id]);
 
   // ========== EARLY RETURNS ==========
   if (!id) {
@@ -389,8 +554,8 @@ setCandidates(mappedCandidates);
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {paginatedCandidates.map((candidate) => {
-                // ✅ استخراج aiAnalysis من المرشح (للاستخدام في LightAnalysisPreview)
-                const aiAnalysis = (candidate as any).aiAnalysis || null;
+                // ✅ استخدام aiAnalysis من الكائن المحمل بالفعل
+                const aiAnalysis = candidate.aiAnalysis || null;
                 
                 return (
                   <div key={candidate.id} className="space-y-4">

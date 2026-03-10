@@ -1,7 +1,8 @@
 // /home/manal/projet_final_BPMS/backend/src/lib/cvExtractor.ts
+// @ts-ignore
 
 import fs from 'fs/promises';
-import { PDFParse } from 'pdf-parse';
+const pdfParse = require('pdf-parse');
 
 // ============================================================================
 // INTERFACES - هيكل البيانات المستخرجة
@@ -139,6 +140,9 @@ export interface CVData {
     totalYearsExperience: number;
     expertiseLevel: string;
     technologiesCount: number;
+    extractionMethod?: string;
+    textQuality?: 'HIGH' | 'MEDIUM' | 'LOW' | 'FAILED';
+    charCount?: number;
   };
 }
 
@@ -601,49 +605,125 @@ function extractEducation(text: string): Education[] {
   return education;
 }
 
+/**
+ * Extract technologies from a given text and return as an array of strings.
+ * Used in projects and achievements sections.
+ */
 function extractTechnologiesFromText(text: string): string[] {
-  const lowerText = text.toLowerCase();
-  const found: string[] = [];
-  
-  for (const [category, keywords] of Object.entries(techKeywords)) {
+  const technologies: string[] = [];
+  const normalizedText = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Search through all technology categories
+  for (const keywords of Object.values(techKeywords)) {
     for (const keyword of keywords) {
-      if (lowerText.includes(keyword.toLowerCase()) && !found.includes(keyword)) {
-        found.push(keyword);
+      const kwLower = keyword.toLowerCase();
+      // Check if keyword exists in text (as whole word or part of longer term)
+      if (normalizedText.includes(kwLower)) {
+        // Avoid duplicates
+        if (!technologies.includes(keyword)) {
+          technologies.push(keyword);
+        }
       }
     }
   }
-  
-  return found;
+
+  return technologies;
 }
 
 function extractTechnicalSkills(text: string): TechnicalSkills {
+  // ✅ Initialize skills object
   const skills: TechnicalSkills = {
     frontend: [], backend: [], databases: [], devops: [], security: [],
     cms: [], tools: [], automation: [], methodologies: [], testing: []
   };
   
-  const lowerText = text.toLowerCase();
-  const skillsSection = text.split('COMPÉTENCES')?.[1]?.split('RÉALISATIONS')?.[0] || text;
+  // ✅ DIAGNOSTIC: Log input
+  console.log('🛠️ [extractTechnicalSkills] Input text length:', text?.length || 0);
+  console.log('🛠️ [extractTechnicalSkills] Text preview:', text?.substring(0, 200));
+  
+  // ✅ Normalize text for flexible matching
+  const normalizedText = text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // Remove accents: é → e
+    .replace(/[،]/g, ',');              // Normalize Chinese commas
+  
+  // ✅ Strategy 1: Search in skills section if found (any format)
+  const skillsSectionMatch = text.split(/COMPÉTENCES|COMPETENCES|SKILLS|COMPÉTENCES TECHNIQUES|COMPETENCES TECHNIQUES/i);
+  const skillsSection = skillsSectionMatch?.[1]?.split(/RÉALISATIONS|PROJECTS|LANGUES|EXPÉRIENCES|FORMATION/i)?.[0] || text;
+  const lowerSection = skillsSection.toLowerCase();
+  
+  console.log('🛠️ [extractTechnicalSkills] Skills section length:', skillsSection?.length || 0);
+  
+  // ✅ Strategy 2: Search in full text as fallback
+  const searchText = normalizedText;
+  
+  // ✅ Extract skills by category
+  let totalFound = 0;
+  for (const [category, keywords] of Object.entries(techKeywords)) {
+    const categoryKey = category as keyof TechnicalSkills;
+    for (const keyword of keywords) {
+      const kwLower = keyword.toLowerCase();
+      
+      // Flexible match: in section OR in full text
+      const inSection = lowerSection.includes(kwLower);
+      const inFullText = searchText.includes(kwLower);
+      
+      if (inSection || inFullText) {
+        // ✅ FIX: Add null check with || []
+        const targetArray = skills[categoryKey] || [];
+        if (!targetArray.includes(keyword)) {
+          targetArray.push(keyword);
+          totalFound++;
+        }
+      }
+    }
+  }
+  
+  console.log('🛠️ [extractTechnicalSkills] Total skills found:', totalFound);
+  console.log('🛠️ [extractTechnicalSkills] Frontend skills:', skills.frontend?.slice(0, 5));
+  console.log('🛠️ [extractTechnicalSkills] Backend skills:', skills.backend?.slice(0, 5));
+  
+  // ✅ Extra extraction from experiences and projects sections
+  const expSectionMatch = text.split(/EXPÉRIENCES|EXPERIENCE PROFESSIONNELLE/i);
+  const expSection = expSectionMatch?.[1]?.split(/FORMATION|EDUCATION/i)?.[0] || '';
+  
+  const projSectionMatch = text.split(/PROJETS|PROJECTS|REALISATIONS/i);
+  const projSection = projSectionMatch?.[1]?.split(/LANGUES|SKILLS/i)?.[0] || '';
+  
+  const extraText = (expSection + ' ' + projSection).toLowerCase();
   
   for (const [category, keywords] of Object.entries(techKeywords)) {
+    const categoryKey = category as keyof TechnicalSkills;
     for (const keyword of keywords) {
-      if (lowerText.includes(keyword.toLowerCase())) {
-        if (category === 'frontend') skills.frontend.push(keyword);
-        else if (category === 'backend') skills.backend.push(keyword);
-        else if (category === 'databases') skills.databases.push(keyword);
-        else if (category === 'devops') skills.devops.push(keyword);
-        else if (category === 'security') skills.security.push(keyword);
-        else if (category === 'cms') skills.cms.push(keyword);
-        else if (category === 'tools') skills.tools.push(keyword);
-        else if (category === 'automation') skills.automation.push(keyword);
-        else if (category === 'methodologies') skills.methodologies.push(keyword);
-        else if (category === 'testing') skills.testing.push(keyword);
+      const kwLower = keyword.toLowerCase();
+      if (extraText.includes(kwLower)) {
+        // ✅ FIX: Add null check with || []
+        const targetArray = skills[categoryKey] || [];
+        if (!targetArray.includes(keyword)) {
+          targetArray.push(keyword);
+        }
       }
+    }
+  }
+  
+  // ✅ Handle skills with parentheses: "Node.js(Env...)" → "Node.js"
+  for (const category of Object.keys(skills) as (keyof TechnicalSkills)[]) {
+    const arr = skills[category] || [];
+    if (arr.length > 0) {
+      skills[category] = arr.map(skill => {
+        const match = skill?.match(/^([^(]+)/);
+        return match && match[1] ? match[1].trim() : (skill || '');
+      }).filter(Boolean);
     }
   }
   
   return skills;
 }
+
 
 function extractAchievementsFromText(text: string): Achievement[] {
   const achievements: Achievement[] = [];
@@ -838,36 +918,111 @@ export function extractTechnologiesWithExperience(text: string, skills: Technica
 // ============================================================================
 
 export async function extractCVDataFromPDF(filePath: string): Promise<CVData> {
-  // ✅ [تصحيح] استخدام pdf-parse v2.x API
-  const pdfBuffer = await fs.readFile(filePath);
-  const pdfParser = new PDFParse({ data: pdfBuffer });
-  const pdfData = await pdfParser.getText();
-  const rawText = pdfData.text;
-  
-  const personalInfo = extractPersonalInfo(rawText);
-  const workExperiences = extractWorkExperiences(rawText);
-  const education = extractEducation(rawText);
-  const technicalSkills = extractTechnicalSkills(rawText);
-  const achievements = extractAchievements(rawText);
-  const projects = extractProjects(rawText);
-  const certifications = extractCertifications(rawText);
-  const languages = extractLanguages(rawText);
-  const interests = extractInterests(rawText);
-  
-  const technologiesWithExperience = extractTechnologiesWithExperience(rawText, technicalSkills, workExperiences);
-  const softSkills = extractSoftSkills(rawText);
-  const publicLinks = extractPublicLinks(rawText);
-  const publicProjects = extractPublicProjects(rawText);
-  
-  const totalYearsExperience = calculateTotalYearsExperience(workExperiences);
-  const expertiseLevel = calculateExpertiseLevel(technicalSkills, workExperiences);
-  const technologiesCount = Object.values(technicalSkills).reduce((acc: number, arr: string[]) => acc + arr.length, 0);
-  
-  return {
-    personalInfo, workExperiences, education, technicalSkills, achievements, projects, certifications, languages, interests, rawText,
-    technologiesWithExperience, softSkills, publicLinks, publicProjects,
-    metadata: { extractionDate: new Date().toISOString(), totalYearsExperience, expertiseLevel, technologiesCount }
-  };
+  try {
+    console.log('📄 Reading PDF:', filePath);
+    
+    // ✅ 1. قراءة ملف PDF
+    const pdfBuffer = await fs.readFile(filePath);
+    
+    // ✅ 2. استخراج النص باستخدام pdf-parse (الطريقة الصحيحة)
+    const pdfData = await pdfParse(pdfBuffer); 
+    const rawText = pdfData.text; 
+    
+    // ===== DIAGNOSTIC LOGS FOR PROBLEM 1 =====
+    console.log('\n🔍 ===== CV EXTRACTION DIAGNOSTIC =====');
+    console.log('1. PDF file path:', filePath);
+    console.log('2. PDF buffer size:', pdfBuffer?.length || 0, 'bytes');
+    console.log('3. pdf-parse result:', {
+      numpages: pdfData?.numpages,
+      textLength: pdfData?.text?.length || 0
+    });
+    console.log('4. Raw text preview (first 300 chars):', pdfData?.text?.substring(0, 300));
+    // =========================================
+    
+    // ✅ 3. استخراج جميع أقسام الـ CV
+    const personalInfo = extractPersonalInfo(rawText);
+    const workExperiences = extractWorkExperiences(rawText);
+    const education = extractEducation(rawText);
+    const technicalSkills = extractTechnicalSkills(rawText);
+    const achievements = extractAchievements(rawText);
+    const projects = extractProjects(rawText);
+    const certifications = extractCertifications(rawText);
+    const languages = extractLanguages(rawText);
+    const interests = extractInterests(rawText);
+    
+    // ===== DIAGNOSTIC LOGS FOR PROBLEM 1 =====
+    console.log('5. Skills extracted:', {
+      frontend: technicalSkills?.frontend?.length || 0,
+      backend: technicalSkills?.backend?.length || 0,
+      total: Object.values(technicalSkills || {}).reduce((a:any, arr:any) => a + (arr?.length||0), 0)
+    });
+    console.log('========================================\n');
+    // =========================================
+    
+    // ✅ 4. حساب البيانات الوصفية
+    const totalYearsExperience = calculateTotalYearsExperience(workExperiences);
+    const expertiseLevel = calculateExpertiseLevel(technicalSkills, workExperiences);
+    const technologiesCount = Object.values(technicalSkills).reduce((acc: number, arr: string[]) => acc + arr.length, 0);
+    
+    console.log('✅ CV extracted:', {
+      name: personalInfo.fullName,
+      skills: technologiesCount,
+      experiences: workExperiences.length
+    });
+    
+    // ✅ 5. إرجاع البيانات الكاملة
+    return {
+      personalInfo,
+      workExperiences,
+      education,
+      technicalSkills,
+      achievements,
+      projects,
+      certifications,
+      languages,
+      interests,
+      rawText,
+      technologiesWithExperience: extractTechnologiesWithExperience(rawText, technicalSkills, workExperiences),
+      softSkills: extractSoftSkills(rawText),
+      publicLinks: extractPublicLinks(rawText),
+      publicProjects: extractPublicProjects(rawText),
+      metadata: {
+        extractionDate: new Date().toISOString(),
+        totalYearsExperience,
+        expertiseLevel,
+        technologiesCount
+      }
+    };
+    
+  } catch (error: any) {
+    console.error('❌ PDF extraction failed:', {
+      message: error?.message || error,
+      filePath
+    });
+    
+    // ✅ Fallback: إرجاع بيانات فارغة صالحة
+    return {
+      personalInfo: { fullName: 'Unknown', email: '', phone: '', location: '' },
+      workExperiences: [],
+      education: [],
+      technicalSkills: { 
+        frontend: [], backend: [], databases: [], devops: [], security: [], 
+        cms: [], tools: [], automation: [], methodologies: [], testing: [] 
+      },
+      achievements: [], projects: [], certifications: [], languages: [], interests: [],
+      rawText: '',
+      technologiesWithExperience: [],
+      softSkills: [],
+      publicLinks: [],
+      publicProjects: [],
+      metadata: { 
+        extractionDate: new Date().toISOString(), 
+        totalYearsExperience: 0, 
+        expertiseLevel: 'Unknown', 
+        technologiesCount: 0 
+      }
+    };
+  }
 }
 
 export async function extractCVDataFromText(text: string): Promise<Partial<CVData>> {

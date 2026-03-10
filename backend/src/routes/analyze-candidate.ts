@@ -2,12 +2,20 @@
 import { Router, Request, Response } from 'express';
 import { generateContent } from '../lib/groq';
 import { createAnalysisPrompt, type CVData as FullCVData, type JobOfferData } from '../lib/prompts';
-import { extractCVDataFromText, type CVData as ExtractedCVData } from '../lib/cvExtractor';
+import { extractCVDataFromText, extractCVDataFromPDF, type CVData as ExtractedCVData } from '../lib/cvExtractor';
+import { convertPDFtoText, validatePDF } from '../lib/pdfToTextConverter';
 import prisma from '../lib/prisma';
+import fs from 'fs/promises';
+import pdfParse from 'pdf-parse';
+const pdfParseFn = (pdfParse as any).default || pdfParse;
 
+import * as path from 'path';
+import * as os from 'os';
 const router = Router();
 
+
 // ============ Helper Functions ============
+
 
 const ensureArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -59,9 +67,9 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
         cachedAnalysis = cacheResults[0];
       }
     }
-
+    
     if (cachedAnalysis) {
-      console.log('📦 Returning cached analysis');
+      console.log('📦 Returning cached analysis for candidate:', candidateId, 'job:', jobOfferId);
       return res.status(200).json({
         success: true,
         cached: true,
@@ -106,8 +114,7 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
           period: cvData.experience,
           location: (cvData as any).location || 'Non spécifié',
           responsibilities: skillsArray.length > 0 ? skillsArray : ['Compétences mentionnées'],
-          technologies: skillsArray,
-          achievements: (cvData as any).achievements || []
+          technologies: skillsArray
         }] : [],
         education: cvData.education ? [{
           degree: cvData.education,
@@ -179,87 +186,231 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
         publicProjects: partialData.publicProjects || [],
         metadata: partialData.metadata || { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
       };
-    } else if (cvUrl) {
-      console.log(`📄 Fetching CV from URL: ${cvUrl}`);
-      if (cvUrl.toLowerCase().endsWith('.pdf')) {
-        // For PDF URLs, use minimal data
-        extractedCVData = {
-          personalInfo: { fullName: 'Non spécifié', email: '', phone: '', location: '' },
-          workExperiences: [],
-          education: [],
-          technicalSkills: { frontend: [], backend: [], databases: [], devops: [], security: [], cms: [], tools: [], automation: [], methodologies: [], testing: [] },
-          achievements: [],
-          projects: [],
-          certifications: [],
-          languages: [],
-          interests: [],
-          rawText: `CV available at: ${cvUrl}`,
-          technologiesWithExperience: [],
-          softSkills: [],
-          publicLinks: [],
-          publicProjects: [],
-          metadata: { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
-        };
-      } else {
-        try {
-          const response = await fetch(cvUrl);
-          const text = await response.text();
-          const partialData = await extractCVDataFromText(text);
-          // ✅ [تصحيح 3+4] التعامل مع Partial<CVData>
-          extractedCVData = {
-            personalInfo: partialData.personalInfo || { fullName: 'Non spécifié', email: '', phone: '', location: '' },
-            workExperiences: partialData.workExperiences || [],
-            education: partialData.education || [],
-            technicalSkills: partialData.technicalSkills || { frontend: [], backend: [], databases: [], devops: [], security: [], cms: [], tools: [], automation: [], methodologies: [], testing: [] },
-            achievements: partialData.achievements || [],
-            projects: partialData.projects || [],
-            certifications: partialData.certifications || [],
-            languages: partialData.languages || [],
-            interests: partialData.interests || [],
-            rawText: partialData.rawText || text,
-            technologiesWithExperience: partialData.technologiesWithExperience || [],
-            softSkills: partialData.softSkills || [],
-            publicLinks: partialData.publicLinks || [],
-            publicProjects: partialData.publicProjects || [],
-            metadata: partialData.metadata || { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
-          };
-        } catch (fetchError) {
-          console.error('❌ Failed to fetch CV URL:', fetchError);
-          extractedCVData = {
-            personalInfo: { fullName: 'Non spécifié', email: '', phone: '', location: '' },
-            workExperiences: [],
-            education: [],
-            technicalSkills: { frontend: [], backend: [], databases: [], devops: [], security: [], cms: [], tools: [], automation: [], methodologies: [], testing: [] },
-            achievements: [],
-            projects: [],
-            certifications: [],
-            languages: [],
-            interests: [],
-            rawText: `CV available at: ${cvUrl}`,
-            technologiesWithExperience: [],
-            softSkills: [],
-            publicLinks: [],
-            publicProjects: [],
-            metadata: { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
-          };
-        }
+    } else // ============================================================================
+// ✅ FIX: Handle BOTH local file paths AND remote URLs for CVs
+// ============================================================================
+
+if (cvUrl) {
+  console.log('🔍 [CV HANDLER] Processing cvUrl:', cvUrl);
+  
+  try {
+    // ✅ Check if it's a PDF file that needs conversion
+    const isPdfFile = cvUrl.toLowerCase().endsWith('.pdf');
+    const isLocalFile = cvUrl.startsWith('/') || cvUrl.startsWith('./') || cvUrl.startsWith('../');
+    
+    let rawText: string = '';
+    let extractionMethod: string = 'Unknown';
+    let textQuality: string = 'Unknown';
+    let charCount: number = 0;
+    
+    if (isPdfFile && isLocalFile) {
+      // ✅ Convert PDF to text using new converter
+      console.log('📄 [PDF Handler] Converting PDF to TXT...');
+      
+      const fullPath = cvUrl.startsWith('/') ? cvUrl : path.join(process.cwd(), cvUrl);
+      
+      // Validate PDF first
+      const validation = await validatePDF(fullPath);
+      if (!validation.valid) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Invalid PDF file', 
+          details: validation.error 
+        });
       }
+      
+      // Convert PDF to text
+      const conversionResult = await convertPDFtoText(fullPath);
+      
+      // Handle conversion failure
+      if (!conversionResult.success) {
+        console.error('❌ [PDF Handler] Conversion failed:', conversionResult.error);
+        return res.status(400).json({
+          success: false,
+          error: 'CV Extraction Failed',
+          details: conversionResult.error,
+          qualityScore: conversionResult.qualityScore,
+          suggestion: 'Please upload CV as .txt or .docx, or ensure PDF is text-based (not scanned image)'
+        });
+      }
+      
+      // Use converted text
+      rawText = conversionResult.text;
+      extractionMethod = 'PDF→TXT';
+      textQuality = conversionResult.qualityScore || 'Unknown';
+      charCount = conversionResult.charCount;
+      
+      console.log('✅ [PDF Handler] Conversion successful:', charCount, 'chars, quality:', textQuality);
+      
+    } else if (isLocalFile) {
+      // ✅ Handle other local file types (txt, etc.)
+      console.log('📄 Reading local file:', cvUrl);
+      const fullPath = cvUrl.startsWith('/') ? cvUrl : path.join(process.cwd(), cvUrl);
+      rawText = await fs.readFile(fullPath, 'utf-8');
+      extractionMethod = 'Direct Text';
+      textQuality = rawText.length > 500 ? 'HIGH' : rawText.length > 200 ? 'MEDIUM' : 'LOW';
+      charCount = rawText.length;
+      
+    } else {
+      // ✅ Handle REMOTE URL (http/https)
+      console.log('🌐 Fetching remote URL:', cvUrl);
+      
+      const response = await fetch(cvUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfBuffer = Buffer.from(arrayBuffer);
+      
+      // Try to convert
+      const conversionResult = await convertPDFtoText(pdfBuffer as any);
+      
+      if (!conversionResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'CV Extraction Failed',
+          details: conversionResult.error,
+          qualityScore: conversionResult.qualityScore
+        });
+      }
+      
+      rawText = conversionResult.text;
+      extractionMethod = 'PDF→TXT';
+      textQuality = conversionResult.qualityScore || 'Unknown';
+      charCount = conversionResult.charCount;
+    }
+    
+    // ✅ Log extracted text
+    console.log('📝 Extracted text length:', charCount, 'chars');
+    console.log('📝 Text preview:', rawText?.substring(0, 300));
+    console.log('📝 Extraction method:', extractionMethod);
+    console.log('📝 Text quality:', textQuality);
+    
+    // ✅ Extract CV data from text
+    const partialData = await extractCVDataFromText(rawText);
+    
+    // ✅ Build full CVData object
+    extractedCVData = {
+      personalInfo: partialData.personalInfo || { fullName: 'Unknown', email: '', phone: '', location: '' },
+      workExperiences: partialData.workExperiences || [],
+      education: partialData.education || [],
+      technicalSkills: partialData.technicalSkills || { 
+        frontend: [], backend: [], databases: [], devops: [], security: [], 
+        cms: [], tools: [], automation: [], methodologies: [], testing: [] 
+      },
+      achievements: partialData.achievements || [],
+      projects: partialData.projects || [],
+      certifications: partialData.certifications || [],
+      languages: partialData.languages || [],
+      interests: partialData.interests || [],
+      rawText: rawText,
+      technologiesWithExperience: partialData.technologiesWithExperience || [],
+      softSkills: partialData.softSkills || [],
+      publicLinks: partialData.publicLinks || [],
+      publicProjects: partialData.publicProjects || [],
+      metadata: { 
+        extractionDate: new Date().toISOString(), 
+        totalYearsExperience: 0, 
+        expertiseLevel: 'Unknown', 
+        technologiesCount: 0,
+        extractionMethod: extractionMethod,
+        textQuality: textQuality as any,
+        charCount: charCount
+      }
+    };
+    
+    // ✅ Log extraction results
+    const totalSkills = Object.values(extractedCVData.technicalSkills).reduce(
+      (acc: number, arr: any) => acc + (arr?.length || 0), 0
+    );
+    console.log('✅ CV processed:', {
+      name: extractedCVData.personalInfo?.fullName,
+      skills: totalSkills,
+      textLength: rawText.length
+    });
+    
+  } catch (error: any) {
+    console.error('❌ CV processing failed:', {
+      message: error?.message || error,
+      cvUrl,
+      stack: error?.stack
+    });
+    
+    // ✅ Fallback: minimal valid CVData
+    extractedCVData = {
+      personalInfo: { fullName: 'Unknown', email: '', phone: '', location: '' },
+      workExperiences: [],
+      education: [],
+      technicalSkills: { 
+        frontend: [], backend: [], databases: [], devops: [], security: [], 
+        cms: [], tools: [], automation: [], methodologies: [], testing: [] 
+      },
+      achievements: [], projects: [], certifications: [], languages: [], interests: [],
+      rawText: `CV available at: ${cvUrl}`,
+      technologiesWithExperience: [],
+      softSkills: [],
+      publicLinks: [],
+      publicProjects: [],
+      metadata: { 
+        extractionDate: new Date().toISOString(), 
+        totalYearsExperience: 0, 
+        expertiseLevel: 'Unknown', 
+        technologiesCount: 0 
+      }
+    };
+  }
     } else {
       return res.status(400).json({ success: false, error: 'CV data is missing. Provide cvText, cvUrl, or cvData' });
     }
 
     console.log('🔄 Generating AI analysis...');
     
-    // ✅ DEBUG: Log what data is being sent to AI
-    const skillsFromCv = cvData?.skills ? (Array.isArray(cvData.skills) ? cvData.skills : cvData.skills.split(/[,;\n]/)) : [];
-    console.log('📤 Data being analyzed:');
-    console.log('  - Candidate:', cvData?.name || 'Unknown');
-    console.log('  - Skills count:', skillsFromCv.length);
-    console.log('  - Experience:', cvData?.experience?.substring(0, 100) || 'None');
-    console.log('  - Job:', jobOfferData?.title || 'Unknown');
-    console.log('  - Required skills:', jobOfferData?.requiredSkills?.length || 0);
+    // ===== DEEP CV EXTRACTION DIAGNOSTIC =====
+    console.log('\n🔍 ===== DEEP CV EXTRACTION DIAGNOSTIC =====');
+    console.log('Request ID:', `REQ_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+    console.log('Candidate ID:', candidateId);
+    console.log('Candidate Name:', extractedCVData.personalInfo?.fullName);
+    console.log('CV Source:', req.body.cvUrl || req.body.cvData?.source || 'cvData object');
+    console.log('Raw Text Length:', extractedCVData.rawText?.length || 0, 'characters');
+    console.log('Raw Text Preview (first 300 chars):', 
+      `"${(extractedCVData.rawText || '').substring(0, 300).replace(/\n/g, '\\n')}"`);
+    console.log('Skills Breakdown:');
+    console.log('  • Frontend:', extractedCVData.technicalSkills?.frontend || []);
+    console.log('  • Backend:', extractedCVData.technicalSkills?.backend || []);
+    console.log('  • Databases:', extractedCVData.technicalSkills?.databases || []);
+    console.log('  • DevOps:', extractedCVData.technicalSkills?.devops || []);
+    console.log('  • Total:', Object.values(extractedCVData.technicalSkills || {}).flat().length);
+    console.log('Work Experiences:', extractedCVData.workExperiences?.map(e => e.title) || 'None');
+    console.log('Education:', extractedCVData.education?.map(e => e.degree) || 'None');
+    console.log('Is Fallback Data?', 
+      extractedCVData.technicalSkills?.backend?.length === 3 && 
+      extractedCVData.technicalSkills?.backend?.every((s: string) => ['JavaScript', 'Node.js', 'Git'].includes(s))
+    );
+    console.log('🔍 ===== END DIAGNOSTIC =====\n');
+    // =========================================
     
-    const prompt = createAnalysisPrompt(extractedCVData, jobOfferData as JobOfferData);
+    let prompt: string;
+    try {
+      prompt = createAnalysisPrompt(extractedCVData, jobOfferData as JobOfferData);
+    } catch (promptError: any) {
+      console.error('❌ [Prompt Generation Failed]', promptError.message);
+      return res.status(400).json({ 
+        success: false, 
+        error: 'CV extraction failed - unable to analyze this CV',
+        details: promptError.message,
+        candidateId,
+        isExtractionIssue: true
+      });
+    }
+    
+    console.log('4. Prompt length:', prompt.length, 'chars');
+    console.log('5. Prompt first 500 chars:', prompt.substring(0, 500));
+    console.log('6. Prompt contains unique ID?', prompt.includes('REQ_') ? 'YES - ' + prompt.match(/REQ_[a-z0-9_]+/)?.[0] : 'NO');
+    console.log('7. Prompt contains candidate name?', prompt.includes(extractedCVData?.personalInfo?.fullName || 'NOT_FOUND') ? 'YES' : 'NO');
+    console.log('========================================\n');
+    // =========================================
+    
     const analysisText = await generateContent(prompt);
 
     let analysis: any;
