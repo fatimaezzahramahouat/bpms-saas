@@ -2,7 +2,7 @@
 // @ts-ignore
 
 import fs from 'fs/promises';
-const pdfParse = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 
 // ============================================================================
 // INTERFACES - هيكل البيانات المستخرجة
@@ -924,16 +924,17 @@ export async function extractCVDataFromPDF(filePath: string): Promise<CVData> {
     // ✅ 1. قراءة ملف PDF
     const pdfBuffer = await fs.readFile(filePath);
     
-    // ✅ 2. استخراج النص باستخدام pdf-parse (الطريقة الصحيحة)
-    const pdfData = await pdfParse(pdfBuffer); 
-    const rawText = pdfData.text; 
+    // ✅ 2. استخراج النص باستخدام pdf-parse v2.x API
+    const pdfParser = new PDFParse({ data: pdfBuffer });
+    const pdfData = await pdfParser.getText();
+    const rawText = pdfData.text;
     
     // ===== DIAGNOSTIC LOGS FOR PROBLEM 1 =====
     console.log('\n🔍 ===== CV EXTRACTION DIAGNOSTIC =====');
     console.log('1. PDF file path:', filePath);
     console.log('2. PDF buffer size:', pdfBuffer?.length || 0, 'bytes');
     console.log('3. pdf-parse result:', {
-      numpages: pdfData?.numpages,
+      pages: pdfData?.pages?.length,
       textLength: pdfData?.text?.length || 0
     });
     console.log('4. Raw text preview (first 300 chars):', pdfData?.text?.substring(0, 300));

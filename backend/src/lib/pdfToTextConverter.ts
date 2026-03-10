@@ -1,9 +1,10 @@
 // /home/manal/projet_final_BPMS/backend/src/lib/pdfToTextConverter.ts
 // PDF to Text conversion with quality validation
 
+// ✅ FIXED: pdf-parse v2.x uses class constructor
+const { PDFParse } = require('pdf-parse');
+
 import fs from 'fs/promises';
-const pdfParse = require('pdf-parse');
-const pdfParseFn = (pdfParse as any).default || pdfParse;
 
 // ============================================================================
 // INTERFACES
@@ -47,10 +48,11 @@ export async function convertPDFtoText(pdfPath: string): Promise<TextExtractionR
     const pdfBuffer = await fs.readFile(pdfPath);
     console.log('📊 [PDF→TXT] Buffer size:', pdfBuffer.length, 'bytes');
     
-    // 3. Extract text using pdf-parse
-    const pdfData = await pdfParseFn(pdfBuffer);
+    // 3. Extract text using pdf-parse v2.x
+    const pdfParser = new PDFParse({ data: pdfBuffer });
+    const pdfData = await pdfParser.getText();
     const rawText = pdfData.text?.trim() || '';
-    const pageCount = pdfData.numpages || 0;
+    const pageCount = pdfData.pages?.length || 0;
     
     console.log('📝 [PDF→TXT] Extracted chars:', rawText.length);
     console.log('📝 [PDF→TXT] Page count:', pageCount);

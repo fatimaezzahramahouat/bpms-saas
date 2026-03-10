@@ -13,6 +13,7 @@ export interface JobOfferData {
   company?: string;
   description?: string;
   requiredSkills?: string[];
+  preferredSkills?: string[];
   experienceRequired?: string;
   educationRequired?: string;
   responsibilities?: string[];
@@ -26,28 +27,57 @@ export interface JobOfferData {
 }
 
 // ============================================================================
-// UNIVERSAL PROMPT FUNCTION - Works with ANY job and ANY CV
+// HELPER: Calculate years of experience from work history
+// ============================================================================
+
+function calculateYearsOfExperience(workExperiences: any[]): number {
+  if (!workExperiences || workExperiences.length === 0) return 0;
+  
+  let totalMonths = 0;
+  
+  workExperiences.forEach(exp => {
+    const period = exp.period || '';
+    
+    // Match patterns like "2020-2023", "2020 to 2023", "Jan 2020 - Present"
+    const yearMatch = period.match(/(\d{4})\s*[-–to]+\s*(\d{4}|Present|current|now)/i);
+    
+    // Match patterns like "3 years", "2 ans"
+    const yearsMatch = period.match(/(\d+(?:\.\d+)?)\s*(?:years?|ans|ans)/i);
+    
+    if (yearMatch) {
+      const start = parseInt(yearMatch[1]);
+      const endYear = yearMatch[2].toLowerCase() === 'present' || yearMatch[2].toLowerCase() === 'current' || yearMatch[2].toLowerCase() === 'now' 
+        ? new Date().getFullYear() 
+        : parseInt(yearMatch[2]);
+      totalMonths += (endYear - start) * 12;
+    } else if (yearsMatch) {
+      totalMonths += parseFloat(yearsMatch[1]) * 12;
+    }
+  });
+  
+  return Math.round((totalMonths / 12) * 10) / 10; // Round to 1 decimal
+}
+
+// ============================================================================
+// ADVANCED PROMPT FUNCTION - Deep CV Metrics Extraction
 // ============================================================================
 
 /**
- * Creates a comprehensive, detailed analysis prompt that works with ANY job offer and ANY candidate CV.
+ * Creates a comprehensive analysis prompt with deep CV metrics extraction.
  * This prompt:
- * - Is detailed (2500-3500 chars) to provide comprehensive instructions
- * - Uses proper variable interpolation for ALL dynamic data
- * - Compares CANDIDATE vs JOB OFFER (not candidate vs candidate)
- * - Provides clear matching rules with examples
- * - Outputs consistent JSON format regardless of input
- * - Handles French/English/mixed language CVs and job offers
- * - Is reusable without code changes for new jobs/candidates
- * - Does NOT hardcode specific skills, names, or values
- * - Does NOT include example values that the AI might copy
+ * - Extracts ALL candidate information in detail
+ * - Calculates years of experience from work history
+ * - Counts and categorizes technical skills
+ * - Extracts language proficiency levels
+ * - Includes projects, certifications, achievements
+ * - Provides unique request ID to prevent duplicate analysis
+ * - Forces differentiated scores based on actual data
+ * - Includes raw CV text excerpt for context (first 1500 chars)
  */
 export function createAnalysisPrompt(cvData: CVData, jobOfferData: JobOfferData): string {
   
-  // ✅ VALIDATION: Check for invalid/fallback CV data using new metadata fields
+  // ✅ VALIDATION: Check for invalid/fallback CV data
   const rawTextLength = cvData?.rawText?.length || 0;
-  const totalSkills = cvData?.technicalSkills ? 
-    Object.values(cvData.technicalSkills).flat().length : 0;
   const textQuality = cvData?.metadata?.textQuality as string | undefined;
   const extractionMethod = cvData?.metadata?.extractionMethod as string | undefined;
   
@@ -62,39 +92,20 @@ export function createAnalysisPrompt(cvData: CVData, jobOfferData: JobOfferData)
     throw new Error('Cannot generate prompt: CV text extraction failed (scanned/image PDF detected). Please upload a text-based PDF, .txt, or .docx file.');
   }
   
-  // Check if this looks like fallback data (very short rawText with only basic skills)
-  const isFallbackData = rawTextLength < 200 && totalSkills <= 3 && 
-    cvData?.technicalSkills?.backend?.every((s: string) => 
-      ['JavaScript', 'Node.js', 'Git'].includes(s)
-    );
-  
-  if (isFallbackData) {
-    console.error('❌ [Prompt Gen] REJECTING invalid CV data - appears to be fallback:', {
-      name: cvData?.personalInfo?.fullName,
-      rawTextLength,
-      totalSkills,
-      skills: cvData?.technicalSkills?.backend
-    });
-    throw new Error('Cannot generate prompt: CV data appears to be invalid/fallback. Raw text too short or extraction failed.');
-  }
-  
   if (rawTextLength < 50) {
     console.error('❌ [Prompt Gen] REJECTING - Raw text too short:', rawTextLength);
     throw new Error('Cannot generate prompt: CV raw text is too short (less than 50 chars)');
   }
   
-  // 🔒 SAFE: Extract values with fallbacks (never undefined)
-  const name = cvData?.personalInfo?.fullName || 'Candidate';
-  const years = cvData?.metadata?.totalYearsExperience || 0;
-  const required = Array.isArray(jobOfferData?.requiredSkills) ? jobOfferData.requiredSkills : [];
-  
-  // ✅ FIX: Add unique request ID to force AI to treat each call as unique
+  // ✅ UNIQUE REQUEST ID
   const uniqueId = `REQ_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const timestamp = new Date().toISOString();
   
-  // 🔒 SAFE: Extract ALL skills from ALL categories (with null checks)
-  const skills: string[] = [];
+  // ✅ Calculate deep metrics
+  const yearsOfExperience = calculateYearsOfExperience(cvData?.workExperiences || []);
   
+  // ✅ Count ALL skills from ALL categories
+  const allSkillsArray: string[] = [];
   if (cvData?.technicalSkills) {
     const categories = [
       cvData.technicalSkills.frontend,
@@ -113,310 +124,294 @@ export function createAnalysisPrompt(cvData: CVData, jobOfferData: JobOfferData)
       if (Array.isArray(cat)) {
         cat.forEach(skill => {
           if (typeof skill === 'string' && skill.trim()) {
-            skills.push(skill.trim());
+            allSkillsArray.push(skill.trim());
           }
         });
       }
     });
   }
   
-  // 🔒 SAFE: Add skills from work experiences
+  // Add skills from work experiences
   if (Array.isArray(cvData?.workExperiences)) {
     cvData.workExperiences.forEach(exp => {
       if (Array.isArray(exp?.technologies)) {
         exp.technologies.forEach(tech => {
           if (typeof tech === 'string' && tech.trim()) {
-            skills.push(tech.trim());
-          }
-        });
-      }
-      if (Array.isArray(exp?.responsibilities)) {
-        exp.responsibilities.forEach(resp => {
-          if (typeof resp === 'string' && resp.trim()) {
-            skills.push(resp.trim());
+            allSkillsArray.push(tech.trim());
           }
         });
       }
     });
   }
   
-  // 🔒 SAFE: Add technologies with experience
-  if (Array.isArray(cvData?.technologiesWithExperience)) {
-    cvData.technologiesWithExperience.forEach(tech => {
-      if (typeof tech.name === 'string' && tech.name.trim()) {
-        skills.push(tech.name.trim());
-      }
-    });
-  }
-  
-  // 🔒 SAFE: Add skills from achievements
-  if (Array.isArray(cvData?.achievements)) {
-    cvData.achievements.forEach(ach => {
-      if (Array.isArray(ach?.technologies)) {
-        ach.technologies.forEach(tech => {
-          if (typeof tech === 'string' && tech.trim()) {
-            skills.push(tech.trim());
-          }
-        });
-      }
-    });
-  }
-  
-  // 🔒 SAFE: Remove duplicates and create display strings
-  const uniqueSkills = [...new Set(skills.map(s => s.toLowerCase()))].map(s => 
-    skills.find(sk => sk.toLowerCase() === s)
+  // Remove duplicates
+  const uniqueSkills = [...new Set(allSkillsArray.map(s => s.toLowerCase()))].map(s => 
+    allSkillsArray.find(sk => sk.toLowerCase() === s)
   ).filter(Boolean) as string[];
   
-  // ✅ DIAGNOSTIC: Log skills extraction
-  console.log('📝 [createAnalysisPrompt] Skills from cvData:', skills?.slice(0, 10));
-  console.log('📝 [createAnalysisPrompt] Unique skills count:', uniqueSkills?.length || 0);
-  console.log('📝 [createAnalysisPrompt] rawText length:', cvData?.rawText?.length || 0);
+  const skillCount = uniqueSkills.length;
   
-  // ✅ ENHANCED FALLBACK: If skills are empty, extract from rawText with more keywords
-  let finalSkills = uniqueSkills;
-  if ((uniqueSkills.length === 0 || uniqueSkills.length < 5) && cvData?.rawText && cvData.rawText.length > 100) {
-    console.log('📝 [FALLBACK] Using rawText skill extraction...')
-    const raw = cvData.rawText.toLowerCase();
-    
-    // Expanded keyword list with common tech skills
-    const fallbackKeywords = [
-      // Frontend
-      'react', 'react.js', 'reactjs', 'vue', 'vue.js', 'angular', 'javascript', 'js', 'typescript', 'ts', 
-      'html', 'css', 'sass', 'less', 'tailwind', 'bootstrap', 'jquery', 'redux', 'zustand', 'mobx',
-      'next.js', 'nextjs', 'nuxt', 'nuxt.js', 'gatsby', 'graphql', 'apollo', 'framer motion',
-      // Backend
-      'node.js', 'nodejs', 'express', 'express.js', 'python', 'java', 'php', 'laravel', 'symfony',
-      'c#', 'csharp', '.net', 'asp.net', 'ruby', 'rails', 'golang', 'go', 'rust', 'scala', 'kotlin',
-      'spring', 'django', 'flask', 'fastapi', 'express', 'nestjs', 'nest.js',
-      // Databases
-      'mysql', 'postgresql', 'postgres', 'mongodb', 'nosql', 'redis', 'elasticsearch', 'sqlite',
-      'mariadb', 'oracle', 'mssql', 'dynamodb', 'cassandra', 'firebase', 'supabase',
-      // DevOps & Cloud
-      'docker', 'kubernetes', 'k8s', 'aws', 'azure', 'gcp', 'google cloud', 'heroku', 'vercel',
-      'netlify', 'digitalocean', 'jenkins', 'gitlab ci', 'github actions', 'travis ci', 'circleci',
-      'nginx', 'apache', 'tomcat', 'linux', 'ubuntu', 'debian', 'centos', 'bash', 'shell',
-      'terraform', 'ansible', 'puppet', 'chef', 'vagrant', 'packer',
-      // Tools & Other
-      'git', 'github', 'gitlab', 'bitbucket', 'svn', 'jira', 'trello', 'slack', 'docker compose',
-      'rest api', 'restful', 'graphql', 'websocket', 'grpc', 'tcp/ip', 'http', 'https',
-      'agile', 'scrum', 'kanban', 'jira', 'confluence', 'figma', 'photoshop', 'illustrator'
-    ];
-    
-    for (const keyword of fallbackKeywords) {
-      if (raw.includes(keyword) && !finalSkills.some(s => s.toLowerCase() === keyword)) {
-        finalSkills.push(keyword);
-      }
-    }
-    console.log('📝 [FALLBACK] Extracted skills count:', finalSkills.length);
-  }
+  // ✅ Extract languages
+  const languages = cvData?.languages?.map((l: any) => `${l.language}: ${l.level || 'Not specified'}`).join(', ') || 'Not specified';
   
-  const skillsDisplay = finalSkills.length > 0 
-    ? finalSkills.join(', ') 
-    : 'NO_SKILLS_FOUND_IN_CV';
+  // ✅ Extract certifications
+  const certifications = cvData?.certifications?.map(c => c.name).join(', ') || 'None';
+  const certificationsCount = cvData?.certifications?.length || 0;
   
-  const requiredDisplay = required.length > 0 
-    ? required.join(', ') 
-    : 'NO_REQUIREMENTS_SPECIFIED';
+  // ✅ Projects count
+  const projectsCount = cvData?.projects?.length || 0;
   
-  // ===== DIAGNOSTIC LOGS FOR PROBLEM 1 =====
-  console.log('\n📝 ===== PROMPT BUILD DIAGNOSTIC =====');
-  console.log('1. Candidate name:', cvData?.personalInfo?.fullName);
-  console.log('2. Skills array length:', skills?.length || 0);
-  console.log('3. Skills preview:', skills?.slice(0, 10));
-  console.log('4. Required skills count:', required?.length || 0);
-  console.log('5. Unique skills count:', uniqueSkills?.length || 0);
-  console.log('6. skillsDisplay preview:', skillsDisplay?.substring(0, 200));
-  // =========================================
+  // ✅ Extract skills by category for display
+  const skillsByCategory = cvData?.technicalSkills ? `
+• Frontend: ${cvData.technicalSkills.frontend?.join(', ') || 'None'}
+• Backend: ${cvData.technicalSkills.backend?.join(', ') || 'None'}
+• Databases: ${cvData.technicalSkills.databases?.join(', ') || 'None'}
+• DevOps: ${cvData.technicalSkills.devops?.join(', ') || 'None'}
+• Tools: ${cvData.technicalSkills.tools?.join(', ') || 'None'}
+• CMS: ${cvData.technicalSkills.cms?.join(', ') || 'None'}
+• Testing: ${cvData.technicalSkills.testing?.join(', ') || 'None'}
+• Methodologies: ${cvData.technicalSkills.methodologies?.join(', ') || 'None'}
+` : '• No technical skills extracted';
   
-  // Build comprehensive job context
-  const jobContext = `
-JOB DETAILS:
-- Job Title: ${jobOfferData?.title || 'Not specified'}
-- Required Skills: [${requiredDisplay}]
-- Experience Required: ${jobOfferData?.experienceRequired || 'Not specified'}
-- Education Required: ${jobOfferData?.educationRequired || 'Not specified'}
-- Location: ${jobOfferData?.location || 'Not specified'}
-- Contract Type: ${jobOfferData?.contractType || 'Not specified'}
-- Work Mode: ${jobOfferData?.workMode || 'Not specified'}
-`.trim();
-
-  // Build comprehensive candidate context
-  const candidateContext = `
-CANDIDATE DETAILS:
-- Name: ${name}
-- Years of Experience: ${years}
-- Professional Title: ${cvData?.personalInfo?.professionalTitle || 'Not specified'}
-- Summary: ${cvData?.personalInfo?.summary || 'Not specified'}
-- Location: ${cvData?.personalInfo?.location || 'Not specified'}
-- Email: ${cvData?.personalInfo?.email || 'Not specified'}
-`.trim();
-
-  // Build detailed work experience
-  let experienceSection = '\nWORK EXPERIENCE:';
+  // ✅ Build work experience section
+  let experienceSection = '\n💼 WORK EXPERIENCE:\n';
   if (cvData?.workExperiences && cvData.workExperiences.length > 0) {
-    cvData.workExperiences.forEach((exp, idx) => {
-      experienceSection += `\n${idx + 1}. ${exp.title || 'Position'} at ${exp.company || 'Company'} (${exp.period || 'Period not specified'})`;
-      if (exp.responsibilities && exp.responsibilities.length > 0) {
-        experienceSection += '\n   Responsibilities: ' + exp.responsibilities.join('; ');
-      }
-      if (exp.technologies && exp.technologies.length > 0) {
-        experienceSection += '\n   Technologies: ' + exp.technologies.join(', ');
-      }
+    cvData.workExperiences.forEach((exp, index) => {
+      experienceSection += `
+  [Experience ${index + 1}]
+  • Position: ${exp.title || 'Not specified'}
+  • Company: ${exp.company || 'Not specified'}
+  • Period: ${exp.period || 'Not specified'}
+  • Location: ${exp.location || 'Not specified'}
+  • Responsibilities: ${exp.responsibilities?.slice(0, 3).join(', ') || 'Not specified'}
+  • Technologies: ${exp.technologies?.join(', ') || 'Not specified'}
+`;
     });
   } else {
-    experienceSection += '\nNo work experience listed.';
+    experienceSection += '  • No work experience listed\n';
   }
-
-  // Build education section
-  let educationSection = '\nEDUCATION:';
-  if (cvData?.education && cvData.education.length > 0) {
-    cvData.education.forEach((edu, idx) => {
-      educationSection += `\n${idx + 1}. ${edu.degree || 'Degree'} at ${edu.school || 'School'} (${edu.period || 'Period not specified'})`;
-      if (edu.field) educationSection += ` - Field: ${edu.field}`;
-    });
-  } else {
-    educationSection += '\nNo education listed.';
-  }
-
-  // Build certifications section
-  let certSection = '\nCERTIFICATIONS:';
-  if (cvData?.certifications && cvData.certifications.length > 0) {
-    cvData.certifications.forEach((cert, idx) => {
-      certSection += `\n${idx + 1}. ${cert.name || 'Certification'}${cert.issuer ? ' from ' + cert.issuer : ''}${cert.date ? ' (' + cert.date + ')' : ''}`;
-    });
-  } else {
-    certSection += '\nNo certifications listed.';
-  }
-
-  // Detailed matching rules with examples
-  const matchingRules = `
-MATCHING RULES - CRITICAL INSTRUCTIONS:
-==========================================
-1. SKILL MATCHING ALGORITHM:
-   - For EACH skill in REQUIRED_SKILLS, search for it in SKILLS_LIST
-   - Use case-insensitive matching: "React.js" matches "react", "REACT", "ReactJS", "reactjs"
-   - Use fuzzy matching for variations: "SQL" matches "SQL/NoSQL", "PostgreSQL" matches "postgres"
-   - Handle partial matches: "Node" matches "Node.js", "NodeJS", "Express" (in Node context)
-   - Handle compound skills: "SQL/NoSQL" matches "SQL" OR "NoSQL"
-   - Handle technology stacks: "MERN" matches "MongoDB, Express, React, Node"
-
-2. PROOF EXTRACTION:
-   - For each matched skill, provide evidence from the CV
-   - Evidence can be: job title, responsibility, project, certification, or technology list
-   - Format: "SKILL_NAME (evidence from CV)"
-   - Example: "React (Used in 2 projects, mentioned in work experience)"
-
-3. SCORE CALCULATION:
-   - Calculate: skillMatchScore = (matchedSkillsCount / requiredSkillsCount) * 100
-   - If requiredSkillsCount = 0, set score = 0
-   - If no skills match, score should be 0 (not empty or null)
-   - Always return a valid number between 0-100
-
-4. STRENGTHS IDENTIFICATION:
-   - List skills that match AND are above average (proficient/expert level)
-   - List relevant certifications
-   - List years of experience that meet or exceed requirements
-   - List achievements with measurable metrics
-
-5. WEAKNESSES IDENTIFICATION:
-   - List required skills that are missing
-   - List skills where candidate has only basic/beginner level
-   - Note any experience gaps
-   - Note education gaps if critical
-
-6. RECOMMENDATION DECISION:
-   - "Yes" if score >= 70% AND no critical missing skills
-   - "Maybe" if score >= 40% OR missing only 1-2 non-critical skills
-   - "No" if score < 40% OR missing critical skills
-
-7. PRIORITY DETERMINATION:
-   - "High" if score >= 80%
-   - "Medium" if score >= 50%
-   - "Low" if score < 50%
-`.trim();
-
-  // Build the FULL prompt with ALL dynamic content
-  const charCount = cvData?.metadata?.charCount || cvData?.rawText?.length || 0;
-  const promptQuality = textQuality || 'Unknown';
-  const promptMethod = extractionMethod || 'Unknown';
   
+  // ✅ Build education section
+  let educationSection = '\n🎓 EDUCATION:\n';
+  if (cvData?.education && cvData.education.length > 0) {
+    cvData.education.forEach(edu => {
+      educationSection += `
+  • Degree: ${edu.degree || 'Not specified'}
+  • School: ${edu.school || 'Not specified'}
+  • Field: ${edu.field || 'Not specified'}
+  • Period: ${edu.period || 'Not specified'}
+`;
+    });
+  } else {
+    educationSection += '  • No education listed\n';
+  }
+  
+  // ✅ Build achievements section
+  let achievementsSection = '\n🏆 ACHIEVEMENTS & CERTIFICATIONS:\n';
+  if (cvData?.achievements && cvData.achievements.length > 0) {
+    cvData.achievements.forEach(a => {
+      achievementsSection += `  • ${a.description}\n`;
+    });
+  } else {
+    achievementsSection += '  • No achievements listed\n';
+  }
+  
+  if (certifications !== 'None') {
+    achievementsSection += `\n📜 Certifications: ${certifications}\n`;
+  }
+  
+  // ✅ Build projects section
+  let projectsSection = '\n🌐 PROJECTS:\n';
+  if (cvData?.projects && cvData.projects.length > 0) {
+    cvData.projects.forEach(p => {
+      projectsSection += `
+  • ${p.name || 'Unnamed Project'}: ${p.description?.substring(0, 100) || 'No description'}
+    Technologies: ${p.technologies?.join(', ') || 'Not specified'}
+`;
+    });
+  } else {
+    projectsSection += '  • No projects listed\n';
+  }
+  
+  // ✅ Raw CV text excerpt
+  const rawTextExcerpt = cvData?.rawText?.substring(0, 1500) || 'No text available';
+  
+  // ✅ Job requirements
+  const jobTitle = jobOfferData?.title || 'Not specified';
+  const jobLevel = jobOfferData?.level || 'Not specified';
+  const requiredSkills = jobOfferData?.requiredSkills?.join(', ') || 'Not specified';
+  const preferredSkills = jobOfferData?.preferredSkills?.join(', ') || 'None';
+  const experienceRequired = jobOfferData?.experienceRequired || 'Not specified';
+  const educationRequired = jobOfferData?.educationRequired || 'Not specified';
+  
+  // ✅ BUILD COMPREHENSIVE PROMPT
   const promptOutput = `
-=== UNIQUE ANALYSIS REQUEST [ID: ${uniqueId}] ===
-Timestamp: ${timestamp}
-Extraction Method: ${promptMethod}
-Text Quality: ${promptQuality}
-Character Count: ${charCount}
-Candidate: ${name}
+🎯 UNIQUE ANALYSIS REQUEST [ID: ${uniqueId}]
+⏰ Timestamp: ${timestamp}
+📄 Extraction Quality: ${textQuality || 'Unknown'}
+📝 CV Text Length: ${rawTextLength} characters
 
-=== CANDIDATE VS JOB ANALYSIS TASK ===
-Compare the candidate's qualifications against the job requirements.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${candidateContext}
+👤 CANDIDATE COMPREHENSIVE PROFILE:
 
-=== SKILLS_LIST (ALL skills found in candidate's CV) ===
-[${skillsDisplay}]
+• Full Name: ${cvData?.personalInfo?.fullName || 'Unknown'}
+• Email: ${cvData?.personalInfo?.email || 'N/A'}
+• Phone: ${cvData?.personalInfo?.phone || 'N/A'}
+• Location: ${cvData?.personalInfo?.location || 'N/A'}
+• Professional Title: ${cvData?.personalInfo?.professionalTitle || 'N/A'}
+• LinkedIn: ${cvData?.personalInfo?.linkedin || 'N/A'}
 
-${jobContext}
+📊 KEY METRICS (Extracted from CV):
+• Total Years of Experience: ${yearsOfExperience} years
+• Total Technical Skills: ${skillCount} skills
+• Number of Projects: ${projectsCount}
+• Number of Certifications: ${certificationsCount}
+• Languages: ${languages}
 
 ${experienceSection}
 
 ${educationSection}
 
-${certSection}
+🛠️ TECHNICAL SKILLS (By Category):
+${skillsByCategory}
 
-${matchingRules}
+${achievementsSection}
 
-=== OUTPUT REQUIREMENTS ===
-Return ONLY valid JSON. No other text. Start with { and end with }.
+${projectsSection}
 
-JSON Structure (MUST include all fields):
+📄 RAW CV TEXT EXCERPT (First 1500 chars for additional context):
+${rawTextExcerpt}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 JOB REQUIREMENTS:
+• Position: ${jobTitle}
+• Level: ${jobLevel}
+• Required Skills: ${requiredSkills}
+• Preferred Skills: ${preferredSkills}
+• Experience Required: ${experienceRequired}
+• Education Required: ${educationRequired}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ YOUR ANALYSIS TASK:
+
+You are an expert technical recruiter. Analyze this candidate's fit for the position.
+
+⚠️ CRITICAL ANALYSIS REQUIREMENTS:
+
+1. **EXPERIENCE CALCULATION:**
+   - Calculate total years from work history
+   - Compare against job requirement
+   - Score: (candidateYears / requiredYears) × 100, capped at 100
+
+2. **SKILL MATCHING:**
+   - Compare EACH candidate skill against required skills list
+   - Count EXACT matches (case-insensitive)
+   - matchedRequirements = ALL skills that match
+   - missingRequirements = ALL required skills not found
+   - Skills Score: (matchedCount / requiredCount) × 100
+
+3. **TECHNOLOGY MASTERY ASSESSMENT:**
+   - Count technologies mentioned with context (projects, work)
+   - Categorize: Advanced (5+ mentions), Intermediate (2-4), Beginner (1)
+   - Include in technicalFit score
+
+4. **LANGUAGE PROFICIENCY:**
+   - Extract language levels from CV (A1, A2, B1, B2, C1, C2, Fluent, Native)
+   - Compare against job language requirements
+   - Include in overall assessment
+
+5. **EDUCATION & CERTIFICATIONS:**
+   - Check if degree matches field requirement
+   - Count relevant certifications
+   - Include in education score
+
+6. **PROJECTS & ACHIEVEMENTS:**
+   - Count relevant projects
+   - Check if technologies match job requirements
+   - Include as bonus points in overall score
+
+📊 REQUIRED JSON OUTPUT FORMAT:
 {
-  "overallScore": number (0-100, calculated as percentage of matched required skills),
-  "matchedRequirements": ["skill_name (evidence from CV)", ...], // Array of matched skills with proof
-  "missingRequirements": ["skill_name", ...], // Array of required skills not found in CV
-  "strengths": ["strength description", ...], // Array of candidate's strengths
-  "weaknesses": ["weakness description", ...], // Array of candidate's weaknesses  
+  "overallScore": number (0-100, calculated from weighted average below),
+  "categoryScores": {
+    "skills": number (0-100, based on skill match percentage),
+    "experience": number (0-100, based on years match),
+    "education": number (0-100, based on degree/certifications),
+    "technicalFit": number (0-100, based on technology mastery)
+  },
+  "detailedMetrics": {
+    "yearsOfExperience": number,
+    "requiredYears": number,
+    "totalSkills": number,
+    "matchedSkillsCount": number,
+    "missingSkillsCount": number,
+    "technologyMastery": {
+      "advanced": number,
+      "intermediate": number,
+      "beginner": number
+    },
+    "languages": [{"name": string, "level": string}],
+    "projectsCount": number,
+    "certificationsCount": number
+  },
+  "matchedRequirements": [string],
+  "missingRequirements": [string],
+  "strengths": [string],
+  "weaknesses": [string],
   "recommendation": {
-    "decision": "Yes|No|Maybe", // Based on overall score and missing skills
-    "priority": "High|Medium|Low", // Based on how well candidate fits
-    "reason": "Brief explanation of the recommendation"
+    "decision": "HIRE" | "INTERVIEW" | "REJECT",
+    "priority": "HIGH" | "MEDIUM" | "LOW",
+    "reasoning": string,
+    "interviewQuestions": [string, string, string]
   }
 }
 
-IMPORTANT: 
-- This is a UNIQUE request with ID: ${uniqueId}
-- Do NOT reuse analysis from previous requests
-- Always return valid JSON even if CV or job details are incomplete
-- If no skills match, overallScore MUST be 0 (not null or undefined)
-- If no required skills specified, overallScore MUST be 0
-- Include at least empty arrays [] for unmatched fields
-- Do not include any explanatory text outside the JSON
+⚠️ SCORING GUIDELINES (MUST FOLLOW):
+
+| Metric | Weight | Calculation |
+|--------|--------|-------------|
+| Skills Match | 40% | (matchedSkills / requiredSkills) × 100 |
+| Experience | 25% | min((candidateYears / requiredYears) × 100, 100) |
+| Education | 15% | 100 if matches, 50 if related, 25 if unrelated |
+| Technical Fit | 20% | Based on technology mastery + projects |
+
+**overallScore = (skills×0.40) + (experience×0.25) + (education×0.15) + (technicalFit×0.20)**
+
+⚠️ CRITICAL INSTRUCTIONS:
+1. This is request ${uniqueId}. Analyze ONLY this candidate's data.
+2. overallScore MUST vary based on actual calculated metrics.
+3. List ALL matched/missing skills (not just 2-3).
+4. Be specific in strengths/weaknesses (reference actual CV content).
+5. interviewQuestions must address candidate's specific gaps.
+6. Do NOT reuse previous analysis patterns.
+7. If CV data is incomplete, note it in weaknesses but still analyze.
+8. Score must reflect REAL percentage, not generic values (50/60).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 END OF ANALYSIS REQUEST [ID: ${uniqueId}]
 `.trim();
 
-  // ===== DIAGNOSTIC LOGS FOR PROMPT LENGTH =====
-  console.log('5. Final prompt length:', promptOutput.length, 'chars');
-  console.log('6. Prompt includes skills:', promptOutput.includes('SKILLS_LIST') ? 'YES' : 'NO');
-  console.log('7. Skills in prompt:', skillsDisplay?.substring(0, 100));
-  console.log('8. Total skills found:', finalSkills.length);
-  console.log('9. Unique Request ID:', uniqueId);
-  console.log('10. Candidate name in prompt:', promptOutput.includes(name) ? 'YES' : 'NO');
-  console.log('========================================\n');
-  
-  // ✅ VALIDATION: Ensure candidate data is properly injected
-  if (!promptOutput || promptOutput.length < 200) {
-    console.error('❌ [PROMPT ERROR] Generated prompt is too short or empty');
-    throw new Error('Prompt generation failed: prompt is too short');
-  }
-  
-  if (!promptOutput.includes(name) || name === 'Candidate') {
-    console.warn('⚠️ [PROMPT WARNING] Candidate name not properly injected or using fallback');
-  }
-  
-  if (finalSkills.length === 0) {
-    console.warn('⚠️ [PROMPT WARNING] No skills found in CV - analysis may be inaccurate');
-  }
-  
+  // ===== DIAGNOSTIC LOGS =====
+  console.log('📝 [Prompt Gen] Created prompt:', {
+    uniqueId,
+    length: promptOutput.length,
+    yearsOfExperience,
+    skillCount,
+    certificationsCount,
+    projectsCount,
+    hasCandidateName: promptOutput.includes(cvData?.personalInfo?.fullName || 'NOT_FOUND')
+  });
+  // ============================
+
   return promptOutput;
 }
+
+// ============================================================================
+// EXPORTS
+// ============================================================================
 
 export default createAnalysisPrompt;

@@ -6,6 +6,7 @@ import { extractCVDataFromText, extractCVDataFromPDF, type CVData as ExtractedCV
 import { convertPDFtoText, validatePDF } from '../lib/pdfToTextConverter';
 import prisma from '../lib/prisma';
 import fs from 'fs/promises';
+import fsSync from 'fs';  // For sync operations
 import pdfParse from 'pdf-parse';
 const pdfParseFn = (pdfParse as any).default || pdfParse;
 
@@ -29,6 +30,20 @@ const ensureArray = (value: unknown): string[] => {
 
 const CACHE_DURATION_DAYS = 7;
 
+// 👇 RUNTIME DIAGNOSTIC - Remove after testing
+const promptsPath = require.resolve('../lib/prompts');
+console.log('\n🔍 ===== PROMPTS FILE DIAGNOSTIC =====');
+console.log('Resolved prompts path:', promptsPath);
+try {
+  const stats = fsSync.statSync(promptsPath);
+  console.log('prompts.ts last modified:', stats.mtime);
+} catch(e) {}
+const fileContent = fsSync.readFileSync(promptsPath, 'utf-8');
+console.log('File has UNIQUE ANALYSIS REQUEST?', fileContent.includes('UNIQUE ANALYSIS REQUEST') ? 'YES ✅' : 'NO ❌');
+console.log('File has calculateYearsOfExperience?', fileContent.includes('calculateYearsOfExperience') ? 'YES ✅' : 'NO ❌');
+console.log('File line count:', fileContent.split('\n').length);
+console.log('🔍 ===== END PROMPTS DIAGNOSTIC =====\n');
+
 // ============ Routes ============
 
 router.post('/analyze-candidate', async (req: Request, res: Response) => {
@@ -40,7 +55,7 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
       cvText?: string;
       cvUrl?: string;
       cvData?: { name?: string; skills?: string | string[]; experience?: string; education?: string; [key: string]: unknown };
-      jobOfferData?: { title?: string; requiredSkills?: string[]; [key: string]: unknown };
+      jobOfferData?: { title?: string; requiredSkills?: string[]; preferredSkills?: string[]; [key: string]: unknown };
     };
 
     if (!jobOfferData) {
@@ -367,63 +382,159 @@ if (cvUrl) {
     console.log('🔄 Generating AI analysis...');
     
     // ===== DEEP CV EXTRACTION DIAGNOSTIC =====
-    console.log('\n🔍 ===== DEEP CV EXTRACTION DIAGNOSTIC =====');
+    console.log('\n🔍 ===== DEEP CV METRICS DIAGNOSTIC =====');
     console.log('Request ID:', `REQ_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
     console.log('Candidate ID:', candidateId);
     console.log('Candidate Name:', extractedCVData.personalInfo?.fullName);
     console.log('CV Source:', req.body.cvUrl || req.body.cvData?.source || 'cvData object');
+    console.log('Extraction Method:', extractedCVData.metadata?.extractionMethod);
+    console.log('Text Quality:', extractedCVData.metadata?.textQuality);
     console.log('Raw Text Length:', extractedCVData.rawText?.length || 0, 'characters');
-    console.log('Raw Text Preview (first 300 chars):', 
-      `"${(extractedCVData.rawText || '').substring(0, 300).replace(/\n/g, '\\n')}"`);
-    console.log('Skills Breakdown:');
-    console.log('  • Frontend:', extractedCVData.technicalSkills?.frontend || []);
-    console.log('  • Backend:', extractedCVData.technicalSkills?.backend || []);
-    console.log('  • Databases:', extractedCVData.technicalSkills?.databases || []);
-    console.log('  • DevOps:', extractedCVData.technicalSkills?.devops || []);
-    console.log('  • Total:', Object.values(extractedCVData.technicalSkills || {}).flat().length);
-    console.log('Work Experiences:', extractedCVData.workExperiences?.map(e => e.title) || 'None');
-    console.log('Education:', extractedCVData.education?.map(e => e.degree) || 'None');
-    console.log('Is Fallback Data?', 
-      extractedCVData.technicalSkills?.backend?.length === 3 && 
-      extractedCVData.technicalSkills?.backend?.every((s: string) => ['JavaScript', 'Node.js', 'Git'].includes(s))
-    );
-    console.log('🔍 ===== END DIAGNOSTIC =====\n');
+    
+    // Calculate metrics locally
+    const allSkills = Object.values(extractedCVData.technicalSkills || {}).flat().filter(Boolean);
+    const yearsExp = extractedCVData.workExperiences?.reduce((total: number, exp: any) => {
+      const period = exp.period || '';
+      const match = period.match(/(\d{4})\s*[-–to]+\s*(\d{4}|Present|current|now)/i);
+      if (match) {
+        const start = parseInt(match[1]);
+        const end = match[2].toLowerCase() === 'present' || match[2].toLowerCase() === 'now' ? new Date().getFullYear() : parseInt(match[2]);
+        return total + (end - start);
+      }
+      const yearsMatch = period.match(/(\d+(?:\.\d+)?)\s*years?/i);
+      if (yearsMatch) return total + parseFloat(yearsMatch[1]);
+      return total;
+    }, 0) || 0;
+    
+    console.log('\n📊 EXTRACTED METRICS:');
+    console.log('  • Years of Experience:', yearsExp.toFixed(1), 'years');
+    console.log('  • Total Technical Skills:', allSkills.length);
+    console.log('  • Skills by Category:');
+    console.log('    - Frontend:', extractedCVData.technicalSkills?.frontend?.length || 0);
+    console.log('    - Backend:', extractedCVData.technicalSkills?.backend?.length || 0);
+    console.log('    - Databases:', extractedCVData.technicalSkills?.databases?.length || 0);
+    console.log('    - DevOps:', extractedCVData.technicalSkills?.devops?.length || 0);
+    console.log('    - Tools:', extractedCVData.technicalSkills?.tools?.length || 0);
+    console.log('  • Languages:', extractedCVData.languages?.map((l: any) => `${l.language}:${l.level}`).join(', ') || 'None');
+    console.log('  • Projects:', extractedCVData.projects?.length || 0);
+    console.log('  • Certifications:', extractedCVData.certifications?.length || 0);
+    console.log('  • Work Experiences:', extractedCVData.workExperiences?.length || 0);
+    
+    console.log('\n📝 RAW TEXT PREVIEW (First 300 chars):');
+    console.log(`"${extractedCVData.rawText?.substring(0, 300).replace(/\n/g, '\\n')}"`);
+    // =========================================
+    // ✅ FIXED: Prompt Building with Quality Validation
     // =========================================
     
-    let prompt: string;
-    try {
-      prompt = createAnalysisPrompt(extractedCVData, jobOfferData as JobOfferData);
-    } catch (promptError: any) {
-      console.error('❌ [Prompt Generation Failed]', promptError.message);
+    // ✅ 1. Verify CV data quality before building prompt
+    if (!extractedCVData.rawText || extractedCVData.rawText.length < 100) {
+      console.error('❌ [AI] CV data too short:', extractedCVData.rawText?.length || 0, 'chars');
       return res.status(400).json({ 
         success: false, 
-        error: 'CV extraction failed - unable to analyze this CV',
-        details: promptError.message,
-        candidateId,
-        isExtractionIssue: true
+        error: 'CV content insufficient for analysis',
+        details: 'Please upload a text-based CV with more content',
+        candidateId
       });
     }
     
-    console.log('4. Prompt length:', prompt.length, 'chars');
-    console.log('5. Prompt first 500 chars:', prompt.substring(0, 500));
-    console.log('6. Prompt contains unique ID?', prompt.includes('REQ_') ? 'YES - ' + prompt.match(/REQ_[a-z0-9_]+/)?.[0] : 'NO');
-    console.log('7. Prompt contains candidate name?', prompt.includes(extractedCVData?.personalInfo?.fullName || 'NOT_FOUND') ? 'YES' : 'NO');
-    console.log('========================================\n');
+    // ✅ 2. Build prompt using updated function with UNIQUE variable name to avoid conflicts
+    console.log('🔄 [AI] Building prompt with createAnalysisPrompt...');
+    const finalPromptForAI = createAnalysisPrompt(extractedCVData, jobOfferData as JobOfferData);
+    
+    // ✅ 3. Comprehensive quality check BEFORE sending to AI
+    console.log('📊 [AI] === PROMPT QUALITY CHECK ===');
+    console.log('  • finalPromptForAI length:', finalPromptForAI.length, 'chars');
+    console.log('  • Contains UNIQUE?', finalPromptForAI.includes('UNIQUE ANALYSIS REQUEST'));
+    console.log('  • Contains candidate name?', finalPromptForAI.includes(extractedCVData.personalInfo?.fullName || 'NOT_FOUND'));
+    console.log('  • Contains skills section?', finalPromptForAI.includes('TECHNICAL SKILLS'));
+    console.log('  • First 120 chars:', finalPromptForAI.substring(0, 120).replace(/\n/g, ' '));
+    
+    // ✅ 4. Critical validation: Reject if prompt is too short
+    if (finalPromptForAI.length < 2000) {
+      console.error('❌ [AI] CRITICAL: Prompt too short! Expected >2000, got:', finalPromptForAI.length);
+      console.error('   Possible causes:');
+      console.error('   1. createAnalysisPrompt function not returning full prompt');
+      console.error('   2. extractedCVData has minimal/empty content');
+      console.error('   3. TypeScript cache serving old compiled code');
+    }
+    console.log('📊 [AI] === END PROMPT CHECK ===');
+    
+    // ✅ 5. Send the VERIFIED prompt to Groq AI
+    console.log('🤖 [AI] Calling Groq API with prompt length:', finalPromptForAI.length);
+    const analysisText = await generateContent(finalPromptForAI);
+    
+    // ✅ 6. Update legacy 'prompt' variable for any downstream code that might use it
+    const prompt = finalPromptForAI;
+    
+    // =========================================
+    // ✅ END: Fixed Prompt Building Section
     // =========================================
     
-    const analysisText = await generateContent(prompt);
-
     let analysis: any;
     try {
       const cleanText = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       const jsonString = jsonMatch ? jsonMatch[0] : cleanText;
       analysis = JSON.parse(jsonString);
-    } catch (parseError) {
-      console.error('❌ JSON Parse Error:', parseError);
-      console.error('Raw response:', analysisText);
-      return res.status(500).json({ success: false, error: 'Failed to parse AI response', details: (parseError as Error).message });
+      console.log('✅ [AI] Response parsed successfully');
+    } catch (parseError: any) {
+      console.error('❌ [JSON Parse Error]', parseError.message);
+      console.error('Raw response preview:', analysisText.substring(0, 200));
+      return res.status(500).json({ success: false, error: 'Failed to parse AI response', details: parseError.message });
     }
+
+    // === LOCAL SCORE CALCULATION (Fallback) ===
+    console.log('\n🧮 [Score] Calculating local fallback score...');
+    
+    const cvSkills = new Set(
+      Object.values(extractedCVData.technicalSkills || {}).flat()
+        .filter(Boolean).map((s: string) => s.toLowerCase().trim())
+    );
+    
+    extractedCVData.workExperiences?.forEach((exp: any) => {
+      exp.technologies?.forEach((tech: string) => cvSkills.add(tech.toLowerCase().trim()));
+    });
+    
+    const requiredSkills = (jobOfferData.requiredSkills || []).map((s: string) => s.toLowerCase().trim());
+    const preferredSkills = (jobOfferData.preferredSkills || []).map((s: string) => s.toLowerCase().trim());
+    
+    const matchedRequired = requiredSkills.filter(skill => cvSkills.has(skill));
+    const matchedPreferred = preferredSkills.filter(skill => cvSkills.has(skill));
+    const missingRequired = requiredSkills.filter(skill => !cvSkills.has(skill));
+    
+    const requiredScore = requiredSkills.length > 0 ? (matchedRequired.length / requiredSkills.length) * 70 : 0;
+    const preferredScore = preferredSkills.length > 0 ? (matchedPreferred.length / preferredSkills.length) * 30 : 0;
+    const localCalculatedScore = Math.round(requiredScore + preferredScore);
+    
+    console.log('📊 [Score Debug] CV Skills:', cvSkills.size, '| Required:', requiredSkills.length, '| Matched:', matchedRequired.length);
+    console.log('  • Required:', requiredSkills.join(', '));
+    console.log('  • Matched:', matchedRequired.join(', '));
+    console.log('  • Local Score:', localCalculatedScore);
+    
+    // Use AI score or local fallback
+    const aiScore = Number(analysis.overallScore);
+    const isGenericScore = [50, 60, 70, 75, 80].includes(aiScore);
+    const scoreDiff = Math.abs((aiScore || 0) - localCalculatedScore);
+    
+    let finalScore: number;
+    let scoreSource: string;
+    
+    if (!aiScore || (isGenericScore && scoreDiff > 15)) {
+      console.log(`⚠️ [Score] Using local fallback: ${localCalculatedScore} (AI: ${aiScore})`);
+      finalScore = localCalculatedScore;
+      scoreSource = 'local';
+      analysis.overallScore = localCalculatedScore;
+      analysis.scoreSource = 'local-fallback';
+    } else {
+      console.log(`✅ [Score] Using AI score: ${aiScore}`);
+      finalScore = aiScore;
+      scoreSource = 'ai';
+    }
+    
+    // Update matched/missing requirements
+    analysis.matchedRequirements = matchedRequired;
+    analysis.missingRequirements = missingRequired;
+    console.log(`💾 Final score: ${finalScore} (${scoreSource})`);
 
     // === SAVE TO DATABASE ===
     const matchedSkills = ensureArray(analysis.matchedRequirements);
