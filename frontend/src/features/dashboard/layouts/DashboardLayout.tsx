@@ -202,11 +202,18 @@ export function DashboardLayout() {
                         </NavLink>
                     )}
 
-                    {hasElevatedAccess && (
-                        <NavLink to="/dashboard/workflow" onClick={() => setIsSidebarOpen(false)} className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
-                            <GitMerge className="w-5 h-5" />
-                            Workflow Builder
-                        </NavLink>
+                                       {/* Gestion Workflows & Builder (Admin w RH) */}
+                    {(isUserAdmin || isUserHR || userRole === 'Responsable RH' || userRole === 'Administrateur') && (
+                        <>
+                            <NavLink to="/dashboard/manage-workflows" onClick={() => setIsSidebarOpen(false)} className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                                <FileText className="w-5 h-5" />
+                                Gestion Workflows
+                            </NavLink>
+                            <NavLink to="/dashboard/workflow" onClick={() => setIsSidebarOpen(false)} className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
+                                <GitMerge className="w-5 h-5" />
+                                Workflow Builder
+                            </NavLink>
+                        </>
                     )}
 
                     {isUserAdmin && (
@@ -253,8 +260,9 @@ export function DashboardLayout() {
                             Mes Approbations
                         </NavLink>
                     )}
-  {/* Tâches (Employés/Admins/Managers) */}
-                    {(userRole === 'Employé' || userRole === 'Manager' || isUserAdmin) && (
+ 
+                                        {/* Tâches (Employés/Managers/RH/Admins) */}
+                    {(userRole === 'Employé' || userRole === 'Manager' || userRole === 'Responsable RH' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/tasks"
                             onClick={() => setIsSidebarOpen(false)}
