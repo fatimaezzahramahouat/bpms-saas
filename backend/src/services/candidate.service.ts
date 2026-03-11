@@ -94,7 +94,8 @@ export const candidateService = {
       try {
         await storageService.deleteFileFromStorage(candidate.cv);
       } catch (err) {
-        console.error("Failed to delete CV from storage:", err);
+        console.warn("⚠️ Failed to delete CV from storage (non-critical):", err);
+        // Continue with candidate deletion even if CV deletion fails
       }
     }
 

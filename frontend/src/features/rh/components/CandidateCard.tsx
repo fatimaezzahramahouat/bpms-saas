@@ -5,7 +5,6 @@ import { MatchingPercentage } from './MatchingPercentage';
 import { ComparisonTable, MatchItem } from './ComparisonTable';
 import { Label, DEFAULT_LABELS } from '../hooks/useSavedCandidates';
 import { CandidateNotes } from './CandidateNotes';
-import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { StatusDropdown } from './StatusDropdown';
 
 // Get API URL for static file serving
@@ -152,7 +151,6 @@ export function CandidateCard({
 }: CandidateCardProps) {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCvModal, setShowCvModal] = useState(false);
   const statusColors = getStatusColors(candidate.status);
   const fullName = `${candidate.firstName} ${candidate.lastName}`;
@@ -325,28 +323,13 @@ export function CandidateCard({
           <StickyNote className="w-4 h-4" />
         </button>
         <button
-          onClick={() => setShowDeleteModal(true)}
+          onClick={() => onDelete(candidate)}
           className="p-2 bg-[var(--input-bg)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-400 rounded-lg transition-all duration-200"
           title="Supprimer"
         >
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirmDelete={() => {
-          setShowDeleteModal(false);
-          onDelete(candidate);
-        }}
-        onConfirmReject={(reason) => {
-          setShowDeleteModal(false);
-          onReject?.(candidate.id, reason);
-        }}
-        candidateName={fullName}
-      />
 
       {/* Notes Section */}
       {showNotes && (

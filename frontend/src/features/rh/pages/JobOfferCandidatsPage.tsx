@@ -251,9 +251,32 @@ setCandidates(mappedCandidates);
   const handleSave = useCallback((candidate: Candidate) => {
     addToast(toastSuccess('Candidature sauvegardée', `${candidate.firstName} ${candidate.lastName}`));
   }, [addToast]);
-  const handleDelete = useCallback((candidate: Candidate) => {
-    setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
-    addToast(toastSuccess('Candidature supprimée', `${candidate.firstName} ${candidate.lastName}`));
+  const handleDelete = useCallback(async (candidate: Candidate) => {
+    try {
+      console.log('🗑️ [Page] Deleting candidate:', candidate.id);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/candidates/${candidate.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete candidate');
+      }
+      
+      console.log('✅ [Page] Candidate deleted from API:', candidate.id);
+      
+      // Remove from local state
+      setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
+      addToast(toastSuccess('Candidature supprimée', `${candidate.firstName} ${candidate.lastName}`));
+    } catch (error) {
+      console.error('❌ [Page] Delete failed:', error);
+      addToast(toastError('Erreur', 'Impossible de supprimer le candidat'));
+    }
   }, [addToast]);
   const handleExportCSV = useCallback(async () => {
     if (!jobOffer) return;
