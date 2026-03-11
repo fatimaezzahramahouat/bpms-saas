@@ -33,7 +33,7 @@ const WorkflowCard = ({
     };
 
     return (
-        <div className="bg-[#0f0f12] border border-white/5 p-6 rounded-[2rem] hover:border-purple-500/40 transition-all group relative overflow-hidden">
+        <div className="bg-white dark:bg-[#0f0f12] shadow-sm dark:shadow-none border border-slate-200 dark:border-white/5 p-6 rounded-[2rem] hover:border-purple-300 dark:hover:border-purple-500/40 transition-all group relative overflow-hidden">
             {/* Background Glow */}
             <div className="absolute -right-10 -top-10 w-32 h-32 bg-purple-600/5 blur-[50px] group-hover:bg-purple-600/10 transition-colors" />
 
@@ -46,13 +46,13 @@ const WorkflowCard = ({
                 </span>
             </div>
 
-            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">{workflow.name}</h3>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">{workflow.name}</h3>
             <div className="flex items-center gap-4 mb-6">
-                <p className="text-slate-500 text-xs font-medium">
-                    Utilisé <span className="text-white">{workflow._count?.instances || 0}</span> fois
+                <p className="text-slate-600 dark:text-slate-500 text-xs font-medium">
+                    Utilisé <span className="text-slate-900 dark:text-white font-bold">{workflow._count?.instances || 0}</span> fois
                 </p>
-                <div className="w-1 h-1 rounded-full bg-white/10" />
-                <p className="text-slate-500 text-xs font-medium">
+                <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-white/10" />
+                <p className="text-slate-600 dark:text-slate-500 text-xs font-medium">
                     {workflow._count?.steps || 0} étapes
                 </p>
             </div>
@@ -64,7 +64,7 @@ const WorkflowCard = ({
                 <div className="flex gap-2">
                     <button
                         onClick={() => onEdit(workflow.id)}
-                        className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-white transition-all hover:scale-105 active:scale-95"
+                        className="p-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95"
                         title="Modifier"
                     >
                         <Edit3 size={16} />
@@ -125,15 +125,15 @@ export const ManageWorkflows: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#060608] p-8 mt-16">
+        <div className="min-h-screen bg-white dark:bg-[#060608] transition-colors duration-300 p-8 mt-16 text-slate-900 dark:text-white">
             <div className="max-w-7xl mx-auto">
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
                     <div>
-                        <h1 className="text-4xl font-black text-white mb-2 tracking-tight">
+                        <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
                             Gestion des <span className="text-purple-500">Workflows</span>
                         </h1>
-                        <p className="text-slate-500 font-medium">
+                        <p className="text-slate-600 dark:text-slate-500 font-medium">
                             Gérez, éditez et surveillez tous les processus de votre organisation.
                         </p>
                     </div>
@@ -152,12 +152,12 @@ export const ManageWorkflows: React.FC = () => {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-24 gap-4">
                         <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
-                        <p className="text-slate-500 font-medium animate-pulse">Chargement de la bibliothèque...</p>
+                        <p className="text-slate-600 dark:text-slate-500 font-medium animate-pulse">Chargement de la bibliothèque...</p>
                     </div>
                 ) : error ? (
-                    <div className="flex flex-col items-center justify-center py-24 bg-white/5 rounded-[2rem] border border-white/5 border-dashed">
+                    <div className="flex flex-col items-center justify-center py-24 bg-slate-50 dark:bg-white/5 rounded-[2rem] border border-slate-200 dark:border-white/5 border-dashed">
                         <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-                        <p className="text-white font-bold mb-2">{error}</p>
+                        <p className="text-slate-900 dark:text-white font-bold mb-2">{error}</p>
                         <button
                             onClick={fetchWorkflows}
                             className="text-purple-400 hover:text-purple-300 text-sm font-bold flex items-center gap-2"
@@ -166,12 +166,12 @@ export const ManageWorkflows: React.FC = () => {
                         </button>
                     </div>
                 ) : workflows.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-32 bg-white/5 rounded-[3rem] border border-white/5 border-dashed">
-                        <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center text-slate-400 mb-6">
+                    <div className="flex flex-col items-center justify-center py-32 bg-slate-50 dark:bg-white/5 rounded-[3rem] border border-slate-200 dark:border-white/5 border-dashed">
+                        <div className="w-20 h-20 bg-slate-200 dark:bg-white/5 rounded-3xl flex items-center justify-center text-slate-500 dark:text-slate-400 mb-6">
                             <GitBranch size={32} />
                         </div>
-                        <h3 className="text-2xl font-bold text-white mb-2">Aucun workflow trouvé</h3>
-                        <p className="text-slate-500 mb-8 max-w-md text-center">
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Aucun workflow trouvé</h3>
+                        <p className="text-slate-600 dark:text-slate-500 mb-8 max-w-md text-center">
                             Commencez par créer votre premier processus automatisé avec notre Architecte IA.
                         </p>
                         <button
