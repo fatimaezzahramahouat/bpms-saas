@@ -103,4 +103,68 @@ export const candidateController = {
     await candidateService.deleteCandidate(id);
     res.status(204).send();
   }),
+
+  /**
+   * PATCH /api/candidates/:id/status
+   */
+  updateCandidateStatus: catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    console.log('🔄 [Status Update] Attempting to update status');
+    console.log('🔄 [Status Update] Candidate ID:', id);
+    console.log('🔄 [Status Update] New status:', status);
+
+    if (typeof id !== 'string') {
+      console.error('❌ [Status Update] Invalid ID type');
+      throw new Error("Invalid ID type");
+    }
+
+    // Validate status
+    const validStatuses = ['CANDIDATE', 'CONTACTED', 'INTERVIEW', 'ACCEPTED', 'REJECTED'];
+    if (!status || !validStatuses.includes(status)) {
+      console.error('❌ [Status Update] Invalid status:', status);
+      res.status(400).json({ 
+        error: 'Invalid status. Must be one of: CANDIDATE, CONTACTED, INTERVIEW, ACCEPTED, REJECTED',
+        received: status
+      });
+      return;
+    }
+
+    // Check if candidate exists first
+    const existingCandidate = await candidateService.getCandidateById(id);
+    if (!existingCandidate) {
+      console.error('❌ [Status Update] Candidate not found:', id);
+      res.status(404).json({ error: 'Candidate not found' });
+      return;
+    }
+
+    console.log('📝 [Status Update] Current status:', existingCandidate.status);
+
+    // UPDATE THE DATABASE
+    const candidate = await candidateService.updateCandidate(id, {
+      status: status as any,
+    });
+
+    console.log('✅ [Status Update] Successfully updated to:', candidate.status);
+
+    // Verify the update
+    const verification = await candidateService.getCandidateById(id);
+    console.log('🔍 [Status Update] Verification - Current status in DB:', verification.status);
+
+    // Map Prisma enum to display format
+    const statusDisplayMap: Record<string, string> = {
+      'CANDIDATE': 'Nouveau',
+      'CONTACTED': 'En cours',
+      'INTERVIEW': 'En cours',
+      'ACCEPTED': 'Archivé',
+      'REJECTED': 'Rejeté'
+    };
+
+    res.status(200).json({
+      success: true,
+      status: statusDisplayMap[candidate.status] || candidate.status,
+      previousStatus: statusDisplayMap[existingCandidate.status] || existingCandidate.status
+    });
+  }),
 };
