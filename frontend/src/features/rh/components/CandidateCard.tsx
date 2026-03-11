@@ -6,6 +6,7 @@ import { ComparisonTable, MatchItem } from './ComparisonTable';
 import { Label, DEFAULT_LABELS } from '../hooks/useSavedCandidates';
 import { CandidateNotes } from './CandidateNotes';
 import { StatusDropdown } from './StatusDropdown';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 // Get API URL for static file serving
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -152,6 +153,8 @@ export function CandidateCard({
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showCvModal, setShowCvModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const statusColors = getStatusColors(candidate.status);
   const fullName = `${candidate.firstName} ${candidate.lastName}`;
 
@@ -323,7 +326,7 @@ export function CandidateCard({
           <StickyNote className="w-4 h-4" />
         </button>
         <button
-          onClick={() => onDelete(candidate)}
+          onClick={() => setShowDeleteModal(true)}
           className="p-2 bg-[var(--input-bg)] hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-400 rounded-lg transition-all duration-200"
           title="Supprimer"
         >
@@ -422,6 +425,22 @@ export function CandidateCard({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={() => {
+          setShowDeleteModal(false);
+          onDelete?.(candidate);
+        }}
+        title="⚠️ Confirmer la suppression"
+        message="Êtes-vous sûr de vouloir supprimer ce candidat? Cette action est irréversible et toutes les données associées seront perdues."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        candidateName={fullName}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
