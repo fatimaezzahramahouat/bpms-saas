@@ -1,7 +1,7 @@
 // /home/manal/projet_final_BPMS/frontend/src/features/rh/pages/JobOfferCandidatsPage.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, Printer, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Users, Briefcase, MapPin, Clock, Loader2, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { useToast, toastSuccess, toastError } from '../../../shared/components/Toast';
 import { CandidateCard, Candidate, CandidateStatus } from '../components/CandidateCard';
@@ -149,9 +149,12 @@ const mappedCandidates: Candidate[] = candidatesRes.data.map((c: any) => {
     phone: c.phone || 'Non renseigné',
     cv: c.cv || null,  // Direct CV path from candidate.cv field
     appliedDate: app?.createdAt || c.createdAt,
-    status: (app?.status === 'APPLIED' ? 'Nouveau' : 
-             app?.status === 'INTERVIEW' ? 'En cours' : 
-             app?.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as CandidateStatus,
+    // ✅ FIX: Read from candidate.status (CANDIDATE, CONTACTED, ACCEPTED, REJECTED) instead of application.status
+    // The StatusDropdown updates candidate.status, so we need to read from there
+    status: (c.status === 'CANDIDATE' ? 'Nouveau' : 
+             c.status === 'CONTACTED' || c.status === 'INTERVIEW' ? 'En cours' : 
+             c.status === 'ACCEPTED' ? 'Archivé' : 
+             c.status === 'REJECTED' ? 'Rejeté' : 'Nouveau') as CandidateStatus,
     jobOfferId: id,
     
     // ✅ النسبة المئوية - prioritize advanced scoring (analysis.overallScore) over raw AI (result.overallScore)
@@ -248,9 +251,32 @@ setCandidates(mappedCandidates);
   const handleSave = useCallback((candidate: Candidate) => {
     addToast(toastSuccess('Candidature sauvegardée', `${candidate.firstName} ${candidate.lastName}`));
   }, [addToast]);
-  const handleDelete = useCallback((candidate: Candidate) => {
-    setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
-    addToast(toastSuccess('Candidature supprimée', `${candidate.firstName} ${candidate.lastName}`));
+  const handleDelete = useCallback(async (candidate: Candidate) => {
+    try {
+      console.log('🗑️ [Page] Deleting candidate:', candidate.id);
+      
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/candidates/${candidate.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete candidate');
+      }
+      
+      console.log('✅ [Page] Candidate deleted from API:', candidate.id);
+      
+      // Remove from local state
+      setCandidates((prev) => prev.filter((c) => c.id !== candidate.id));
+      addToast(toastSuccess('Candidature supprimée', `${candidate.firstName} ${candidate.lastName}`));
+    } catch (error) {
+      console.error('❌ [Page] Delete failed:', error);
+      addToast(toastError('Erreur', 'Impossible de supprimer le candidat'));
+    }
   }, [addToast]);
   const handleExportCSV = useCallback(async () => {
     if (!jobOffer) return;
@@ -276,7 +302,6 @@ setCandidates(mappedCandidates);
       addToast(toastError('Export échoué', 'Erreur lors de l\'export PDF'));
     }
   }, [jobOffer, addToast]);
-  const handlePrint = useCallback(() => { window.print(); }, []);
   const handleBack = useCallback(() => { navigate('/dashboard/rh/job-offers'); }, [navigate]);
 
   const jobRequirements = jobOffer ? {
@@ -423,10 +448,6 @@ setCandidates(mappedCandidates);
                 <button onClick={handleExportCSV} disabled={isExporting} className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white text-sm font-medium rounded-lg">
                   {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
                   CSV
-                </button>
-                <button onClick={handlePrint} className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--input-bg)] hover:bg-[var(--border-color)] text-[var(--text-primary)] text-sm font-medium rounded-lg">
-                  <Printer className="w-4 h-4" />
-                  Imprimer
                 </button>
               </div>
             )}
