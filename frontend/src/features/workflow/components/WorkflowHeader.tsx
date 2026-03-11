@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Save, RotateCcw, CheckCircle2, Loader2, Workflow } from 'lucide-react';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 interface WorkflowHeaderProps {
     onSave: () => Promise<void>;
@@ -17,6 +18,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     subtitle = 'Design your automated process',
 }) => {
     const [saveState, setSaveState] = useState<'idle' | 'loading' | 'success'>('idle');
+    const { showConfirm } = useGlobalModal();
 
     const handleSaveClick = async () => {
         if (saveState !== 'idle') return;
@@ -35,9 +37,13 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     };
 
     const handleResetClick = () => {
-        if (window.confirm("Êtes-vous sûr de vouloir tout effacer ? Cette action est irréversible.")) {
-            onReset();
-        }
+        showConfirm({
+            message: "Êtes-vous sûr de vouloir tout effacer ? Cette action est irréversible.",
+            title: "Réinitialiser le Workflow",
+            confirmLabel: "Tout effacer",
+            variant: "danger",
+            onConfirm: () => onReset()
+        });
     };
 
     return (

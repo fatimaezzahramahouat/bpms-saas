@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ClipboardList, Plus, Calendar, FileText, X, CheckCircle, Clock, AlertCircle, Download } from 'lucide-react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import api from '../../../services/api';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 interface ProcessInstance {
     id: string;
@@ -21,6 +22,7 @@ interface ProcessInstance {
 export function MyRequests() {
     const { userData } = useOutletContext<{ userData: any }>();
     const navigate = useNavigate();
+    const { showModal } = useGlobalModal();
     const [requests, setRequests] = useState<ProcessInstance[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,7 +73,7 @@ export function MyRequests() {
             }
 
             if (!targetWorkflow) {
-                alert("Aucun workflow n'est configuré pour cette organisation.");
+                showModal("Aucun workflow n'est configuré pour cette organisation.", 'error');
                 return;
             }
 
@@ -86,11 +88,11 @@ export function MyRequests() {
             // Reset dates and comment, but keep type for the next one
             setFormData(prev => ({ ...prev, startDate: '', endDate: '', comment: '' }));
             fetchRequests();
-            alert("Demande soumise avec succès !");
+            showModal("Demande soumise avec succès !", 'success');
         } catch (error: any) {
             console.error('Error submitting request:', error);
             const msg = error.response?.data?.error || "Une erreur est survenue lors de la soumission.";
-            alert(msg);
+            showModal(msg, 'error');
         } finally {
             setSubmitting(false);
         }

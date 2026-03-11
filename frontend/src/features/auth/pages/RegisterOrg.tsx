@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Building2, User, Users, Phone, Mail, Check, Lock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 /**
  * Register Organization Page Component
@@ -12,6 +13,7 @@ import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
  */
 export function RegisterOrg() {
   const navigate = useNavigate();
+  const { showModal } = useGlobalModal();
   const [formData, setFormData] = useState({
     orgName: '',
     responsibleName: '',
@@ -51,17 +53,17 @@ export function RegisterOrg() {
         // The token is now handled automatically by the browser via HTTP-only cookie
         localStorage.setItem('user', JSON.stringify(result.data.user));
         localStorage.setItem('isAuthenticated', 'true');
-        alert('Inscription validée !');
+        showModal('Inscription validée !', 'success');
         navigate('/dashboard');
       } else {
         const error = await response.json();
         const errorMessage = error.error ||
           (error.errors ? Object.values(error.errors).flat().join(', ') : 'Erreur lors de l\'inscription');
-        alert(errorMessage);
+        showModal(errorMessage, 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('Erreur réseau');
+      showModal('Erreur réseau', 'error');
     } finally {
       setLoading(false);
     }
@@ -165,7 +167,7 @@ export function RegisterOrg() {
               <div className="gov-row-compact mb-4">
                 <div className="gov-label-box-compact">
                   <Mail className="w-5 h-5 mr-4" />
-                  Email 
+                  Email
                 </div>
                 <input
                   type="email"
