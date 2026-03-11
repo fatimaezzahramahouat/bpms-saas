@@ -11,7 +11,7 @@ import { RecruitmentPage } from '@/pages/RecruitmentPage';
 import TeamPage from '@/pages/TeamPage';
 import { UsersManagement } from '../features/management/pages/UsersManagement';
 import { WorkflowPage } from '../features/workflow/pages/WorkflowPage';
-import { EmployeeDashboard } from '../features/workflow/components/EmployeeDashboard';
+
 import { ArchitecteBPMS } from '../features/management/pages/ArchitecteBPMS';
 import { ResetPassword } from '../features/auth/pages/ResetPassword';
 import { GoogleSuccess } from '../features/auth/pages/GoogleSuccess';
@@ -50,7 +50,7 @@ export function AppRouter() {
         
         {/* ⚙️ Workflow */}
         <Route path="workflow/:id?" element={<WorkflowPage />} />
-        <Route path="mes-demandes" element={<EmployeeDashboard />} />
+
         <Route path="analytics" element={<WorkflowAnalytics />} />
         
         {/* 👔 RH / Recruitment */}

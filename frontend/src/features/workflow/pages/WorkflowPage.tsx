@@ -296,14 +296,8 @@ const WorkflowEditor: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-[#050507] overflow-hidden relative">
 
-            <div className="flex-1 relative" ref={reactFlowWrapper}>
-
-                {canEdit && (
-                    <div className="pt-20 absolute inset-y-0 left-0 z-30">
-                        <WorkflowSidebar dataModel={dataModel} />
-                    </div>
-                )}
-
+            {/* HEADER LFOQ W MAFIHCH ABSOLUTE */}
+            <div className="z-50 relative w-full">
                 <WorkflowHeader
                     title={workflowName}
                     setName={setWorkflowName}
@@ -311,6 +305,16 @@ const WorkflowEditor: React.FC = () => {
                     onSave={saveWorkflow}
                     onReset={resetWorkflow}
                 />
+            </div>
+
+            <div className="flex-1 relative" ref={reactFlowWrapper}>
+
+                {/* 7IYEDNA hidden lg:block BACH SLIDE MA TEKHTAFACH F RESPONSIVE */}
+                {canEdit && (
+                    <div className="absolute inset-y-0 left-0 z-40 pt-4">
+                        <WorkflowSidebar dataModel={dataModel} />
+                    </div>
+                )}
 
                 <ReactFlow
                     nodes={nodes}

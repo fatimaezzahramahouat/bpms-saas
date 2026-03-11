@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Building2, Users, Check, ChevronRight, ChevronDown, UserCheck, TrendingUp, FileText, ArrowRight } from 'lucide-react';
+import { Building2, Users, Check, ChevronRight, ChevronDown, UserCheck, TrendingUp, FileText, ArrowRight, Menu, X } from 'lucide-react';
 import { Footer, ThemeSwitcher } from '@shared/components';
 
 /**
@@ -13,6 +13,7 @@ import { Footer, ThemeSwitcher } from '@shared/components';
 export function Home() {
 
   const [showSubMenu, setShowSubMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 👈 ZEDNA STATE DYAL MENU MOBILE
   const [yearly, setYearly] = useState(false);
   const navigate = useNavigate();
 
@@ -24,6 +25,12 @@ export function Home() {
         block: 'start'
       });
     }
+  };
+
+  // Fonction bach nssedou l'menu mobile mnin nscrolliw
+  const handleMobileScrollToFeatures = () => {
+    setIsMobileMenuOpen(false);
+    scrollToFeatures();
   };
 
   const plans = [
@@ -53,16 +60,19 @@ export function Home() {
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-white dark:bg-h1-black text-gray-900 dark:text-white font-sans transition-colors duration-300">
-      {/* HACKERONE MAIN HEADER */}
+      
+      {/* HEADER PRINCIPAL */}
       <header className="bg-white/90 dark:bg-black text-gray-900 dark:text-white sticky top-0 z-50 border-b border-gray-200 dark:border-white/5 backdrop-blur-md transition-colors">
         <div className="max-w-[1440px] mx-auto px-6 h-[72px] flex items-center justify-between">
-          {/* Left: Logo & Nav */}
+          
+          {/* Left: Logo & Nav Desktop */}
           <div className="flex items-center gap-10">
             <Link to="/" className="flex items-center">
               <img src="/assets/nexflow1.png" alt="Nexflow Logo" className="h-10 w-auto dark:hidden" />
               <img src="/assets/nexflow.png" alt="Nexflow Logo" className="h-10 w-auto hidden dark:block" />
             </Link>
 
+            {/* Menu Desktop kiban ghir f PC (lg:flex) */}
             <nav className="hidden lg:flex items-center gap-7">
               <button
                 onClick={() => setShowSubMenu(!showSubMenu)}
@@ -79,58 +89,93 @@ export function Home() {
                 Fonctionnalités
               </button>
 
-              <Link
-                to="/pricing"
-                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
-              >
-
+              <Link to="/pricing" className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors">
                 Nos Offres
               </Link>
-              <Link
-                to="/our-team"
-                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
-              >
+              <Link to="/our-team" className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors">
                 Notre Équipe
               </Link>
-              <Link
-                to="/recrutement"
-                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
-              >
+              <Link to="/recrutement" className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors">
                 Recrutement
               </Link>
             </nav>
           </div>
 
-          {/* Right: Action Buttons */}
+          {/* Right: Action Buttons w Burger Icon */}
           <div className="flex items-center gap-4">
             <ThemeSwitcher />
-            <Link
-              to="/login"
-              className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
+            
+            {/* Boutons dyal PC (mkhbiyin f mobile) */}
+            <div className="hidden lg:flex items-center gap-4">
+              <Link
+                to="/login"
+                className="text-[15px] font-semibold text-gray-600 dark:text-white/90 hover:text-h1-blue dark:hover:text-white transition-colors"
+              >
+                Connexion
+              </Link>
+              <button
+                onClick={() => navigate('/register-org')}
+                className="bg-[#4b4dff] hover:bg-[#3b3de0] text-white pl-6 pr-2 py-2 rounded-full text-[15px] font-bold flex items-center gap-3 transition-all active:scale-95 group"
+              >
+                Commencer
+                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#4b4dff] group-hover:scale-110 transition-transform">
+                  <ChevronRight className="w-5 h-5 stroke-[3]" />
+                </div>
+              </button>
+            </div>
+
+            {/* Bouton BURGER dyal Mobile (Mkhbi f PC) */}
+            <button 
+              className="lg:hidden p-2 text-gray-600 dark:text-white focus:outline-none"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
-              Connexion
-            </Link>
-            <button
-              onClick={() => navigate('/register-org')}
-              className="bg-[#4b4dff] hover:bg-[#3b3de0] text-white pl-6 pr-2 py-2 rounded-full text-[15px] font-bold flex items-center gap-3 transition-all active:scale-95 group"
-            >
-              Commencer
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-[#4b4dff] group-hover:scale-110 transition-transform">
-                <ChevronRight className="w-5 h-5 stroke-[3]" />
-              </div>
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
+
           </div>
         </div>
+
+        {/* 📱 DROPDOWN MOBILE MENU (Kayban ghir ila klicikina 3la Burger) */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="lg:hidden border-t border-gray-200 dark:border-white/5 bg-white dark:bg-black overflow-hidden shadow-xl"
+            >
+              <div className="flex flex-col px-6 py-6 space-y-4">
+                <Link to="/register-org" onClick={() => setIsMobileMenuOpen(false)} className="text-[16px] font-semibold text-gray-800 dark:text-white">Créer une organisation</Link>
+                <button onClick={handleMobileScrollToFeatures} className="text-left text-[16px] font-semibold text-gray-800 dark:text-white">Fonctionnalités</button>
+                <Link to="/pricing" onClick={() => setIsMobileMenuOpen(false)} className="text-[16px] font-semibold text-gray-800 dark:text-white">Nos Offres</Link>
+                <Link to="/our-team" onClick={() => setIsMobileMenuOpen(false)} className="text-[16px] font-semibold text-gray-800 dark:text-white">Notre Équipe</Link>
+                <Link to="/recrutement" onClick={() => setIsMobileMenuOpen(false)} className="text-[16px] font-semibold text-gray-800 dark:text-white">Recrutement</Link>
+                
+                <hr className="border-gray-200 dark:border-white/10 my-2" />
+                
+                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-[16px] font-semibold text-gray-800 dark:text-white text-center py-2">
+                  Connexion
+                </Link>
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); navigate('/register-org'); }}
+                  className="bg-[#4b4dff] hover:bg-[#3b3de0] text-white py-3 rounded-full text-[15px] font-bold flex items-center justify-center gap-2 transition-all"
+                >
+                  Commencer <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
-      {/* 3.5 SUB-MENU BAR */}
+      {/* 3.5 SUB-MENU BAR (Desktop Only) */}
       <AnimatePresence>
         {showSubMenu && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-zinc-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-white/5 shadow-2xl overflow-hidden z-40 transition-colors"
+            className="hidden lg:block bg-zinc-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-white/5 shadow-2xl overflow-hidden z-40 transition-colors"
           >
             <div className="max-w-7xl mx-auto flex justify-center gap-8 py-4">
               <Link

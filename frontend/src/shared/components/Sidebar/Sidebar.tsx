@@ -25,7 +25,7 @@ const menuItems = [
     { name: 'Equipe', icon: Users, path: '/dashboard/equipe' },
     { name: 'Workflow Builder', icon: GitMerge, path: '/dashboard/workflow' },
     { name: 'Mes Approbations', icon: CheckSquare, path: '/dashboard/approvals' },
-    { name: 'Mes Demandes', icon: Zap, path: '/dashboard/mes-demandes' },
+
     { name: 'Documents', icon: Files, path: '/documents' },
     { name: 'Architecte BPMS', icon: Network, path: '/dashboard/architecte' },
     { name: 'Paramètres', icon: Settings, path: '/settings' },
@@ -57,29 +57,20 @@ export const Sidebar: React.FC = () => {
             const hrRoles = ['RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
             return hrRoles.includes(roleFromStorage?.toUpperCase()) || hrRoles.includes(role?.toUpperCase());
         }
-        // Only Employees see "Mes Demandes" (or hide builder for them)
-        if (item.path === '/dashboard/mes-demandes') {
-            const hrRoles = ['RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
-            const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];
-            const isStaff = adminRoles.includes(roleFromStorage?.toUpperCase()) ||
-                hrRoles.includes(roleFromStorage?.toUpperCase()) ||
-                adminRoles.includes(role?.toUpperCase()) ||
-                hrRoles.includes(role?.toUpperCase());
-            return !isStaff;
-        }
+
 
         // Admin, Manager and RH can see "Mes Approbations"
         if (item.path === '/dashboard/approvals') {
             const approvalsRoles = ['ADMIN', 'ADMINISTRATEUR', 'MANAGER', 'RH', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
             return approvalsRoles.includes(roleFromStorage?.toUpperCase()) || approvalsRoles.includes(role?.toUpperCase());
         }
+    if (item.path.includes('equipe')) {
 
-        if (item.path.includes('equipe')) return canManageUsers  || isHR;
+    const allowedRoles = ['ADMIN', 'ADMINISTRATEUR', 'RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'];
+    const currentRole = roleFromStorage?.toUpperCase() || role?.toUpperCase();
 
-        if (item.path === '/dashboard/architecte') {
-            const adminRoles = ['ADMIN', 'ADMINISTRATEUR'];
-            return adminRoles.includes(roleFromStorage?.toUpperCase()) || adminRoles.includes(role?.toUpperCase());
-        }
+    return allowedRoles.includes(currentRole);
+}
 
         return true;
     });
