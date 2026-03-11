@@ -185,7 +185,10 @@ export const EmployeeTasks: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={async () => {
+                            await fetchWorkflows();
+                            setIsModalOpen(true);
+                        }}
                         className="px-6 py-2.5 bg-h1-blue hover:bg-h1-blue/90 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg shadow-h1-blue/20 transition-all flex items-center gap-2"
                     >
                         <Briefcase size={16} />

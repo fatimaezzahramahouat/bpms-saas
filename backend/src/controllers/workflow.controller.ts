@@ -113,7 +113,7 @@ export const workflowController = {
         }
 
         try {
-            const { nodes, edges, name, description, status } = parsed.data;
+            const { nodes, edges, name, description, status, data_model } = parsed.data;
 
             // Directly updating using prisma for convenience as requested
             // while still respecting the org isolation
@@ -126,7 +126,8 @@ export const workflowController = {
                     edges,
                     name,
                     description,
-                    status
+                    status,
+                    data_model
                 }
             );
 

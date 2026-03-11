@@ -90,18 +90,7 @@ export const authRepository = {
       include: {
         organisation: {
           include: {
-            orgInfo: {
-              select: {
-                id: true,
-                domaine: true,
-                address: true,
-                city: true,
-                website: true,
-                logo: true,
-                emailorg: true,
-                phoneorg: true
-              }
-            }
+            orgInfo: true
           }
         },
         admin: true,

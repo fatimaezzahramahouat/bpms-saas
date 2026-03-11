@@ -234,6 +234,8 @@ const WorkflowEditor: React.FC = () => {
             return;
         }
 
+        const manualFields = (startNode.data as any).data_model || [];
+
         const steps = flow.nodes.map((node, index) => ({
             name: node.data.title || 'Étape sans titre',
             order: index + 1,
@@ -254,7 +256,7 @@ const WorkflowEditor: React.FC = () => {
             nodes: flow.nodes,
             edges: flow.edges,
             steps: steps,
-            data_model: dataModel,
+            data_model: manualFields.length > 0 ? manualFields : dataModel,
         };
 
         const loadingToast = toast.loading(id && id !== 'new' ? "Mise à jour du workflow..." : "Création du workflow...");
