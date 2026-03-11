@@ -47,7 +47,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     };
 
     return (
-        <div className="absolute top-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-50 flex items-center justify-between px-6 shadow-sm">
+        <div className="w-full h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-50 flex items-center justify-between px-6 shadow-sm">
             {/* Left Side: Title & Subtitle */}
             <div className="flex items-center gap-4">
                 <div className="p-2 bg-blue-500/10 rounded-xl border border-blue-500/20">

@@ -13,8 +13,10 @@ export function DashboardLayout() {
     const { role: currentRole, isAdmin: isUserAdmin, isHR: isUserHR, isEmployee } = usePermission();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    const getRoleLabel = (role: string) => {
-        const r = role.toUpperCase();
+    // --- MODIFICATION: Fonction sécurisée pour déterminer le nom du rôle à afficher ---
+    const getRoleLabel = (role?: string) => {
+        if (!role) return "Employé"; // Rôle par défaut si non trouvé
+        const r = String(role).toUpperCase();
         if (r.includes('ADMIN')) return "Administrateur";
         if (r.includes('RH') || r.includes('HR')) return "Responsable RH";
         if (r.includes('MANAGER')) return "Manager";
@@ -36,7 +38,9 @@ export function DashboardLayout() {
         return null;
     });
 
-    const userRole = getRoleLabel(currentRole);
+    // --- MODIFICATION: Récupération dynamique du rôle exact de l'utilisateur connecté ---
+    const actualRole = userData?.role || currentRole || '';
+    const userRole = getRoleLabel(actualRole);
     const userName = userData ? `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : 'Utilisateur';
 
     // Helper to determine if current user should see "Admin/HR" dashboard features
@@ -139,7 +143,7 @@ export function DashboardLayout() {
 
     return (
         <div className="flex h-screen overflow-hidden bg-white dark:bg-h1-black font-sans text-gray-900 dark:text-white transition-colors duration-300">
-            {/* Backdrop for Mobile Sidebar */}
+            {/* Arrière-plan pour le menu latéral mobile */}
             <AnimatePresence>
                 {isSidebarOpen && (
                     <motion.div
@@ -152,7 +156,7 @@ export function DashboardLayout() {
                 )}
             </AnimatePresence>
 
-            {/* Sidebar */}
+            {/* Menu Latéral (Sidebar) */}
             <aside className={`
                 fixed inset-y-0 left-0 w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col h-screen z-[50] 
                 overflow-y-auto transition-transform duration-300 ease-in-out lg:translate-x-0
@@ -232,14 +236,8 @@ export function DashboardLayout() {
                         </>
                     )}
 
-                    {!hasElevatedAccess && (
-                        <NavLink to="/dashboard/mes-demandes" onClick={() => setIsSidebarOpen(false)} className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
-                            <Zap className="w-5 h-5" />
-                            Mes Demandes
-                        </NavLink>
-                    )}
 
-                    {/* Manager/RH Approvals - Only visible to Managers, RH or Admins */}
+                    {/* Approbations (Manager/RH/Admin) */}
                     {(userRole === 'Manager' || userRole === 'Responsable RH' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/approvals"
@@ -255,9 +253,8 @@ export function DashboardLayout() {
                             Mes Approbations
                         </NavLink>
                     )}
-
-                    {/* Employee Tasks - Only visible to Employees or Admins */}
-                    {(userRole === 'Employé' || isUserAdmin) && (
+  {/* Tâches (Employés/Admins/Managers) */}
+                    {(userRole === 'Employé' || userRole === 'Manager' || isUserAdmin) && (
                         <NavLink
                             to="/dashboard/tasks"
                             onClick={() => setIsSidebarOpen(false)}
@@ -276,18 +273,6 @@ export function DashboardLayout() {
                         </NavLink>
                     )}
 
-                    {[
-
-                    ].map((item) => (
-                        <button
-                            key={item.label}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-h1-blue dark:hover:text-white transition-all"
-                        >
-                            <item.icon className="w-5 h-5" />
-                            {item.label}
-                        </button>
-                    ))}
-
                     <NavLink to="/dashboard/settings" onClick={() => setIsSidebarOpen(false)} className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${isActive ? 'bg-h1-blue text-white shadow-lg shadow-h1-blue/20' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'}`}>
                         <Settings className="w-5 h-5" />
                         Paramètres
@@ -302,9 +287,10 @@ export function DashboardLayout() {
                 </div>
             </aside>
 
-            {/* Right Container (Header + Content) */}
+            {/* Conteneur principal (Header + Contenu) */}
             <div className={`relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden w-full max-w-full ml-0 lg:ml-64 transition-all duration-300 ${!hasOrgInfo ? 'blur-xl pointer-events-none' : ''}`}>
-                {/* Mobile Topbar */}
+                
+                {/* Header Mobile */}
                 <header className="lg:hidden h-16 shrink-0 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between px-4 sticky top-0 z-30 w-full">
                     <div className="flex items-center gap-3">
                         <button
@@ -322,7 +308,7 @@ export function DashboardLayout() {
                     </div>
                 </header>
 
-                {/* Desktop Topbar */}
+                {/* Header Bureau (Desktop Topbar) */}
                 <header className="h-20 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 lg:px-8 bg-white/30 dark:bg-zinc-900/30 backdrop-blur-md sticky top-0 z-10 transition-colors duration-300 w-full">
                     <div className="flex-1 max-w-md hidden sm:block">
                         <div className="relative">
@@ -337,13 +323,20 @@ export function DashboardLayout() {
                             <NotificationBell />
                         </div>
                         <div className="hidden lg:block h-10 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
+                        
+                                                {/* --- ZONE DU PROFIL (NOM ET RÔLE DYNAMIQUE) --- */}
                         <div className="flex items-center gap-2 lg:gap-3 border-zinc-200 dark:border-zinc-800 lg:pl-6">
-                            <div className="text-right hidden xs:block">
-                                <p className="text-sm font-bold truncate max-w-[120px] lg:max-w-[200px] text-gray-900 dark:text-white leading-tight">{userName || 'Utilisateur'}</p>
-                                <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.1em] lg:tracking-[0.2em] font-black text-h1-blue">{userRole}</p>
+                            {/* Radinaha sm:block bach tban dima f l'PC */}
+                            <div className="text-right hidden sm:block">
+                                <p className="text-sm font-bold truncate max-w-[120px] lg:max-w-[200px] text-gray-900 dark:text-white leading-tight">
+                                    {userData?.firstName ? `${userData.firstName} ${userData.lastName || ''}` : (userData?.name || 'Utilisateur')}
+                                </p>
+                                <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.1em] lg:tracking-[0.2em] font-black text-h1-blue">
+                                    {userRole}
+                                </p>
                             </div>
                             <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-h1-blue/10 border border-h1-blue/20 flex items-center justify-center text-h1-blue font-black text-xs lg:text-sm overflow-hidden shrink-0">
-                                {userName?.charAt(0).toUpperCase() || 'U'}
+                                {(userData?.firstName?.charAt(0) || userData?.name?.charAt(0) || 'U').toUpperCase()}
                             </div>
                         </div>
                     </div>
@@ -355,13 +348,6 @@ export function DashboardLayout() {
             </div>
 
             <OnboardingModal isOpen={showOnboarding} onSuccess={handleOnboardingSuccess} />
-            {/* <ForceChangePasswordModal
-                isOpen={showForcePasswordChange}
-                onSuccess={() => {
-                    setShowForcePasswordChange(false);
-                    fetchProfile();
-                }}
-            /> */}
         </div>
     );
 }

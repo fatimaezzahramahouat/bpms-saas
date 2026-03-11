@@ -53,7 +53,7 @@ export function Login() {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-start pt-6 bg-white dark:bg-h1-black font-sans relative overflow-hidden px-[4cm] transition-colors duration-300">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start pt-6 pb-12 bg-white dark:bg-h1-black font-sans relative overflow-y-auto px-4 md:px-[4cm] transition-colors duration-300">
       <div className="absolute top-6 right-8 z-50">
         <ThemeSwitcher />
       </div>
@@ -78,8 +78,9 @@ export function Login() {
           className="gov-card w-full p-6"
         >
           <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5">
-            <div className="gov-row-compact">
-              <div className="gov-label-box-compact w-48">
+            
+            <div className="gov-row-compact flex-col md:flex-row w-full">
+              <div className="gov-label-box-compact w-full md:w-48 mb-2 md:mb-0">
                 <Mail className="w-5 h-5 mr-4" />
                 Identifiant
               </div>
@@ -87,24 +88,24 @@ export function Login() {
                 type="email"
                 name="email"
                 placeholder="VOTRE EMAIL"
-                className="gov-input-compact"
+                className="gov-input-compact w-full"
                 value={loginData.email}
                 onChange={handleLoginChange}
                 required
               />
             </div>
 
-            <div className="gov-row-compact">
-              <div className="gov-label-box-compact w-48">
+            <div className="gov-row-compact flex-col md:flex-row w-full">
+              <div className="gov-label-box-compact w-full md:w-48 mb-2 md:mb-0">
                 <User className="w-5 h-5 mr-4" />
                 Mot de passe
               </div>
-              <div className="flex-1 relative">
+              <div className="flex-1 relative w-full">
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   placeholder="••••••••"
-                  className="gov-input-compact pr-12"
+                  className="gov-input-compact pr-12 w-full"
                   value={loginData.password}
                   onChange={handleLoginChange}
                   required
@@ -131,7 +132,6 @@ export function Login() {
                 <div className="h-[1px] flex-1 bg-zinc-200 dark:bg-zinc-800"></div>
               </div>
 
-              {/* Google Login Button */}
               <button
                 type="button"
                 onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}

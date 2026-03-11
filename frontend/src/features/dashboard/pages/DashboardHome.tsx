@@ -12,36 +12,70 @@ import {
 } from 'recharts';
 import api from '../../../services/api';
 
-// --- FALLBACK MOCK DATA SETS ---
+// --- JEUX DE DONNÉES DE SECOURS (MOCK) ---
 const FALLBACK_EVOLUTION = [
     { name: 'Jan', count: 0 }, { name: 'Fév', count: 0 }, { name: 'Mar', count: 0 },
     { name: 'Avr', count: 0 }, { name: 'Mai', count: 0 }, { name: 'Juin', count: 0 },
 ];
 
+// --- FONCTION POUR GÉNÉRER UNE COULEUR UNIQUE POUR CHAQUE PERSONNE ---
+const getAvatarColor = (name: string) => {
+    const colors = ['bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-indigo-500', 'bg-rose-500', 'bg-cyan-500'];
+    let hash = 0;
+    if (!name) return colors[0];
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+};
+
 export function DashboardHome() {
     const { orgData } = useOutletContext<{ orgData: any }>();
 
-    // --- STATE MANAGEMENT ---
+    // --- VÉRIFICATION DES DROITS (ADMIN ET RH UNIQUEMENT) ---
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : {};
+    const canManageEquipe = ['ADMIN', 'ADMINISTRATEUR', 'RH', 'HR', 'HR_MANAGER', 'RESPONSABLE RH', 'RH RESPONSABLE'].includes(user?.role?.toUpperCase() || '');
+
+    // --- GESTION DES ÉTATS ---
     const [selectedCard, setSelectedCard] = useState('Instances Totales');
     const [statsData, setStatsData] = useState<any>(null);
+    const [teamMembers, setTeamMembers] = useState<any[]>([]); // Liste de l'équipe
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchStats = async () => {
+    const fetchData = async () => {
         try {
             setIsLoading(true);
-            const response = await api.get('/stats/workflows');
-            if (response.data && response.data.status === 'success') {
-                setStatsData(response.data.data);
+            
+            // 1. Récupération des Statistiques
+            const statsRes = await api.get('/stats/workflows').catch(() => null);
+            if (statsRes?.data?.status === 'success') {
+                setStatsData(statsRes?.data?.data);
+            }
+
+            // 2. Récupération de l'Équipe
+            const teamRes = await api.get('/users').catch(() => null);
+            if (teamRes?.data) {
+                // Gère les différents formats de réponse API
+                const usersList = teamRes.data.data || teamRes.data || [];
+                setTeamMembers(usersList);
+            } else {
+                // Fallback de test au cas où l'API n'est pas encore prête
+                setTeamMembers([
+                    { id: 1, firstName: 'Dounia', lastName: 'Admin', role: 'Administrateur' },
+                    { id: 2, firstName: 'Fahd', lastName: 'Ata', role: 'Manager' },
+                    { id: 3, firstName: 'Sara', lastName: 'RH', role: 'Responsable RH' },
+                ]);
             }
         } catch (err) {
-            console.error('❌ Error fetching dashboard stats:', err);
+            console.error('❌ Erreur lors de la récupération des données:', err);
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchStats();
+        fetchData();
     }, []);
 
     const handleCardClick = (label: string) => {
@@ -89,7 +123,7 @@ export function DashboardHome() {
 
     return (
         <div className="p-4 lg:p-8 space-y-8 min-h-screen">
-            {/* HEADER */}
+            {/* EN-TÊTE */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                 <div className="flex items-center gap-4">
                     <div>
@@ -98,17 +132,53 @@ export function DashboardHome() {
                     </div>
                     {isLoading && <Loader2 className="w-5 h-5 animate-spin text-h1-blue" />}
                 </div>
+                
                 <div className="flex gap-4 items-center">
+                    {/* --- AVATARS DYNAMIQUES DE L'ÉQUIPE --- */}
                     <div className="flex -space-x-2">
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-[#181824] bg-gray-100 dark:bg-zinc-800"></div>
-                        ))}
+                        {teamMembers.slice(0, 4).map((member, index) => {
+                            const fullName = `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.name || 'Utilisateur';
+                            const initial = fullName.charAt(0).toUpperCase();
+                            const avatarColor = getAvatarColor(fullName); 
+
+                            return (
+                                <div 
+                                    key={member.id || member._id || index} 
+                                    title={fullName}
+                                    /* HNA FIN BEDELT CURSOR-POINTER 👇 */
+                                    className={`w-8 h-8 rounded-full border-2 border-white dark:border-[#181824] flex items-center justify-center text-[10px] font-bold text-white shadow-sm cursor-pointer hover:z-10 hover:scale-110 transition-all ${avatarColor}`}
+                                >
+                                    {initial}
+                                </div>
+                            );
+                        })}
+
+                        {/* Reste de l'équipe (Si > 4) */}
+                        {teamMembers.length > 4 && (
+                            <div 
+                                title={`${teamMembers.length - 4} autres membres`}
+                                className="w-8 h-8 rounded-full border-2 border-white dark:border-[#181824] bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-gray-600 dark:text-zinc-400 shadow-sm cursor-pointer hover:z-10 hover:scale-110 transition-all"
+                            >
+                                +{teamMembers.length - 4}
+                            </div>
+                        )}
+                        
+                        {/* Affichage si l'équipe est vide */}
+                        {!isLoading && teamMembers.length === 0 && (
+                            <div className="text-xs text-gray-400 italic mr-2">Aucun membre</div>
+                        )}
                     </div>
-                    <Link to="/dashboard/equipe" className="text-xs font-bold uppercase tracking-widest text-h1-blue hover:text-h1-blue/80 dark:hover:text-white transition-colors underline underline-offset-4">GÉRER L'ÉQUIPE</Link>
+
+                    {/* Le bouton "Gérer l'équipe" n'est visible que pour Admin et RH */}
+                    {canManageEquipe && (
+                        <Link to="/dashboard/equipe" className="text-xs font-bold uppercase tracking-widest text-h1-blue hover:text-h1-blue/80 dark:hover:text-white transition-colors underline underline-offset-4 ml-2">
+                            GÉRER L'ÉQUIPE
+                        </Link>
+                    )}
                 </div>
             </div>
 
-            {/* KPI CARDS */}
+            {/* CARTES KPI */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat) => (
                     <motion.div
@@ -147,9 +217,9 @@ export function DashboardHome() {
                 ))}
             </div>
 
-            {/* CHARTS SECTION */}
+            {/* SECTION DES GRAPHIQUES */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Evolution Chart (Area) */}
+                {/* Graphique d'Évolution (Zone) */}
                 <div className="lg:col-span-2 bg-white dark:bg-[#181824] border border-gray-100 dark:border-white/5 p-6 rounded-2xl shadow-sm dark:shadow-none h-full min-h-[450px]">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-2">
@@ -210,7 +280,7 @@ export function DashboardHome() {
                     </div>
                 </div>
 
-                {/* Distribution Chart (Doughnut) */}
+                {/* Graphique de Répartition (Anneau) */}
                 <div className="bg-white dark:bg-[#181824] border border-gray-100 dark:border-white/5 p-6 rounded-2xl shadow-sm dark:shadow-none relative h-full min-h-[450px]">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-2">
@@ -268,7 +338,7 @@ export function DashboardHome() {
                 </div>
             </div>
 
-            {/* BOTTOM SECTION: ACTIVITY & TASKS */}
+            {/* SECTION INFÉRIEURE : ACTIVITÉ ET TÂCHES */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">
                 <div className="lg:col-span-2 bg-white dark:bg-[#181824] border border-gray-100 dark:border-white/5 rounded-2xl p-6 h-[400px] shadow-sm dark:shadow-none flex flex-col transition-colors">
                     <div className="flex justify-between items-center mb-6">
