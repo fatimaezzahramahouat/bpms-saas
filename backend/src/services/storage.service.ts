@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import fs from 'fs/promises';
+import path from 'path';
 
 /**
  * Storage Service for managing file uploads to Supabase.
@@ -88,10 +90,72 @@ export const storageService = {
   },
 
   /**
+   * Delete a file from storage (Supabase or local filesystem).
+   * @param fileUrl - The full public URL of the file OR a relative path
+   */
+  async deleteFileFromStorage(fileUrl: string): Promise<void> {
+    // Handle empty or invalid input
+    if (!fileUrl) {
+      console.warn('⚠️ [Storage] No file URL provided, skipping delete');
+      return;
+    }
+    
+    // Check if it's a local file path (starts with /uploads/)
+    if (fileUrl.startsWith('/uploads/') || fileUrl.includes('uploads\\')) {
+      await this.deleteLocalFile(fileUrl);
+      return;
+    }
+    
+    // Check if it's a relative path (doesn't start with http)
+    if (!fileUrl.startsWith('http')) {
+      await this.deleteLocalFile(fileUrl);
+      return;
+    }
+    
+    // It's a Supabase URL - use existing logic
+    await this.deleteFromSupabase(fileUrl);
+  },
+
+  /**
+   * Delete a file from local filesystem.
+   * @param filePath - Relative or absolute file path
+   */
+  async deleteLocalFile(filePath: string): Promise<void> {
+    try {
+      // Convert relative path to absolute
+      let absolutePath: string;
+      if (path.isAbsolute(filePath)) {
+        absolutePath = filePath;
+      } else {
+        // Handle both /uploads/cvs/... and uploads/cvs/...
+        const normalizedPath = filePath.replace(/^\/?uploads\//, '');
+        absolutePath = path.join(process.cwd(), 'uploads', normalizedPath);
+      }
+      
+      console.log('🗑️ [Storage] Deleting local file:', absolutePath);
+      
+      // Check if file exists before deleting
+      await fs.access(absolutePath);
+      
+      // Delete the file
+      await fs.unlink(absolutePath);
+      
+      console.log('✅ [Storage] Local file deleted:', absolutePath);
+    } catch (error: any) {
+      if (error.code === 'ENOENT') {
+        console.warn('⚠️ [Storage] File not found (already deleted?):', filePath);
+        return; // Not an error if file doesn't exist
+      }
+      console.error('❌ [Storage] Failed to delete local file:', error.message);
+      // Don't throw - local file deletion failure is not critical
+    }
+  },
+
+  /**
    * Delete a file from Supabase Storage.
    * @param fileUrl - The full public URL of the file
    */
-  async deleteFileFromStorage(fileUrl: string): Promise<void> {
+  async deleteFromSupabase(fileUrl: string): Promise<void> {
     try {
       // URL format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
       const url = new URL(fileUrl);

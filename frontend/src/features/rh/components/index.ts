@@ -14,4 +14,4 @@ export { Pagination, PaginationSkeleton } from './Pagination';
 export { SearchBar } from './SearchBar';
 export { CandidateFilters } from './CandidateFilters';
 export { ActiveFilters } from './ActiveFilters';
-export { StatisticsCards, StatusDistribution, ScoreDistribution, TopSkills, ApplicationTimeline, ConversionFunnel } from './CandidateStatistics';
+export { StatisticsCards, StatusDistribution, TopSkills, ApplicationTimeline, ConversionFunnel } from './CandidateStatistics';
