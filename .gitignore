@@ -7,3 +7,5 @@ node_modules/
 # Prisma generated client
 /src/generated/prisma
 backend/.env
+
+backend/uploads/cvs/*.pdf

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Users, TrendingUp, Star, Clock, Target, PieChart, BarChart3, Calendar, ArrowDownUp, RefreshCw } from 'lucide-react';
+import { Loader2, Users, TrendingUp, Star, Clock, Target, PieChart, Calendar, ArrowDownUp, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../../shared/hooks/useAuth';
 import { candidateStatisticsService, CandidateStatistics } from '../services/candidateStatisticsService';
 
@@ -14,14 +14,6 @@ function StatisticsCards({ stats }: { stats: CandidateStatistics }) {
       color: 'purple',
       trend: `${stats.totalCandidatesTrend > 0 ? '+' : ''}${stats.totalCandidatesTrend}%`,
       trendUp: stats.totalCandidatesTrend >= 0,
-    },
-    {
-      label: 'Score Moyen',
-      value: `${stats.averageMatchScore}%`,
-      icon: Target,
-      color: 'blue',
-      trend: '+5%',
-      trendUp: true,
     },
     {
       label: "Nouveaux Aujourd'hui",
@@ -158,47 +150,6 @@ function StatusDistribution({ data }: { data: CandidateStatistics['statusDistrib
             );
           })}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Score Distribution Histogram
-function ScoreDistribution({ data }: { data: CandidateStatistics['scoreDistribution'] }) {
-  const maxCount = Math.max(...data.map(r => r.count), 1);
-
-  return (
-    <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <BarChart3 className="w-5 h-5 text-purple-400" />
-        <h3 className="font-semibold text-[var(--text-primary)]">Distribution des Scores</h3>
-      </div>
-      
-      <div className="space-y-3">
-        {data.map((range) => {
-          const height = maxCount > 0 ? (range.count / maxCount) * 100 : 0;
-          return (
-            <div key={range.range} className="flex items-center gap-3">
-              <span className="text-xs text-[var(--text-secondary)] w-14 flex-shrink-0">
-                {range.range}
-              </span>
-              <div className="flex-1 h-6 bg-[var(--input-bg)] rounded-lg overflow-hidden relative">
-                <div
-                  className="h-full rounded-lg transition-all duration-500"
-                  style={{
-                    width: `${height}%`,
-                    backgroundColor: range.color,
-                  }}
-                />
-                {range.count > 0 && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-white">
-                    {range.count}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -496,9 +447,8 @@ export function CandidateStatisticsPage() {
             <StatisticsCards stats={statistics} />
 
             {/* Charts Row 1 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
               <StatusDistribution data={statistics.statusDistribution} />
-              <ScoreDistribution data={statistics.scoreDistribution} />
             </div>
 
             {/* Charts Row 2 */}

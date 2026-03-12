@@ -5,7 +5,8 @@ import { MatchingPercentage } from './MatchingPercentage';
 import { ComparisonTable, MatchItem } from './ComparisonTable';
 import { Label, DEFAULT_LABELS } from '../hooks/useSavedCandidates';
 import { CandidateNotes } from './CandidateNotes';
-import { DeleteConfirmationModal } from './DeleteConfirmationModal';
+import { StatusDropdown } from './StatusDropdown';
+import { ConfirmModal } from '@/components/ConfirmModal';
 
 // Get API URL for static file serving
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -151,8 +152,9 @@ export function CandidateCard({
 }: CandidateCardProps) {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showCvModal, setShowCvModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const statusColors = getStatusColors(candidate.status);
   const fullName = `${candidate.firstName} ${candidate.lastName}`;
 
@@ -211,10 +213,13 @@ export function CandidateCard({
           <div>
             <h3 className="font-semibold text-[var(--text-primary)] text-lg">{fullName}</h3>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusColors.bg} ${statusColors.text}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${statusColors.dot}`}></span>
-                {candidate.status}
-              </span>
+              <StatusDropdown 
+                candidateId={candidate.id}
+                currentStatus={candidate.status || 'Nouveau'}
+                onStatusChange={(newStatus) => {
+                  console.log('Status changed to:', newStatus);
+                }}
+              />
               {/* Saved Labels */}
               {savedLabels.length > 0 && (
                 <div className="flex gap-1">
@@ -257,14 +262,6 @@ export function CandidateCard({
           <span className="text-sm">
             Candidature du {formatDate(candidate.appliedDate)}
           </span>
-        </div>
-      </div>
-
-      {/* Postuler Info */}
-      <div className="mb-4 p-3 bg-purple-500/5 border border-purple-500/10 rounded-lg">
-        <div className="flex items-center gap-2 text-sm text-purple-400">
-          <span className="w-2 h-2 rounded-full bg-green-400"></span>
-          Candidature soumise
         </div>
       </div>
 
@@ -336,21 +333,6 @@ export function CandidateCard({
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirmDelete={() => {
-          setShowDeleteModal(false);
-          onDelete(candidate);
-        }}
-        onConfirmReject={(reason) => {
-          setShowDeleteModal(false);
-          onReject?.(candidate.id, reason);
-        }}
-        candidateName={fullName}
-      />
 
       {/* Notes Section */}
       {showNotes && (
@@ -443,6 +425,22 @@ export function CandidateCard({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={() => {
+          setShowDeleteModal(false);
+          onDelete?.(candidate);
+        }}
+        title="⚠️ Confirmer la suppression"
+        message="Êtes-vous sûr de vouloir supprimer ce candidat? Cette action est irréversible et toutes les données associées seront perdues."
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        candidateName={fullName}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

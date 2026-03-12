@@ -103,7 +103,37 @@ const WorkflowEditor: React.FC = () => {
 
             fetchWf();
         }
+        
     }, [id, setNodes, setEdges, fitView]);
+     // 👇👇 HADA HOWA L'CODE LI KHASSK TZID 👇👇
+ useEffect(() => {
+     const savedAiWorkflow = localStorage.getItem('ai_generated_workflow');
+
+     if (savedAiWorkflow && (!id || id === 'new')) {
+         try {
+             const parsedData = JSON.parse(savedAiWorkflow);
+             
+             if (parsedData.nodes && parsedData.edges) {
+                 setNodes(parsedData.nodes);
+                 setEdges(parsedData.edges);
+                 
+                 if (parsedData.metadata?.name) {
+                     setWorkflowName(parsedData.metadata.name);
+                 }
+
+                 if (parsedData.data_model) {
+                     setDataModel(parsedData.data_model);
+                 }
+
+                 localStorage.removeItem('ai_generated_workflow');
+                 setTimeout(() => fitView({ duration: 800 }), 300);
+             }
+         } catch (error) {
+             console.error("Erreur f l'qraya dyal AI workflow:", error);
+         }
+     }
+ }, [id, setNodes, setEdges, fitView]);
+ // 👆👆 TSALA L'CODE LI GHATZID 👆👆
 
     const onConnect = useCallback(
         (params: Connection) => {

@@ -61,14 +61,14 @@ export const taskController = {
     updateTaskStatus: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
         const { id } = req.params as { id: string };
-        const { action } = req.body; // 'APPROVE' | 'REJECT'
+        const { action, reason } = req.body; // 'APPROVE' | 'REJECT', optional reason
         const currentUserId = authReq.user?.id as string;
 
         if (!['APPROVE', 'REJECT'].includes(action)) {
             return res.status(400).json({ error: "Invalid action. Must be 'APPROVE' or 'REJECT'." });
         }
 
-        const result = await workflowEngineService.completeTaskAndMoveToNext(id, action, currentUserId);
+        const result = await workflowEngineService.completeTaskAndMoveToNext(id, action, currentUserId, reason);
 
         res.status(200).json({
             message: `Task ${action === 'APPROVE' ? 'approved' : 'rejected'} successfully.`,
@@ -102,11 +102,12 @@ export const taskController = {
     rejectTask: catchAsync(async (req: Request, res: Response) => {
         const authReq = req as AuthRequest;
         const id = req.params.id as string;
+        const { reason } = req.body;
         const currentUserId = authReq.user?.id;
 
         if (!id || !currentUserId) return res.status(401).json({ error: "Unauthorized or missing ID" });
 
-        const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', currentUserId);
+        const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', currentUserId, reason);
 
         res.status(200).json({
             message: "Task rejected successfully",
@@ -127,31 +128,48 @@ export const taskController = {
             return res.status(401).json({ error: "Unauthorized" });
         }
 
-      
-const tasks = await prisma.task.findMany({
-    where: {
-        userId: currentUserId,
-        status: "PENDING"
-    },
-    include: {
-        
-        user: {
-            select: {
-                firstName: true,
-                lastName: true,
-                email: true
-            }
-        },
-        processInstance: {
+
+        const tasks = await prisma.task.findMany({
+            where: {
+                userId: currentUserId,
+                status: "PENDING"
+            },
             include: {
-                workflow: true
-                
-            }
-        },
-        step: true
-    },
-    orderBy: { createdAt: "desc" }
-});
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true
+                    }
+                },
+                processInstance: {
+                    include: {
+                        user: true,
+                        workflow: {
+                            include: {
+                                steps: {
+                                    orderBy: { order: 'asc' }
+                                }
+                            }
+                        },
+                        tasks: {
+                            select: {
+                                stepId: true,
+                                status: true,
+                                completedAt: true
+                            }
+                        },
+                        aiAnalyses: {
+                            where: { type: 'WORKFLOW_AUDIT' },
+                            orderBy: { createdAt: 'desc' },
+                            take: 1
+                        }
+                    }
+                },
+                step: true
+            },
+            orderBy: { createdAt: "desc" }
+        });
 
         res.status(200).json(tasks);
     })

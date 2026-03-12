@@ -50,7 +50,7 @@ export function CandidateProfilePage() {
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'profile' | 'analysis'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'analysis'>('analysis');
   
   useEffect(() => {
   const fetchCandidateAndAnalysis = async () => {
@@ -270,16 +270,6 @@ const formatted: AIAnalysis = {
             </button>
             
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  activeTab === 'profile'
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Profil
-              </button>
               {analysis && (
                 <button
                   onClick={() => setActiveTab('analysis')}

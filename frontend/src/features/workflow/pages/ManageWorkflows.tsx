@@ -133,7 +133,7 @@ export const ManageWorkflows: React.FC = () => {
                         <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-2 tracking-tight transition-colors">
                             Gestion des <span className="text-purple-600 dark:text-purple-500">Workflows</span>
                         </h1>
-                        <p className="text-slate-500 font-medium">
+                        <p className="text-slate-600 dark:text-slate-500 font-medium">
                             Gérez, éditez et surveillez tous les processus de votre organisation.
                         </p>
                     </div>
