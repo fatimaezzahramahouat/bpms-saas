@@ -114,7 +114,7 @@ export const MyApprovals: React.FC = () => {
     }
 
     return (
-        <div className="p-8 bg-slate-950 min-h-screen relative overflow-hidden">
+        <div className="p-8 bg-white dark:bg-slate-950 text-slate-900 dark:text-white min-h-screen relative overflow-hidden">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
 
             <header className="mb-12 relative">
@@ -126,12 +126,12 @@ export const MyApprovals: React.FC = () => {
                 </div>
                 <div className="flex justify-between items-end">
                     <div>
-                        <h1 className="text-4xl font-black text-white tracking-tight">Mes Approbations</h1>
-                        <p className="text-slate-400 mt-2 font-medium">Gérez et validez les demandes de vos collaborateurs en un clic.</p>
+                        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Mes Approbations</h1>
+                        <p className="text-slate-600 dark:text-slate-400 mt-2 font-medium">Gérez et validez les demandes de vos collaborateurs en un clic.</p>
                     </div>
                     <button
                         onClick={fetchTasks}
-                        className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-400 transition-all active:scale-95"
+                        className="p-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-600 dark:text-slate-400 transition-all active:scale-95"
                         title="Rafraîchir"
                     >
                         <Clock size={20} className={loading ? 'animate-spin' : ''} />
@@ -152,24 +152,38 @@ export const MyApprovals: React.FC = () => {
                     <p className="text-slate-500 font-medium mt-1">Vous n'avez aucune approbation en attente pour le moment.</p>
                 </motion.div>
             ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 relative">
-                    {tasks.map((task, index) => {
-                        const initiator = task.processInstance.user;
-                        const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Employé Inconnu";
-                        const context = task.processInstance.context || {};
+                <motion.div layout className="grid grid-cols-1 xl:grid-cols-2 gap-8 relative">
+                    <AnimatePresence mode="popLayout">
+                        {tasks.map((task, index) => {
+                            const initiator = task.processInstance.user;
+                            const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Employé Inconnu";
+                            const context = task.processInstance.context || {};
 
-                        return (
-                            <motion.div
-                                key={task.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.1 }}
-                                className="group relative bg-slate-900/40 backdrop-blur-xl rounded-[2.5rem] border border-white/5 p-8 transition-all hover:bg-slate-900/60 hover:border-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/10"
-                            >
-                                <div className="flex justify-between items-start mb-8">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
-                                            <GitBranch className="text-purple-400" size={24} />
+                            return (
+                                <motion.div
+                                    layout
+                                    key={task.id}
+                                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)", transition: { duration: 0.2 } }}
+                                    transition={{ duration: 0.3 }}
+                                    className="group relative bg-slate-50 dark:bg-slate-900/50 backdrop-blur-2xl rounded-[2.5rem] border border-slate-200 dark:border-white/10 p-8 shadow-sm dark:shadow-none transition-all hover:bg-white dark:hover:bg-slate-900/60 hover:border-purple-300 dark:hover:border-purple-500/30 hover:shadow-xl hover:shadow-purple-500/10"
+                                >
+                                    {getSmartBadge(context)}
+                                    <div className="flex justify-between items-start mb-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
+                                                <GitBranch className="text-purple-400" size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                                    {task.processInstance.workflow.name}
+                                                </h3>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span>
+                                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{task.step.name}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div>
                                             <h3 className="text-xl font-black text-white tracking-tight group-hover:text-purple-400 transition-colors">
@@ -181,18 +195,18 @@ export const MyApprovals: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/5">
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Reçu le</p>
-                                        <p className="text-sm font-bold text-slate-300">{formatDate(task.createdAt)}</p>
-                                    </div>
-                                </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-white/[0.02] rounded-3xl border border-white/5">
-                                    <div className="space-y-3">
-                                        <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Initié par</p>
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 border border-white/5">
-                                                <User size={18} />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-slate-100/50 dark:bg-white/[0.02] rounded-3xl border border-slate-200 dark:border-white/5">
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Initié par</p>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-white/5">
+                                                    <User size={18} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{initiatorName}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{initiator?.email || "Email non renseigné"}</p>
+                                                </div>
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-white leading-tight">{initiatorName}</p>
@@ -201,18 +215,21 @@ export const MyApprovals: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Détails de la demande</p>
-                                        <div className="grid grid-cols-2 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
-                                            {Object.entries(context).map(([key, value]) => (
-                                                <div key={key} className="flex flex-col">
-                                                    <span className="text-[9px] text-purple-400 uppercase font-bold">{key.replace('_', ' ')}</span>
-                                                    <span className="text-sm text-slate-200 font-medium">
-                                                        {typeof value === 'string' && value.includes('202') ? new Date(value as string).toLocaleDateString() : String(value)}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                    <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex gap-4 pl-2">
+                                        <button
+                                            onClick={() => handleApprove(task.id)}
+                                            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95"
+                                        >
+                                            <CheckCircle2 size={18} strokeWidth={3} />
+                                            <span>Approuver</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleReject(task.id)}
+                                            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-500/20 text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 font-black text-sm uppercase tracking-widest rounded-2xl border border-slate-300 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-500/50 transition-all hover:-translate-y-1 active:scale-95"
+                                        >
+                                            <XCircle size={18} strokeWidth={3} />
+                                            <span>Refuser</span>
+                                        </button>
                                     </div>
                                 </div>
 
