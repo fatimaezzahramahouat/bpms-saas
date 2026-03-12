@@ -459,7 +459,7 @@ export const workflowEngineService = {
     /**
      * Completes a task and dynamically identifies the next step using AI-generated logic.
      */
-    async completeTaskAndMoveToNext(taskId: string, action: 'APPROVE' | 'REJECT', userId: string, reason?: string) {
+    async completeTaskAndMoveToNext(taskId: string, action: 'APPROVE' | 'REJECT', userId: string) {
         let sideEffects: any[] = [];
         const result = await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({
@@ -486,13 +486,7 @@ export const workflowEngineService = {
             if (action === 'REJECT') {
                 await tx.processInstance.update({
                     where: { id: processInstance.id },
-                    data: {
-                        status: 'REJECTED',
-                        context: {
-                            ...(processInstance.context as any || {}),
-                            rejectionReason: reason || "Aucun motif fourni"
-                        }
-                    }
+                    data: { status: 'REJECTED' }
                 });
                 return { status: 'TERMINATED', reason: 'REJECTED' };
             }
