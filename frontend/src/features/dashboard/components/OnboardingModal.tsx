@@ -2,6 +2,7 @@ import { useState, ChangeEvent, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Building2, Globe, MapPin, Layout, Home, X, Upload, Check, Mail, Phone, Users } from 'lucide-react';
 import { getCurrentUser } from '../../auth/services/authService';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 interface OnboardingModalProps {
     isOpen: boolean;
@@ -9,6 +10,7 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
+    const { showModal } = useGlobalModal();
     const [formData, setFormData] = useState({
         website: '',
         city: '',
@@ -20,8 +22,10 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
         name: '',
         nb_employers: ''
     });
-    const user = getCurrentUser();
-    const isGoogleProvider = user?.provider === 'GOOGLE';
+
+    // Attempting to resolve isGoogleProvider using imported user service
+    const currentUser = getCurrentUser();
+    const isGoogleProvider = (currentUser as any)?.provider === 'google' || (currentUser as any)?.isGoogle === true;
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -85,11 +89,13 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
         formDataToSend.append('address', formData.address);
         formDataToSend.append('emailorg', formData.emailorg);
         formDataToSend.append('phoneorg', formData.phoneorg);
+
         
         if (isGoogleProvider) {
             formDataToSend.append('name', formData.name);
             formDataToSend.append('nb_employers', formData.nb_employers);
         }
+
         
         if (logoFile) {
             formDataToSend.append('logo', logoFile);
@@ -120,11 +126,11 @@ export function OnboardingModal({ isOpen, onSuccess }: OnboardingModalProps) {
                 const error = await response.json();
                 console.log("Error Response Body:", JSON.stringify(error, null, 2));
                 const firstError = error.details ? Object.values(error.details)[0] : error.error;
-                alert(Array.isArray(firstError) ? firstError[0] : (firstError || 'Une erreur est survenue'));
+                showModal(Array.isArray(firstError) ? firstError[0] : (firstError || 'Une erreur est survenue'), 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Erreur de connexion au serveur');
+            showModal('Erreur de connexion au serveur', 'error');
         } finally {
             setLoading(false);
         }

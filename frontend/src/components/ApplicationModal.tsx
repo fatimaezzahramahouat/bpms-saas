@@ -10,6 +10,7 @@ import { applicationService } from '../services/application.service';
 interface ApplicationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;  // Callback to refresh data after successful submission
   jobTitle: string;
   jobId: string;
 }
@@ -28,7 +29,7 @@ interface FormErrors {
   cv?: string;
 }
 
-export function ApplicationModal({ isOpen, onClose, jobTitle, jobId }: ApplicationModalProps) {
+export function ApplicationModal({ isOpen, onClose, onSuccess, jobTitle, jobId }: ApplicationModalProps) {
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
@@ -87,13 +88,53 @@ export function ApplicationModal({ isOpen, onClose, jobTitle, jobId }: Applicati
       setIsLoading(true);
       setErrorMessage(null);
       
+      // ===== DIAGNOSTIC LOGS FOR PROBLEM 2 =====
+      console.log('\n📤 ===== FRONTEND SUBMISSION DIAGNOSTIC =====');
+      console.log('1. Form data:', { jobId, fullName: formData.fullName, email: formData.email, hasCV: !!formData.cv });
+      console.log('2. API endpoint:', `http://localhost:5000/api/applications/${jobId}/apply`);
+      // =========================================
+      
       try {
-        await applicationService.applyToJob(jobId, {
+        const result = await applicationService.applyToJob(jobId, {
           fullName: formData.fullName,
           email: formData.email,
           phone: formData.phone,
           cv: formData.cv!,
         });
+        
+        // ===== DIAGNOSTIC LOGS FOR PROBLEM 2 =====
+        console.log('3. Response received:', result);
+        console.log('4. Submission status: SUCCESS');
+        console.log('========================================\n');
+        // =========================================
+        
+        // Call onSuccess callback to refresh the candidates list
+        if (onSuccess) {
+          console.log('🔄 [REFRESH] Calling onSuccess callback to refresh candidates list');
+          onSuccess();
+        }
+        
+        // Also dispatch a custom event for cross-component communication
+        // This allows the candidates list page to refresh when a new application is submitted
+        console.log('🔄 [REFRESH] Dispatching custom event for candidates refresh');
+        window.dispatchEvent(new CustomEvent('application-submitted', { 
+          detail: { jobId, timestamp: Date.now() } 
+        }));
+        
+        // Also use localStorage for cross-tab communication (works across different routes in same tab)
+        localStorage.setItem('application-submitted', JSON.stringify({
+          jobId,
+          timestamp: Date.now()
+        }));
+        
+        // ✅ Use BroadcastChannel for real-time updates across routes/tabs
+        try {
+          const channel = new BroadcastChannel('candidate-updates');
+          channel.postMessage({ jobId, timestamp: Date.now() });
+          channel.close();
+        } catch (e) {
+          console.warn('BroadcastChannel not supported:', e);
+        }
         
         setStatus('success');
         setTimeout(() => {
@@ -107,6 +148,11 @@ export function ApplicationModal({ isOpen, onClose, jobTitle, jobId }: Applicati
         }, 2000);
       } catch (err: any) {
         console.error('Submission error:', err);
+        // ===== DIAGNOSTIC LOGS FOR PROBLEM 2 =====
+        console.log('3. Error occurred:', err?.message || err);
+        console.log('4. Submission status: FAILED');
+        console.log('========================================\n');
+        // =========================================
         setStatus('error');
         setErrorMessage(
           err.response?.data?.error || 

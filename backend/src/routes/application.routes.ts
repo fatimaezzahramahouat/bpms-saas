@@ -2,12 +2,33 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { generateContent } from '../lib/groq';
+import { createAnalysisPrompt, type JobOfferData } from '../lib/prompts';
+import { extractCVDataFromText, type CVData } from '../lib/cvExtractor';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// ============================================================================
+// ✅ Environment-Aware Path Resolution Helpers
+// ============================================================================
+const getBackendRoot = () => {
+  // Use env var if set, otherwise default to known path
+  return process.env.BACKEND_ROOT || '/home/manal/projet_final_BPMS/backend';
+};
+
+const resolveUploadPath = (relativePath: string): string => {
+  const backendRoot = getBackendRoot();
+  
+  if (relativePath.startsWith(backendRoot)) return relativePath;
+  if (relativePath.startsWith('/uploads/')) return `${backendRoot}${relativePath}`;
+  if (!relativePath.startsWith('/')) return path.join(backendRoot, relativePath);
+  
+  // Fallback
+  return path.join(backendRoot, 'uploads', 'cvs', path.basename(relativePath));
+};
 
 // ============================================================================
 // Multer Configuration for CV File Uploads
@@ -35,51 +56,45 @@ const upload = multer({
 });
 
 // ============================================================================
-// Helper: حساب النسبة بدقة مع دعم أسماء مختلفة + fallback
+// Helper: Calculate precise score with fallback (English only)
 // ============================================================================
 function calculatePreciseScore(analysis: any): number {
-  // 🔍 تشخيص: طباعة مفاتيح الرد من الـ AI
+  // Debug: print response keys
   console.log('🔍 [AI DEBUG] Keys:', Object.keys(analysis));
   console.log('🔍 [AI DEBUG] overallScore:', analysis.overallScore);
   console.log('🔍 [AI DEBUG] matchedRequirements:', analysis.matchedRequirements);
   console.log('🔍 [AI DEBUG] missingRequirements:', analysis.missingRequirements);
-  console.log('🔍 [AI DEBUG] forces:', analysis.forces);
-  console.log('🔍 [AI DEBUG] faiblesses:', analysis.faiblesses);
 
-  // دالة مساعدة لاستخراج طول المصفوفة بأسماء مختلفة
+  // Helper to get array length
   const getLen = (val: any): number => {
     if (Array.isArray(val)) return val.length;
     if (typeof val === 'string' && val.trim()) return 1;
     return 0;
   };
 
-  // جرب أسماء مختلفة (إنجليزي/فرنسي)
+  // Use English field names only
   const matched = 
     getLen(analysis.matchedRequirements) ||
-    getLen(analysis['exigences correspondantes']) ||
     getLen(analysis.matchedSkills) ||
     getLen(analysis.strengths) ||
-    getLen(analysis.forces) ||
     0;
 
   const missing = 
     getLen(analysis.missingRequirements) ||
-    getLen(analysis['exigences manquantes']) ||
     getLen(analysis.missingSkills) ||
     getLen(analysis.weaknesses) ||
-    getLen(analysis.faiblesses) ||
     0;
 
   const total = matched + missing;
 
-  // ✅ إذا وجدنا بيانات، احسب النسبة
+  // If we have data, calculate the score
   if (total > 0) {
     const score = Math.round((matched / total) * 100 * 100) / 100;
     console.log('📊 [CALCULATED] Matched:', matched, 'Missing:', missing, '→ Score:', score);
     return score;
   }
 
-  // ❌ إذا لم نجد بيانات، استخدم نسبة الـ AI كـ fallback
+  // If no data, use AI score as fallback
   const aiScore = Number(analysis.overallScore);
   const fallback = (aiScore >= 0 && aiScore <= 100) ? aiScore : 75;
   console.log('📊 [FALLBACK] Using AI score:', fallback);
@@ -153,77 +168,275 @@ router.post('/:jobOfferId/apply', upload.single('cv'), async (req: Request, res:
     console.log('✅ Application created:', application.id);
 
     // ========================================================================
-    // AUTOMATIC AI ANALYSIS - Background
+    // AUTOMATIC AI ANALYSIS - Background (FIXED)
     // ========================================================================
     setImmediate(async () => {
       try {
-        console.log('🤖 Starting automatic AI analysis for application:', application.id);
+        console.log('🤖 [AI] Starting automatic analysis for application:', application.id);
+
+        // ✅ 1. Prepare jobOfferData and extractedCVData
+        // If not already extracted, extract from CV:
+        let extractedCVData: Partial<CVData> | null = null;
         
-        // 🔧 [تعديل 1] Prompt محسّن لطلب categoryScores بشكل صريح
-        const prompt = `
-Analyze the compatibility between this candidate and job offer:
+        if (candidate.cv) {
+          try {
+            // ============================================
+            // ✅ FIXED: CV File Path Resolution
+            // ============================================
+            console.log('🔄 [AI] Starting CV processing for application:', application.id);
+            
+            // ✅ 1. Get the CV path from candidate
+            let cvPath = candidate.cv;
+            
+            if (!cvPath) {
+              console.error('❌ [AI] No CV path in candidate record');
+              return;
+            }
+            
+            console.log('🔄 [AI] Original CV path from DB:', cvPath);
+            
+            // ✅ 2. Resolve to absolute path with proper backend prefix
+            const projectRoot = '/home/manal/projet_final_BPMS';
+            const backendRoot = `${projectRoot}/backend`;
+            
+            let resolvedCvPath: string;
+            
+            // Case 1: Path already absolute and correct (contains /backend/uploads)
+            if (cvPath.startsWith(`${backendRoot}/uploads`)) {
+              resolvedCvPath = cvPath;
+              
+            // Case 2: Path is absolute but missing /backend (e.g., /home/.../uploads/...)
+            } else if (cvPath.startsWith(`${projectRoot}/uploads`)) {
+              resolvedCvPath = cvPath.replace(projectRoot, backendRoot);
+              
+            // Case 3: Path is relative starting with /uploads
+            } else if (cvPath.startsWith('/uploads/')) {
+              resolvedCvPath = `${backendRoot}${cvPath}`;
+              
+            // Case 4: Path is relative without leading slash (e.g., 'uploads/cvs/...')
+            } else if (!cvPath.startsWith('/')) {
+              resolvedCvPath = path.join(backendRoot, cvPath);
+              
+            // Case 5: Fallback - try to construct from known upload directory
+            } else {
+              resolvedCvPath = path.join(backendRoot, 'uploads', 'cvs', path.basename(cvPath));
+            }
+            
+            console.log('🔄 [AI] Resolved CV path:', resolvedCvPath);
+            
+            // ✅ 3. Verify file exists with fallback logic
+            async function verifyAndResolveCVPath(primaryPath: string): Promise<string | null> {
+              try {
+                await fs.promises.access(primaryPath);
+                console.log('✅ [AI] CV file found at primary path');
+                return primaryPath;
+              } catch (e: any) {
+                console.log('⚠️ [AI] Primary path not found, trying fallbacks...');
+                
+                // Fallback 1: Add /backend if missing
+                if (!primaryPath.includes('/backend/')) {
+                  const fallback1 = primaryPath.replace('/uploads/', '/backend/uploads/');
+                  try {
+                    await fs.promises.access(fallback1);
+                    console.log('✅ [AI] CV file found at fallback path 1:', fallback1);
+                    return fallback1;
+                  } catch {}
+                }
+                
+                // Fallback 2: Try standard uploads directory
+                const filename = path.basename(primaryPath);
+                const fallback2 = path.join(backendRoot, 'uploads', 'cvs', filename);
+                if (fallback2 !== primaryPath) {
+                  try {
+                    await fs.promises.access(fallback2);
+                    console.log('✅ [AI] CV file found at fallback path 2:', fallback2);
+                    return fallback2;
+                  } catch {}
+                }
+                
+                console.error('❌ [AI] CV file not found at any path');
+                return null;
+              }
+            }
+            
+            // ✅ 4. Get verified path
+            const verifiedCvPath = await verifyAndResolveCVPath(resolvedCvPath);
+            
+            if (!verifiedCvPath) {
+              console.error('❌ [AI] Cannot proceed: CV file not accessible');
+              return;
+            }
+            
+            // ✅ 5. Process CV with verified path
+            console.log('📄 [AI] Processing CV:', path.basename(verifiedCvPath));
+            
+            // Convert PDF to text using pdfToTextConverter
+            const { convertPDFtoText } = await import('../lib/pdfToTextConverter');
+            const conversionResult = await convertPDFtoText(verifiedCvPath);
+            
+            if (!conversionResult.success) {
+              console.error('❌ [AI] CV extraction failed:', conversionResult.error);
+              return;
+            }
+            
+            extractedCVData = await extractCVDataFromText(conversionResult.text);
+            
+            console.log('✅ [AI] CV processed successfully');
+            console.log('📊 [AI] Extracted skills:', Object.values(extractedCVData.technicalSkills || {}).flat().filter(Boolean).length);
+          } catch (e: any) {
+            console.error('❌ [AI] CV processing error:', e.message);
+            return;
+          }
+        }
 
-CANDIDATE:
-Name: ${candidate.fullName}
-Email: ${candidate.email}
-CV: ${candidate.cv}
+        // ✅ 2. Verify data quality
+        if (!extractedCVData?.rawText || extractedCVData.rawText.length < 100) {
+          console.error('❌ [AI] CV data too short for analysis');
+          return;
+        }
 
-JOB OFFER:
-Title: ${jobOffer.title}
-Required Skills: ${(jobOffer.skills || []).join(', ')}
-Level: ${jobOffer.level}
+        // ✅ 3. Build prompt using UPDATED function from prompts.ts
+        const jobOfferData: JobOfferData = {
+          title: jobOffer.title,
+          requiredSkills: jobOffer.skills || [],
+          preferredSkills: [],
+          experienceRequired: jobOffer.level || '',
+          educationRequired: '',
+          description: jobOffer.description,
+          level: jobOffer.level,
+          location: '',
+          salary: jobOffer.budget?.toString() || '',
+          contractType: jobOffer.contractType,
+          workMode: jobOffer.workMode
+        };
 
-Provide a detailed JSON analysis with EXACTLY this structure:
-{
-  "overallScore": number (0-100),
-  "categoryScores": {
-    "skills": number (0-100),
-    "experience": number (0-100),
-    "education": number (0-100),
-    "technicalFit": number (0-100)
-  },
-  "matchedRequirements": ["skill1", "skill2"],
-  "missingRequirements": ["skill3", "skill4"],
-  "strengths": ["point1", "point2"],
-  "weaknesses": ["point3", "point4"],
-  "recommendation": {
-    "decision": "Yes/No/Maybe",
-    "priority": "HIGH/MEDIUM/LOW",
-    "interviewQuestions": ["question1", "question2"],
-    "notes": "summary"
-  }
-}
+        console.log('🔄 [AI] Building prompt with createAnalysisPrompt...');
+        const finalPromptForAI = createAnalysisPrompt(extractedCVData as CVData, jobOfferData);
 
-IMPORTANT: 
-- All scores MUST be numbers between 0-100
-- categoryScores MUST include all 4 categories with numeric values
-- Respond in French
-- Output ONLY valid JSON, no markdown formatting
-`;
+        // ✅ 4. Quality validation BEFORE sending to AI
+        console.log('📊 [AI] === PROMPT QUALITY CHECK ===');
+        console.log('  • finalPromptForAI length:', finalPromptForAI.length, 'chars');
+        console.log('  • Contains UNIQUE?', finalPromptForAI.includes('UNIQUE ANALYSIS REQUEST'));
+        console.log('  • First 120 chars:', finalPromptForAI.substring(0, 120).replace(/\n/g, ' '));
 
-        const analysisText = await generateContent(prompt);
-        const cleanText = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-        const analysis = JSON.parse(jsonMatch ? jsonMatch[0] : cleanText);
+        if (finalPromptForAI.length < 2000) {
+          console.error('❌ [AI] CRITICAL: Prompt too short! Expected >2000, got:', finalPromptForAI.length);
+        }
+        console.log('📊 [AI] === END PROMPT CHECK ===');
 
-        // ✅ حساب النسبة بدقة مع fallback
-        const preciseScore = calculatePreciseScore(analysis);
+        // ✅ 5. Call Groq AI
+        console.log('🤖 [AI] Calling Groq API with prompt length:', finalPromptForAI.length);
+        const analysisText = await generateContent(finalPromptForAI);
 
+        // ✅ 6. Parse AI response
+        let analysis: any;
+        try {
+          const cleanText = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
+          const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+          const jsonString = jsonMatch ? jsonMatch[0] : cleanText;
+          analysis = JSON.parse(jsonString);
+          console.log('✅ [AI] Response parsed successfully');
+        } catch (parseError: any) {
+          console.error('❌ [AI] JSON parse error:', parseError.message);
+          return;
+        }
+
+        // ✅ === LOCAL SCORE CALCULATION (Fallback if AI gives generic score) ===
+        console.log('\n🧮 [Score] Calculating local fallback score...');
+
+        // Extract and normalize skills from CV
+        const cvSkills = new Set(
+          Object.values(extractedCVData.technicalSkills || {})
+            .flat()
+            .filter(Boolean)
+            .map((s: string) => s.toLowerCase().trim())
+        );
+
+        // Extract skills from Job Offer
+        const requiredSkills = (jobOfferData.requiredSkills || [])
+          .map((s: string) => s.toLowerCase().trim());
+        const preferredSkills = (jobOfferData.preferredSkills || [])
+          .map((s: string) => s.toLowerCase().trim());
+
+        // Calculate matches
+        const matchedRequired = requiredSkills.filter(skill => cvSkills.has(skill));
+        const matchedPreferred = preferredSkills.filter(skill => cvSkills.has(skill));
+        const missingRequired = requiredSkills.filter(skill => !cvSkills.has(skill));
+
+        // Calculate score: 70% weight for required, 30% for preferred
+        const requiredScore = requiredSkills.length > 0 
+          ? (matchedRequired.length / requiredSkills.length) * 70 : 0;
+        const preferredScore = preferredSkills.length > 0 
+          ? (matchedPreferred.length / preferredSkills.length) * 30 : 0;
+        const localCalculatedScore = Math.round(requiredScore + preferredScore);
+
+        // Log detailed comparison
+        console.log('📊 [Score Debug]');
+        console.log('  • CV Skills Count:', cvSkills.size);
+        console.log('  • CV Skills (first 10):', Array.from(cvSkills).slice(0, 10).join(', '));
+        console.log('  • Required Skills:', requiredSkills.join(', '));
+        console.log('  • Matched Required:', matchedRequired.join(', '));
+        console.log('  • Missing Required:', missingRequired.join(', '));
+        console.log('  • Local Calculated Score:', localCalculatedScore);
+
+        // ✅ === DECISION: Use AI score OR local fallback ===
+        const aiScore = Number(analysis.overallScore);
+        const isGenericScore = [50, 60, 70, 75, 80].includes(aiScore);
+        const scoreDiff = Math.abs((aiScore || 0) - localCalculatedScore);
+
+        let finalScore: number;
+        let scoreSource: string;
+
+        if (!aiScore || (isGenericScore && scoreDiff > 15)) {
+          console.log(`⚠️ [Score] AI score (${aiScore}) seems generic, using local calculation: ${localCalculatedScore}`);
+          finalScore = localCalculatedScore;
+          scoreSource = 'local';
+          analysis.overallScore = localCalculatedScore;
+          analysis.calculatedLocally = true;
+          analysis.scoreSource = 'local-fallback';
+        } else {
+          console.log(`✅ [Score] Using AI score: ${aiScore} (diff from local: ${scoreDiff})`);
+          finalScore = aiScore;
+          scoreSource = 'ai';
+        }
+
+        // ✅ Update analysis object with corrected values
+        if (scoreSource === 'local') {
+          analysis.categoryScores = {
+            skills: Math.min(100, Math.round((matchedRequired.length / Math.max(1, requiredSkills.length)) * 100)),
+            experience: (extractedCVData.workExperiences?.length ?? 0) > 0 ? 70 : 30,
+            education: (extractedCVData.education?.length ?? 0) > 0 ? 80 : 40,
+            technicalFit: Math.round(((matchedRequired.length + matchedPreferred.length) / Math.max(1, requiredSkills.length + preferredSkills.length)) * 100)
+          };
+        }
+
+        analysis.matchedRequirements = matchedRequired;
+        analysis.missingRequirements = missingRequired;
+        analysis.detailedMetrics = {
+          ...analysis.detailedMetrics,
+          totalCVSkills: cvSkills.size,
+          matchedRequiredCount: matchedRequired.length,
+          missingRequiredCount: missingRequired.length,
+          scoreCalculationMethod: scoreSource
+        };
+
+        console.log(`💾 [Score] Final score: ${finalScore} (source: ${scoreSource})`);
+        console.log('✅ ===== END SCORE CALCULATION =====\n');
+
+        // ✅ 7. Use English field names only
         const ensureArray = (value: unknown): string[] => {
           if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
           if (typeof value === 'string') return value.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
           return [];
         };
 
-        // 🔧 [تعديل 2] قراءة categoryScores مع دعم الفرنسية والإنجليزية
-        const getCategoryScore = (obj: any, enKey: string, frKey: string): number | null => {
-          const val = obj?.categoryScores?.[enKey] ?? 
-                      obj?.categoryScores?.[frKey] ?? 
-                      obj?.result?.categoryScores?.[enKey] ?? 
-                      obj?.result?.categoryScores?.[frKey];
+        // ✅ 8. Get category scores
+        const getCategoryScore = (obj: any, key: string): number | null => {
+          const val = obj?.categoryScores?.[key] ?? obj?.result?.categoryScores?.[key];
           return val !== undefined ? Number(val) : null;
         };
 
+        // ✅ 9. Save analysis to database
         await prisma.aIAnalysis.create({
           data: {
             type: 'CANDIDATE_ANALYSIS',
@@ -231,37 +444,30 @@ IMPORTANT:
             jobOfferId: jobOffer.id,
             applicationId: application.id,
             
-            // ✅ النسبة المحسوبة بدقة
-            overallScore: preciseScore,
+            // ✅ Final score
+            overallScore: finalScore,
             
-            // ✅ categoryScores مع دعم الفرنسية والإنجليزية
-            skillsScore: getCategoryScore(analysis, 'skills', 'compétences'),
-            experienceScore: getCategoryScore(analysis, 'experience', 'expérience'),
-            educationScore: getCategoryScore(analysis, 'education', 'éducation'),
-            technicalFitScore: getCategoryScore(analysis, 'technicalFit', 'adéquation technique'),
+            // ✅ categoryScores - English only
+            skillsScore: getCategoryScore(analysis, 'skills'),
+            experienceScore: getCategoryScore(analysis, 'experience'),
+            educationScore: getCategoryScore(analysis, 'education'),
+            technicalFitScore: getCategoryScore(analysis, 'technicalFit'),
             
-            matchedSkills: ensureArray(analysis.matchedRequirements || analysis.matchedSkills || analysis['exigences correspondantes'] || []),
-            missingSkills: ensureArray(analysis.missingRequirements || analysis.missingSkills || analysis['exigences manquantes'] || []),
-            strengths: ensureArray(analysis.strengths || analysis.forces || []),
-            weaknesses: ensureArray(analysis.weaknesses || analysis.faiblesses || []),
+            // ✅ English field names only
+            matchedSkills: ensureArray(analysis.matchedRequirements || []),
+            missingSkills: ensureArray(analysis.missingRequirements || []),
+            strengths: ensureArray(analysis.strengths || []),
+            weaknesses: ensureArray(analysis.weaknesses || []),
             
             recommendation: analysis.recommendation?.decision || null,
             priority: analysis.recommendation?.priority || null,
             interviewQuestions: ensureArray(analysis.recommendation?.interviewQuestions || []),
-            result: {
-              ...analysis,
-              categoryScores: {
-                skills: analysis.categoryScores?.skills ?? analysis.categoryScores?.['compétences'] ?? analysis.result?.categoryScores?.skills ?? analysis.result?.categoryScores?.['compétences'],
-                experience: analysis.categoryScores?.experience ?? analysis.categoryScores?.['expérience'] ?? analysis.result?.categoryScores?.experience ?? analysis.result?.categoryScores?.['expérience'],
-                education: analysis.categoryScores?.education ?? analysis.categoryScores?.['éducation'] ?? analysis.result?.categoryScores?.education ?? analysis.result?.categoryScores?.['éducation'],
-                technicalFit: analysis.categoryScores?.technicalFit ?? analysis.categoryScores?.['adéquation technique'] ?? analysis.result?.categoryScores?.technicalFit ?? analysis.result?.categoryScores?.['adéquation technique']
-              }
-            },
-            confidence: preciseScore / 100
+            result: analysis,
+            confidence: finalScore / 100
           }
         });
 
-        console.log('💾 Analysis saved with score:', preciseScore, 'for application:', application.id);
+        console.log('✅ [AI] Analysis completed and saved for application:', application.id);
 
       } catch (error) {
         console.error('❌ AI analysis failed:', error);
@@ -338,78 +544,180 @@ router.post('/', async (req: Request, res: Response) => {
 
     console.log('✅ Application created:', application.id);
 
-    // Automatic AI Analysis in background
+    // Automatic AI Analysis in background (FIXED)
     setImmediate(async () => {
       try {
-        console.log('🤖 Starting automatic AI analysis for application:', application.id);
-        
-        // 🔧 [تعديل 1] Prompt محسّن لطلب categoryScores بشكل صريح (نفس الدالة الأولى)
-        const prompt = `
-Analyze the compatibility between this candidate and job offer:
+        console.log('🤖 [AI] Starting automatic analysis for application:', application.id);
 
-CANDIDATE:
-Name: ${candidate.fullName}
+        // ✅ 1. Build CV data from request body
+        // For this endpoint, skills, experience, education come from request body
+        const cvTextFromBody = `
+Candidate: ${candidate.fullName}
 Email: ${candidate.email}
-Skills: ${Array.isArray(skills) ? skills.join(', ') : 'Not specified'}
+Skills: ${Array.isArray(skills) ? skills.join(', ') : skills || 'Not specified'}
 Experience: ${experience || 'Not specified'}
 Education: ${education || 'Not specified'}
+        `.trim();
 
-JOB OFFER:
-Title: ${jobOffer.title}
-Required Skills: ${(jobOffer.skills || []).join(', ')}
-Level: ${jobOffer.level}
+        // Extract CV data from the text
+        const extractedCVData = await extractCVDataFromText(cvTextFromBody);
+        
+        // Add rawText for the createAnalysisPrompt function
+        extractedCVData.rawText = cvTextFromBody;
 
-Provide a detailed JSON analysis with EXACTLY this structure:
-{
-  "overallScore": number (0-100),
-  "categoryScores": {
-    "skills": number (0-100),
-    "experience": number (0-100),
-    "education": number (0-100),
-    "technicalFit": number (0-100)
-  },
-  "matchedRequirements": ["skill1", "skill2"],
-  "missingRequirements": ["skill3", "skill4"],
-  "strengths": ["point1", "point2"],
-  "weaknesses": ["point3", "point4"],
-  "recommendation": {
-    "decision": "Yes/No/Maybe",
-    "priority": "HIGH/MEDIUM/LOW",
-    "interviewQuestions": ["question1", "question2"],
-    "notes": "summary"
-  }
-}
+        // ✅ 2. Verify data quality
+        if (!extractedCVData?.rawText || extractedCVData.rawText.length < 50) {
+          console.error('❌ [AI] CV data too short for analysis');
+          return;
+        }
 
-IMPORTANT: 
-- All scores MUST be numbers between 0-100
-- categoryScores MUST include all 4 categories with numeric values
-- Respond in French
-- Output ONLY valid JSON, no markdown formatting
-`;
+        // ✅ 3. Build prompt using UPDATED function from prompts.ts
+        const jobOfferData: JobOfferData = {
+          title: jobOffer.title,
+          requiredSkills: jobOffer.skills || [],
+          preferredSkills: [],
+          experienceRequired: jobOffer.level || '',
+          educationRequired: '',
+          description: jobOffer.description,
+          level: jobOffer.level,
+          location: '',
+          salary: jobOffer.budget?.toString() || '',
+          contractType: jobOffer.contractType,
+          workMode: jobOffer.workMode
+        };
 
-        const analysisText = await generateContent(prompt);
-        const cleanText = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-        const analysis = JSON.parse(jsonMatch ? jsonMatch[0] : cleanText);
+        console.log('🔄 [AI] Building prompt with createAnalysisPrompt...');
+        const finalPromptForAI = createAnalysisPrompt(extractedCVData as CVData, jobOfferData);
 
-        // ✅ حساب النسبة بدقة مع fallback
-        const preciseScore = calculatePreciseScore(analysis);
+        // ✅ 4. Quality validation BEFORE sending to AI
+        console.log('📊 [AI] === PROMPT QUALITY CHECK ===');
+        console.log('  • finalPromptForAI length:', finalPromptForAI.length, 'chars');
+        console.log('  • Contains UNIQUE?', finalPromptForAI.includes('UNIQUE ANALYSIS REQUEST'));
+        console.log('  • First 120 chars:', finalPromptForAI.substring(0, 120).replace(/\n/g, ' '));
 
+        if (finalPromptForAI.length < 2000) {
+          console.error('❌ [AI] CRITICAL: Prompt too short! Expected >2000, got:', finalPromptForAI.length);
+        }
+        console.log('📊 [AI] === END PROMPT CHECK ===');
+
+        // ✅ 5. Call Groq AI
+        console.log('🤖 [AI] Calling Groq API with prompt length:', finalPromptForAI.length);
+        const analysisText = await generateContent(finalPromptForAI);
+
+        // ✅ 6. Parse AI response
+        let analysis: any;
+        try {
+          const cleanText = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
+          const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+          const jsonString = jsonMatch ? jsonMatch[0] : cleanText;
+          analysis = JSON.parse(jsonString);
+          console.log('✅ [AI] Response parsed successfully');
+        } catch (parseError: any) {
+          console.error('❌ [AI] JSON parse error:', parseError.message);
+          return;
+        }
+
+        // ✅ === LOCAL SCORE CALCULATION (Fallback if AI gives generic score) ===
+        console.log('\n🧮 [Score] Calculating local fallback score...');
+
+        // Extract and normalize skills from CV
+        const cvSkills = new Set(
+          Object.values(extractedCVData.technicalSkills || {})
+            .flat()
+            .filter(Boolean)
+            .map((s: string) => s.toLowerCase().trim())
+        );
+
+        // Also add skills from the request body if available
+        if (Array.isArray(skills)) {
+          skills.forEach((s: string) => cvSkills.add(s.toLowerCase().trim()));
+        }
+
+        // Extract skills from Job Offer
+        const requiredSkills = (jobOfferData.requiredSkills || [])
+          .map((s: string) => s.toLowerCase().trim());
+        const preferredSkills = (jobOfferData.preferredSkills || [])
+          .map((s: string) => s.toLowerCase().trim());
+
+        // Calculate matches
+        const matchedRequired = requiredSkills.filter(skill => cvSkills.has(skill));
+        const matchedPreferred = preferredSkills.filter(skill => cvSkills.has(skill));
+        const missingRequired = requiredSkills.filter(skill => !cvSkills.has(skill));
+
+        // Calculate score: 70% weight for required, 30% for preferred
+        const requiredScore = requiredSkills.length > 0 
+          ? (matchedRequired.length / requiredSkills.length) * 70 : 0;
+        const preferredScore = preferredSkills.length > 0 
+          ? (matchedPreferred.length / preferredSkills.length) * 30 : 0;
+        const localCalculatedScore = Math.round(requiredScore + preferredScore);
+
+        // Log detailed comparison
+        console.log('📊 [Score Debug]');
+        console.log('  • CV Skills Count:', cvSkills.size);
+        console.log('  • CV Skills (first 10):', Array.from(cvSkills).slice(0, 10).join(', '));
+        console.log('  • Required Skills:', requiredSkills.join(', '));
+        console.log('  • Matched Required:', matchedRequired.join(', '));
+        console.log('  • Missing Required:', missingRequired.join(', '));
+        console.log('  • Local Calculated Score:', localCalculatedScore);
+
+        // ✅ === DECISION: Use AI score OR local fallback ===
+        const aiScore = Number(analysis.overallScore);
+        const isGenericScore = [50, 60, 70, 75, 80].includes(aiScore);
+        const scoreDiff = Math.abs((aiScore || 0) - localCalculatedScore);
+
+        let finalScore: number;
+        let scoreSource: string;
+
+        if (!aiScore || (isGenericScore && scoreDiff > 15)) {
+          console.log(`⚠️ [Score] AI score (${aiScore}) seems generic, using local calculation: ${localCalculatedScore}`);
+          finalScore = localCalculatedScore;
+          scoreSource = 'local';
+          analysis.overallScore = localCalculatedScore;
+          analysis.calculatedLocally = true;
+          analysis.scoreSource = 'local-fallback';
+        } else {
+          console.log(`✅ [Score] Using AI score: ${aiScore} (diff from local: ${scoreDiff})`);
+          finalScore = aiScore;
+          scoreSource = 'ai';
+        }
+
+        // ✅ Update analysis object with corrected values
+        if (scoreSource === 'local') {
+          analysis.categoryScores = {
+            skills: Math.min(100, Math.round((matchedRequired.length / Math.max(1, requiredSkills.length)) * 100)),
+            experience: (extractedCVData.workExperiences?.length ?? 0) > 0 ? 70 : 30,
+            education: (extractedCVData.education?.length ?? 0) > 0 ? 80 : 40,
+            technicalFit: Math.round(((matchedRequired.length + matchedPreferred.length) / Math.max(1, requiredSkills.length + preferredSkills.length)) * 100)
+          };
+        }
+
+        analysis.matchedRequirements = matchedRequired;
+        analysis.missingRequirements = missingRequired;
+        analysis.detailedMetrics = {
+          ...analysis.detailedMetrics,
+          totalCVSkills: cvSkills.size,
+          matchedRequiredCount: matchedRequired.length,
+          missingRequiredCount: missingRequired.length,
+          scoreCalculationMethod: scoreSource
+        };
+
+        console.log(`💾 [Score] Final score: ${finalScore} (source: ${scoreSource})`);
+        console.log('✅ ===== END SCORE CALCULATION =====\n');
+
+        // ✅ 7. Use English field names only
         const ensureArray = (value: unknown): string[] => {
           if (Array.isArray(value)) return value.map(v => String(v).trim()).filter(Boolean);
           if (typeof value === 'string') return value.split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
           return [];
         };
 
-        // 🔧 [تعديل 2] قراءة categoryScores مع دعم الفرنسية والإنجليزية (نفس الدالة الأولى)
-        const getCategoryScore = (obj: any, enKey: string, frKey: string): number | null => {
-          const val = obj?.categoryScores?.[enKey] ?? 
-                      obj?.categoryScores?.[frKey] ?? 
-                      obj?.result?.categoryScores?.[enKey] ?? 
-                      obj?.result?.categoryScores?.[frKey];
+        // ✅ 8. Get category scores
+        const getCategoryScore = (obj: any, key: string): number | null => {
+          const val = obj?.categoryScores?.[key] ?? obj?.result?.categoryScores?.[key];
           return val !== undefined ? Number(val) : null;
         };
 
+        // ✅ 9. Save analysis to database
         await prisma.aIAnalysis.create({
           data: {
             type: 'CANDIDATE_ANALYSIS',
@@ -417,37 +725,30 @@ IMPORTANT:
             jobOfferId: jobOffer.id,
             applicationId: application.id,
             
-            // ✅ النسبة المحسوبة بدقة
-            overallScore: preciseScore,
+            // ✅ Final score
+            overallScore: finalScore,
             
-            // ✅ categoryScores مع دعم الفرنسية والإنجليزية
-            skillsScore: getCategoryScore(analysis, 'skills', 'compétences'),
-            experienceScore: getCategoryScore(analysis, 'experience', 'expérience'),
-            educationScore: getCategoryScore(analysis, 'education', 'éducation'),
-            technicalFitScore: getCategoryScore(analysis, 'technicalFit', 'adéquation technique'),
+            // ✅ categoryScores - English only
+            skillsScore: getCategoryScore(analysis, 'skills'),
+            experienceScore: getCategoryScore(analysis, 'experience'),
+            educationScore: getCategoryScore(analysis, 'education'),
+            technicalFitScore: getCategoryScore(analysis, 'technicalFit'),
             
-            matchedSkills: ensureArray(analysis.matchedRequirements || analysis.matchedSkills || []),
-            missingSkills: ensureArray(analysis.missingRequirements || analysis.missingSkills || []),
-            strengths: ensureArray(analysis.strengths || analysis.forces || []),
-            weaknesses: ensureArray(analysis.weaknesses || analysis.faiblesses || []),
+            // ✅ English field names only
+            matchedSkills: ensureArray(analysis.matchedRequirements || []),
+            missingSkills: ensureArray(analysis.missingRequirements || []),
+            strengths: ensureArray(analysis.strengths || []),
+            weaknesses: ensureArray(analysis.weaknesses || []),
             
             recommendation: analysis.recommendation?.decision || null,
             priority: analysis.recommendation?.priority || null,
             interviewQuestions: ensureArray(analysis.recommendation?.interviewQuestions || []),
-            result: {
-              ...analysis,
-              categoryScores: {
-                skills: analysis.categoryScores?.skills ?? analysis.categoryScores?.['compétences'] ?? analysis.result?.categoryScores?.skills ?? analysis.result?.categoryScores?.['compétences'],
-                experience: analysis.categoryScores?.experience ?? analysis.categoryScores?.['expérience'] ?? analysis.result?.categoryScores?.experience ?? analysis.result?.categoryScores?.['expérience'],
-                education: analysis.categoryScores?.education ?? analysis.categoryScores?.['éducation'] ?? analysis.result?.categoryScores?.education ?? analysis.result?.categoryScores?.['éducation'],
-                technicalFit: analysis.categoryScores?.technicalFit ?? analysis.categoryScores?.['adéquation technique'] ?? analysis.result?.categoryScores?.technicalFit ?? analysis.result?.categoryScores?.['adéquation technique']
-              }
-            },
-            confidence: preciseScore / 100
+            result: analysis,
+            confidence: finalScore / 100
           }
         });
 
-        console.log('💾 Analysis saved with score:', preciseScore, 'for application:', application.id);
+        console.log('✅ [AI] Analysis completed and saved for application:', application.id);
 
       } catch (error) {
         console.error('❌ AI analysis failed:', error);

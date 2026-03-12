@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, XCircle, Clock, User, Briefcase, GitBranch, Sparkles, BrainCircuit, Check } from 'lucide-react';
 import { taskService } from '../services/task.service';
 import { toast } from 'react-toastify';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 
 interface AIAnalysis {
     id: string;
@@ -104,28 +104,9 @@ export const MyApprovals: React.FC = () => {
         return new Date(dateString).toLocaleDateString('fr-FR');
     };
 
-    const getSmartBadge = (context: any) => {
-        if (context.amount && Number(context.amount) > 10000) {
-            return <div className="absolute top-0 right-0 -mr-2 -mt-2"><span className="px-3 py-1 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/10">Haut Impact</span></div>;
-        }
-        if (context.duration && Number(context.duration) > 15) {
-            return <div className="absolute top-0 right-0 -mr-2 -mt-2"><span className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/10">Longue Durée</span></div>;
-        }
-
-        const priorityKeywords = ['urgent', 'impératif', 'asap', 'priorité', 'critique'];
-        const content = context.description || context.motif || context.reason || '';
-        const description = (typeof content === 'string' ? content : String(content)).toLowerCase();
-
-        if (priorityKeywords.some(keyword => description.includes(keyword))) {
-            return <div className="absolute top-0 right-0 -mr-2 -mt-2"><span className="px-3 py-1 bg-purple-500/10 text-purple-500 border border-purple-500/20 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/10">Prioritaire</span></div>;
-        }
-
-        return null;
-    };
-
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-white dark:bg-slate-950">
+            <div className="flex items-center justify-center min-h-screen bg-slate-950">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.1),transparent_70%)]" />
                 <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin"></div>
             </div>
@@ -162,12 +143,12 @@ export const MyApprovals: React.FC = () => {
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center justify-center p-20 bg-slate-50 dark:bg-slate-900/40 backdrop-blur-md rounded-[3rem] border border-slate-200 dark:border-white/5 border-dashed relative"
+                    className="flex flex-col items-center justify-center p-20 bg-slate-900/40 backdrop-blur-md rounded-[3rem] border border-white/5 border-dashed relative"
                 >
                     <div className="w-20 h-20 bg-slate-800/50 rounded-3xl flex items-center justify-center text-slate-600 mb-6">
                         <CheckCircle2 size={40} />
                     </div>
-                    <p className="text-2xl text-slate-600 dark:text-slate-400 font-black tracking-tight">Tout est à jour !</p>
+                    <p className="text-2xl text-slate-400 font-black tracking-tight">Tout est à jour !</p>
                     <p className="text-slate-500 font-medium mt-1">Vous n'avez aucune approbation en attente pour le moment.</p>
                 </motion.div>
             ) : (
@@ -204,9 +185,14 @@ export const MyApprovals: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="px-4 py-2 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Reçu le</p>
-                                            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{formatDate(task.createdAt)}</p>
+                                        <div>
+                                            <h3 className="text-xl font-black text-white tracking-tight group-hover:text-purple-400 transition-colors">
+                                                {task.processInstance.workflow.name}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span>
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{task.step.name}</p>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -222,34 +208,9 @@ export const MyApprovals: React.FC = () => {
                                                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{initiator?.email || "Email non renseigné"}</p>
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Détails de la demande</p>
-                                            <div className="grid grid-cols-2 gap-4 bg-slate-100 dark:bg-white/5 p-4 rounded-2xl border border-slate-200 dark:border-white/5">
-                                                {Object.entries(context).map(([key, value]) => {
-                                                    const displayValue = typeof value === 'string' && value.includes('202') && !isNaN(Date.parse(value))
-                                                        ? new Date(value as string).toLocaleDateString()
-                                                        : String(value);
-
-                                                    return (
-                                                        <div key={key} className="flex flex-col relative group/tooltip">
-                                                            <span className="text-[9px] text-purple-500 dark:text-purple-400 uppercase font-black truncate">{key.replace('_', ' ')}</span>
-                                                            <span className="text-sm text-slate-800 dark:text-slate-200 font-medium truncate">
-                                                                {displayValue}
-                                                            </span>
-
-                                                            {/* Tooltip */}
-                                                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/tooltip:block z-50 w-max max-w-[200px]">
-                                                                <div className="bg-slate-900/90 dark:bg-white/90 backdrop-blur-md text-white dark:text-slate-900 text-xs py-1.5 px-3 rounded-lg shadow-xl border border-white/10 dark:border-black/10">
-                                                                    <p className="font-bold text-[9px] uppercase opacity-70 mb-0.5">{key.replace('_', ' ')}</p>
-                                                                    <p className="whitespace-pre-wrap word-break">{displayValue}</p>
-                                                                </div>
-                                                                <div className="w-2 h-2 bg-slate-900/90 dark:bg-white/90 transform rotate-45 absolute -bottom-1 left-4 border-r border-b border-white/10 dark:border-black/10"></div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                            <div>
+                                                <p className="text-sm font-bold text-white leading-tight">{initiatorName}</p>
+                                                <p className="text-xs text-slate-500 font-medium">{initiator?.email || "Email non renseigné"}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -270,11 +231,28 @@ export const MyApprovals: React.FC = () => {
                                             <span>Refuser</span>
                                         </button>
                                     </div>
-                                </motion.div>
-                            );
-                        })}
-                    </AnimatePresence>
-                </motion.div>
+                                </div>
+
+                                <div className="pt-8 border-t border-white/5 flex gap-4 pl-2">
+                                    <button
+                                        onClick={() => handleApprove(task.id)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95"
+                                    >
+                                        <CheckCircle2 size={18} strokeWidth={3} />
+                                        <span>Approuver</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleReject(task.id)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 font-black text-sm uppercase tracking-widest rounded-2xl border border-slate-700 hover:border-red-500/50 transition-all hover:-translate-y-1 active:scale-95"
+                                    >
+                                        <XCircle size={18} strokeWidth={3} />
+                                        <span>Refuser</span>
+                                    </button>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </div >
             )}
         </div >
     );

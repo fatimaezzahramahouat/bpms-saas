@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Building2, User, Users, Phone, Mail, Check, Lock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
+import { useGlobalModal } from '../../../shared/components/GlobalModal';
 
 /**
  * Register Organization Page Component
@@ -12,6 +13,7 @@ import { GlowBackground, PortalLogo, ThemeSwitcher } from '@shared/components';
  */
 export function RegisterOrg() {
   const navigate = useNavigate();
+  const { showModal } = useGlobalModal();
   const [formData, setFormData] = useState({
     orgName: '',
     responsibleName: '',
@@ -48,27 +50,26 @@ export function RegisterOrg() {
 
       if (response.ok) {
         const result = await response.json();
-        // The token is now handled automatically by the browser via HTTP-only cookie
         localStorage.setItem('user', JSON.stringify(result.data.user));
         localStorage.setItem('isAuthenticated', 'true');
-        alert('Inscription validée !');
+        showModal('Inscription validée !', 'success');
         navigate('/dashboard');
       } else {
         const error = await response.json();
         const errorMessage = error.error ||
           (error.errors ? Object.values(error.errors).flat().join(', ') : 'Erreur lors de l\'inscription');
-        alert(errorMessage);
+        showModal(errorMessage, 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('Erreur réseau');
+      showModal('Erreur réseau', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-start pt-6 bg-white dark:bg-h1-black font-sans relative overflow-hidden px-[4cm] transition-colors duration-300">
+    <div className="h-screen w-full flex flex-col items-center justify-start pt-6 bg-white dark:bg-h1-black font-sans relative overflow-y-auto px-4 md:px-[4cm] transition-colors duration-300">
       <div className="absolute top-6 right-8 z-50">
         <ThemeSwitcher />
       </div>
@@ -80,7 +81,7 @@ export function RegisterOrg() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 flex flex-col items-center"
+          className="mb-6 flex flex-col items-center"
         >
           <h1 className="text-h1-blue text-xl font-black uppercase tracking-[0.2em] border-b-2 border-h1-blue pb-1 text-center dark:text-h1-blue">
             CRÉATION DE L'ESPACE ORGANISATION
@@ -93,9 +94,10 @@ export function RegisterOrg() {
           className="gov-card w-full p-6"
         >
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-              <div className="gov-row-compact">
-                <div className="gov-label-box-compact">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+              
+              <div className="gov-row-compact flex-col md:flex-row w-full">
+                <div className="gov-label-box-compact w-full md:w-52 mb-2 md:mb-0 shrink-0">
                   <Building2 className="w-5 h-5 mr-4" />
                   Organisation
                 </div>
@@ -103,15 +105,15 @@ export function RegisterOrg() {
                   type="text"
                   name="orgName"
                   placeholder="NOM DE L'ORGANISATION"
-                  className="gov-input-compact"
+                  className="gov-input-compact w-full"
                   value={formData.orgName}
                   onChange={handleChange}
                   required
                 />
               </div>
 
-              <div className="gov-row-compact">
-                <div className="gov-label-box-compact">
+              <div className="gov-row-compact flex-col md:flex-row w-full">
+                <div className="gov-label-box-compact w-full md:w-52 mb-2 md:mb-0 shrink-0">
                   <User className="w-5 h-5 mr-4" />
                   Responsable
                 </div>
@@ -119,21 +121,21 @@ export function RegisterOrg() {
                   type="text"
                   name="responsibleName"
                   placeholder="NOM COMPLET DU RESPONSABLE"
-                  className="gov-input-compact"
+                  className="gov-input-compact w-full"
                   value={formData.responsibleName}
                   onChange={handleChange}
                   required
                 />
               </div>
 
-              <div className="gov-row-compact">
-                <div className="gov-label-box-compact">
+              <div className="gov-row-compact flex-col md:flex-row w-full">
+                <div className="gov-label-box-compact w-full md:w-52 mb-2 md:mb-0 shrink-0">
                   <Users className="w-5 h-5 mr-4" />
                   Employés
                 </div>
                 <select
                   name="employeeCount"
-                  className="gov-input-compact appearance-none cursor-pointer"
+                  className="gov-input-compact w-full appearance-none cursor-pointer"
                   value={formData.employeeCount}
                   onChange={handleChange}
                   required
@@ -146,8 +148,8 @@ export function RegisterOrg() {
                 </select>
               </div>
 
-              <div className="gov-row-compact">
-                <div className="gov-label-box-compact">
+              <div className="gov-row-compact flex-col md:flex-row w-full">
+                <div className="gov-label-box-compact w-full md:w-52 mb-2 md:mb-0 shrink-0">
                   <Phone className="w-5 h-5 mr-4" />
                   Téléphone
                 </div>
@@ -155,40 +157,40 @@ export function RegisterOrg() {
                   type="tel"
                   name="phone"
                   placeholder="+212 ..."
-                  className="gov-input-compact"
+                  className="gov-input-compact w-full"
                   value={formData.phone}
                   onChange={handleChange}
                   required
                 />
               </div>
 
-              <div className="gov-row-compact mb-4">
-                <div className="gov-label-box-compact">
+              <div className="gov-row-compact mb-4 flex-col md:flex-row w-full">
+                <div className="gov-label-box-compact w-full md:w-52 mb-2 md:mb-0 shrink-0">
                   <Mail className="w-5 h-5 mr-4" />
-                  Email 
+                  Email
                 </div>
                 <input
                   type="email"
                   name="email"
                   placeholder="EMAIL@ENTREPRISE.MA"
-                  className="gov-input-compact"
+                  className="gov-input-compact w-full"
                   value={formData.email}
                   onChange={handleChange}
                   required
                 />
               </div>
 
-              <div className="gov-row-compact mb-4">
-                <div className="gov-label-box-compact">
+              <div className="gov-row-compact mb-4 flex-col md:flex-row w-full">
+                <div className="gov-label-box-compact w-full md:w-52 mb-2 md:mb-0 shrink-0">
                   <Lock className="w-5 h-5 mr-4" />
                   Mot de passe
                 </div>
-                <div className="flex-1 relative">
+                <div className="flex-1 relative w-full">
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     placeholder="••••••••"
-                    className="gov-input-compact pr-12"
+                    className="gov-input-compact pr-12 w-full"
                     value={formData.password}
                     onChange={handleChange}
                     required
@@ -205,8 +207,8 @@ export function RegisterOrg() {
 
             </div>
 
-            <div className="flex justify-center">
-              <button type="submit" className="gov-button-compact px-12 py-2.5 text-sm">
+            <div className="flex justify-center mt-6">
+              <button type="submit" className="gov-button-compact px-12 py-2.5 text-sm w-full md:w-auto">
                 <Check className="w-6 h-6" />
                 Valider l'inscription
               </button>

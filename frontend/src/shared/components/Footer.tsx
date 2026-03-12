@@ -1,51 +1,98 @@
 import { Link } from 'react-router-dom';
-import { Mail, Phone } from 'lucide-react';
+import { Phone, Mail } from 'lucide-react';
 
-/**
- * Footer Component
- * 
- * Global footer component with contact information and navigation links.
- * This is a shared component that can be used across all pages.
- */
 export function Footer() {
   return (
-    <footer className="bg-black text-white py-20 px-4 mt-auto w-full border-t border-white/5">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-        <div className="flex flex-col gap-6">
-          <Link to="/" className="text-2xl font-bold tracking-tighter lowercase flex items-center">
-            nex<span className="text-white/40 font-medium">flow</span>
-          </Link>
-          <p className="text-sm text-h1-slate leading-relaxed">
-            Agence Nationale de la Conception Digitale et du BPMS. Propulsé par l'intelligence artificielle.
+    <footer className="bg-black text-white pt-16 pb-8 border-t border-gray-800">
+      <div className="max-w-[1440px] mx-auto px-6 md:px-12">
+        {/* Les 4 Colonnes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-16">
+          
+          {/* Colonne 1: Logo w Description JDIDA */}
+          <div>
+            <Link to="/" className="inline-block mb-6">
+              <img src="/assets/nexflow.png" alt="Nexflow" className="h-8 w-auto" />
+            </Link>
+            <p className="text-[#a0a0ab] text-[15px] leading-relaxed pr-4">
+              Plateforme innovante d'automatisation des processus métiers (BPMS). Propulsez et simplifiez la gestion de votre organisation grâce à l'intelligence artificielle.
+            </p>
+          </div>
+
+          {/* Colonne 2: Navigation (m9ada bach mat3tich 404) */}
+          <div>
+            <h3 className="text-[#4b4dff] font-bold text-sm tracking-widest uppercase mb-6">
+              Navigation
+            </h3>
+            <ul className="space-y-4">
+              <li>
+                {/* Reditha to="/" bach mat3tikch 404, w tddi l'page d'accueil */}
+                <Link to="/" className="text-[#a0a0ab] hover:text-white transition-colors text-[15px]">
+                  Fonctionnalités
+                </Link>
+              </li>
+              <li>
+                <Link to="/pricing" className="text-[#a0a0ab] hover:text-white transition-colors text-[15px]">
+                  Nos Offres
+                </Link>
+              </li>
+              <li>
+                <Link to="/our-team" className="text-[#a0a0ab] hover:text-white transition-colors text-[15px]">
+                  Notre Équipe
+                </Link>
+              </li>
+              <li>
+                <Link to="/recrutement" className="text-[#a0a0ab] hover:text-white transition-colors text-[15px]">
+                  Recrutement
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Colonne 3: Espace Organisation (7iydna Support Technique) */}
+          <div>
+            <h3 className="text-[#4b4dff] font-bold text-sm tracking-widest uppercase mb-6">
+              Espace Organisation
+            </h3>
+            <ul className="space-y-4">
+              <li>
+                <Link to="/login" className="text-[#a0a0ab] hover:text-white transition-colors text-[15px]">
+                  Connexion
+                </Link>
+              </li>
+              <li>
+                <Link to="/register-org" className="text-[#a0a0ab] hover:text-white transition-colors text-[15px]">
+                  Inscription
+                </Link>
+              </li>
+              {/* Support technique t7iydat mn hna */}
+            </ul>
+          </div>
+
+          {/* Colonne 4: Contact */}
+          <div>
+            <h3 className="text-[#4b4dff] font-bold text-sm tracking-widest uppercase mb-6">
+              Contact
+            </h3>
+            <ul className="space-y-4">
+              <li className="flex items-center gap-3 text-[#a0a0ab] hover:text-white transition-colors text-[15px] cursor-pointer">
+                <Phone className="w-5 h-5 text-[#4b4dff]" />
+                +212 6 0127 44 56
+              </li>
+              <li className="flex items-center gap-3 text-[#a0a0ab] hover:text-white transition-colors text-[15px] cursor-pointer">
+                <Mail className="w-5 h-5 text-[#4b4dff]" />
+                NexFlow.com
+              </li>
+            </ul>
+          </div>
+          
+        </div>
+
+        {/* Copyright */}
+        <div className="border-t border-[#1f1f2e] pt-8 flex justify-center items-center">
+          <p className="text-[#a0a0ab] text-xs font-bold tracking-[0.25em] uppercase">
+            © 2026 NEXFLOW. ALL RIGHTS RESERVED.
           </p>
         </div>
-        <div>
-          <h4 className="font-bold uppercase mb-6 text-xs tracking-[0.2em] text-h1-blue">Liens utiles</h4>
-          <ul className="text-sm text-h1-slate space-y-3">
-            <li className="hover:text-white cursor-pointer transition-colors"><Link to="/">Accueil</Link></li>
-            <li className="hover:text-white cursor-pointer transition-colors">Présentation</li>
-            <li className="hover:text-white cursor-pointer transition-colors">Métiers</li>
-            <li className="hover:text-white cursor-pointer transition-colors">Espace Media</li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-bold uppercase mb-6 text-xs tracking-[0.2em] text-h1-blue">Services</h4>
-          <ul className="text-sm text-h1-slate space-y-3">
-            <li className="hover:text-white cursor-pointer transition-colors"><Link to="/register-org">Espace Organisation</Link></li>
-            <li className="hover:text-white cursor-pointer transition-colors">Support Technique</li>
-            <li className="hover:text-white cursor-pointer transition-colors">Documentation</li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="font-bold uppercase mb-6 text-xs tracking-[0.2em] text-h1-blue">Contact</h4>
-          <ul className="text-sm text-h1-slate space-y-3">
-            <li className="flex items-center gap-3"><Phone className="w-4 h-4 text-h1-blue" /> +212 5 22 00 00 00</li>
-            <li className="flex items-center gap-3"><Mail className="w-4 h-4 text-h1-blue" /> contact@nexflow.ma</li>
-          </ul>
-        </div>
-      </div>
-      <div className="border-t border-white/5 pt-10 text-center text-[10px] text-h1-slate uppercase tracking-[0.4em] font-bold">
-        <p>© 2026 NEXFLOW. ALL RIGHTS RESERVED.</p>
       </div>
     </footer>
   );

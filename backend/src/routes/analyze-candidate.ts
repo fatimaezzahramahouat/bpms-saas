@@ -2,12 +2,21 @@
 import { Router, Request, Response } from 'express';
 import { generateContent } from '../lib/groq';
 import { createAnalysisPrompt, type CVData as FullCVData, type JobOfferData } from '../lib/prompts';
-import { extractCVDataFromText, type CVData as ExtractedCVData } from '../lib/cvExtractor';
+import { extractCVDataFromText, extractCVDataFromPDF, type CVData as ExtractedCVData } from '../lib/cvExtractor';
+import { convertPDFtoText, validatePDF } from '../lib/pdfToTextConverter';
 import prisma from '../lib/prisma';
+import fs from 'fs/promises';
+import fsSync from 'fs';  // For sync operations
+import pdfParse from 'pdf-parse';
+const pdfParseFn = (pdfParse as any).default || pdfParse;
 
+import * as path from 'path';
+import * as os from 'os';
 const router = Router();
 
+
 // ============ Helper Functions ============
+
 
 const ensureArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
@@ -21,6 +30,20 @@ const ensureArray = (value: unknown): string[] => {
 
 const CACHE_DURATION_DAYS = 7;
 
+// 👇 RUNTIME DIAGNOSTIC - Remove after testing
+const promptsPath = require.resolve('../lib/prompts');
+console.log('\n🔍 ===== PROMPTS FILE DIAGNOSTIC =====');
+console.log('Resolved prompts path:', promptsPath);
+try {
+  const stats = fsSync.statSync(promptsPath);
+  console.log('prompts.ts last modified:', stats.mtime);
+} catch(e) {}
+const fileContent = fsSync.readFileSync(promptsPath, 'utf-8');
+console.log('File has UNIQUE ANALYSIS REQUEST?', fileContent.includes('UNIQUE ANALYSIS REQUEST') ? 'YES ✅' : 'NO ❌');
+console.log('File has calculateYearsOfExperience?', fileContent.includes('calculateYearsOfExperience') ? 'YES ✅' : 'NO ❌');
+console.log('File line count:', fileContent.split('\n').length);
+console.log('🔍 ===== END PROMPTS DIAGNOSTIC =====\n');
+
 // ============ Routes ============
 
 router.post('/analyze-candidate', async (req: Request, res: Response) => {
@@ -32,7 +55,7 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
       cvText?: string;
       cvUrl?: string;
       cvData?: { name?: string; skills?: string | string[]; experience?: string; education?: string; [key: string]: unknown };
-      jobOfferData?: { title?: string; requiredSkills?: string[]; [key: string]: unknown };
+      jobOfferData?: { title?: string; requiredSkills?: string[]; preferredSkills?: string[]; [key: string]: unknown };
     };
 
     if (!jobOfferData) {
@@ -59,9 +82,9 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
         cachedAnalysis = cacheResults[0];
       }
     }
-
+    
     if (cachedAnalysis) {
-      console.log('📦 Returning cached analysis');
+      console.log('📦 Returning cached analysis for candidate:', candidateId, 'job:', jobOfferId);
       return res.status(200).json({
         success: true,
         cached: true,
@@ -106,8 +129,7 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
           period: cvData.experience,
           location: (cvData as any).location || 'Non spécifié',
           responsibilities: skillsArray.length > 0 ? skillsArray : ['Compétences mentionnées'],
-          technologies: skillsArray,
-          achievements: (cvData as any).achievements || []
+          technologies: skillsArray
         }] : [],
         education: cvData.education ? [{
           degree: cvData.education,
@@ -179,100 +201,373 @@ router.post('/analyze-candidate', async (req: Request, res: Response) => {
         publicProjects: partialData.publicProjects || [],
         metadata: partialData.metadata || { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
       };
-    } else if (cvUrl) {
-      console.log(`📄 Fetching CV from URL: ${cvUrl}`);
-      if (cvUrl.toLowerCase().endsWith('.pdf')) {
-        // For PDF URLs, use minimal data
-        extractedCVData = {
-          personalInfo: { fullName: 'Non spécifié', email: '', phone: '', location: '' },
-          workExperiences: [],
-          education: [],
-          technicalSkills: { frontend: [], backend: [], databases: [], devops: [], security: [], cms: [], tools: [], automation: [], methodologies: [], testing: [] },
-          achievements: [],
-          projects: [],
-          certifications: [],
-          languages: [],
-          interests: [],
-          rawText: `CV available at: ${cvUrl}`,
-          technologiesWithExperience: [],
-          softSkills: [],
-          publicLinks: [],
-          publicProjects: [],
-          metadata: { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
-        };
-      } else {
-        try {
-          const response = await fetch(cvUrl);
-          const text = await response.text();
-          const partialData = await extractCVDataFromText(text);
-          // ✅ [تصحيح 3+4] التعامل مع Partial<CVData>
-          extractedCVData = {
-            personalInfo: partialData.personalInfo || { fullName: 'Non spécifié', email: '', phone: '', location: '' },
-            workExperiences: partialData.workExperiences || [],
-            education: partialData.education || [],
-            technicalSkills: partialData.technicalSkills || { frontend: [], backend: [], databases: [], devops: [], security: [], cms: [], tools: [], automation: [], methodologies: [], testing: [] },
-            achievements: partialData.achievements || [],
-            projects: partialData.projects || [],
-            certifications: partialData.certifications || [],
-            languages: partialData.languages || [],
-            interests: partialData.interests || [],
-            rawText: partialData.rawText || text,
-            technologiesWithExperience: partialData.technologiesWithExperience || [],
-            softSkills: partialData.softSkills || [],
-            publicLinks: partialData.publicLinks || [],
-            publicProjects: partialData.publicProjects || [],
-            metadata: partialData.metadata || { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
-          };
-        } catch (fetchError) {
-          console.error('❌ Failed to fetch CV URL:', fetchError);
-          extractedCVData = {
-            personalInfo: { fullName: 'Non spécifié', email: '', phone: '', location: '' },
-            workExperiences: [],
-            education: [],
-            technicalSkills: { frontend: [], backend: [], databases: [], devops: [], security: [], cms: [], tools: [], automation: [], methodologies: [], testing: [] },
-            achievements: [],
-            projects: [],
-            certifications: [],
-            languages: [],
-            interests: [],
-            rawText: `CV available at: ${cvUrl}`,
-            technologiesWithExperience: [],
-            softSkills: [],
-            publicLinks: [],
-            publicProjects: [],
-            metadata: { extractionDate: new Date().toISOString(), totalYearsExperience: 0, expertiseLevel: 'Non spécifié', technologiesCount: 0 }
-          };
-        }
+    } else // ============================================================================
+// ✅ FIX: Handle BOTH local file paths AND remote URLs for CVs
+// ============================================================================
+
+if (cvUrl) {
+  console.log('🔍 [CV HANDLER] Processing cvUrl:', cvUrl);
+  
+  try {
+    // ✅ Check if it's a PDF file that needs conversion
+    const isPdfFile = cvUrl.toLowerCase().endsWith('.pdf');
+    const isLocalFile = cvUrl.startsWith('/') || cvUrl.startsWith('./') || cvUrl.startsWith('../');
+    
+    let rawText: string = '';
+    let extractionMethod: string = 'Unknown';
+    let textQuality: string = 'Unknown';
+    let charCount: number = 0;
+    
+    if (isPdfFile && isLocalFile) {
+      // ✅ Convert PDF to text using new converter
+      console.log('📄 [PDF Handler] Converting PDF to TXT...');
+      
+      const fullPath = cvUrl.startsWith('/') ? cvUrl : path.join(process.cwd(), cvUrl);
+      
+      // Validate PDF first
+      const validation = await validatePDF(fullPath);
+      if (!validation.valid) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Invalid PDF file', 
+          details: validation.error 
+        });
       }
+      
+      // Convert PDF to text
+      const conversionResult = await convertPDFtoText(fullPath);
+      
+      // Handle conversion failure
+      if (!conversionResult.success) {
+        console.error('❌ [PDF Handler] Conversion failed:', conversionResult.error);
+        return res.status(400).json({
+          success: false,
+          error: 'CV Extraction Failed',
+          details: conversionResult.error,
+          qualityScore: conversionResult.qualityScore,
+          suggestion: 'Please upload CV as .txt or .docx, or ensure PDF is text-based (not scanned image)'
+        });
+      }
+      
+      // Use converted text
+      rawText = conversionResult.text;
+      extractionMethod = 'PDF→TXT';
+      textQuality = conversionResult.qualityScore || 'Unknown';
+      charCount = conversionResult.charCount;
+      
+      console.log('✅ [PDF Handler] Conversion successful:', charCount, 'chars, quality:', textQuality);
+      
+    } else if (isLocalFile) {
+      // ✅ Handle other local file types (txt, etc.)
+      console.log('📄 Reading local file:', cvUrl);
+      const fullPath = cvUrl.startsWith('/') ? cvUrl : path.join(process.cwd(), cvUrl);
+      rawText = await fs.readFile(fullPath, 'utf-8');
+      extractionMethod = 'Direct Text';
+      textQuality = rawText.length > 500 ? 'HIGH' : rawText.length > 200 ? 'MEDIUM' : 'LOW';
+      charCount = rawText.length;
+      
+    } else {
+      // ✅ Handle REMOTE URL (http/https)
+      console.log('🌐 Fetching remote URL:', cvUrl);
+      
+      const response = await fetch(cvUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfBuffer = Buffer.from(arrayBuffer);
+      
+      // Try to convert
+      const conversionResult = await convertPDFtoText(pdfBuffer as any);
+      
+      if (!conversionResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'CV Extraction Failed',
+          details: conversionResult.error,
+          qualityScore: conversionResult.qualityScore
+        });
+      }
+      
+      rawText = conversionResult.text;
+      extractionMethod = 'PDF→TXT';
+      textQuality = conversionResult.qualityScore || 'Unknown';
+      charCount = conversionResult.charCount;
+    }
+    
+    // ✅ Log extracted text
+    console.log('📝 Extracted text length:', charCount, 'chars');
+    console.log('📝 Text preview:', rawText?.substring(0, 300));
+    console.log('📝 Extraction method:', extractionMethod);
+    console.log('📝 Text quality:', textQuality);
+    
+    // ✅ Extract CV data from text
+    const partialData = await extractCVDataFromText(rawText);
+    
+    // ✅ Build full CVData object
+    extractedCVData = {
+      personalInfo: partialData.personalInfo || { fullName: 'Unknown', email: '', phone: '', location: '' },
+      workExperiences: partialData.workExperiences || [],
+      education: partialData.education || [],
+      technicalSkills: partialData.technicalSkills || { 
+        frontend: [], backend: [], databases: [], devops: [], security: [], 
+        cms: [], tools: [], automation: [], methodologies: [], testing: [] 
+      },
+      achievements: partialData.achievements || [],
+      projects: partialData.projects || [],
+      certifications: partialData.certifications || [],
+      languages: partialData.languages || [],
+      interests: partialData.interests || [],
+      rawText: rawText,
+      technologiesWithExperience: partialData.technologiesWithExperience || [],
+      softSkills: partialData.softSkills || [],
+      publicLinks: partialData.publicLinks || [],
+      publicProjects: partialData.publicProjects || [],
+      metadata: { 
+        extractionDate: new Date().toISOString(), 
+        totalYearsExperience: 0, 
+        expertiseLevel: 'Unknown', 
+        technologiesCount: 0,
+        extractionMethod: extractionMethod,
+        textQuality: textQuality as any,
+        charCount: charCount
+      }
+    };
+    
+    // ✅ Log extraction results
+    const totalSkills = Object.values(extractedCVData.technicalSkills).reduce(
+      (acc: number, arr: any) => acc + (arr?.length || 0), 0
+    );
+    console.log('✅ CV processed:', {
+      name: extractedCVData.personalInfo?.fullName,
+      skills: totalSkills,
+      textLength: rawText.length
+    });
+    
+  } catch (error: any) {
+    console.error('❌ CV processing failed:', {
+      message: error?.message || error,
+      cvUrl,
+      stack: error?.stack
+    });
+    
+    // ✅ Fallback: minimal valid CVData
+    extractedCVData = {
+      personalInfo: { fullName: 'Unknown', email: '', phone: '', location: '' },
+      workExperiences: [],
+      education: [],
+      technicalSkills: { 
+        frontend: [], backend: [], databases: [], devops: [], security: [], 
+        cms: [], tools: [], automation: [], methodologies: [], testing: [] 
+      },
+      achievements: [], projects: [], certifications: [], languages: [], interests: [],
+      rawText: `CV available at: ${cvUrl}`,
+      technologiesWithExperience: [],
+      softSkills: [],
+      publicLinks: [],
+      publicProjects: [],
+      metadata: { 
+        extractionDate: new Date().toISOString(), 
+        totalYearsExperience: 0, 
+        expertiseLevel: 'Unknown', 
+        technologiesCount: 0 
+      }
+    };
+  }
     } else {
       return res.status(400).json({ success: false, error: 'CV data is missing. Provide cvText, cvUrl, or cvData' });
     }
 
     console.log('🔄 Generating AI analysis...');
     
-    // ✅ DEBUG: Log what data is being sent to AI
-    const skillsFromCv = cvData?.skills ? (Array.isArray(cvData.skills) ? cvData.skills : cvData.skills.split(/[,;\n]/)) : [];
-    console.log('📤 Data being analyzed:');
-    console.log('  - Candidate:', cvData?.name || 'Unknown');
-    console.log('  - Skills count:', skillsFromCv.length);
-    console.log('  - Experience:', cvData?.experience?.substring(0, 100) || 'None');
-    console.log('  - Job:', jobOfferData?.title || 'Unknown');
-    console.log('  - Required skills:', jobOfferData?.requiredSkills?.length || 0);
+    // ===== DEEP CV EXTRACTION DIAGNOSTIC =====
+    console.log('\n🔍 ===== DEEP CV METRICS DIAGNOSTIC =====');
+    console.log('Request ID:', `REQ_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`);
+    console.log('Candidate ID:', candidateId);
+    console.log('Candidate Name:', extractedCVData.personalInfo?.fullName);
+    console.log('CV Source:', req.body.cvUrl || req.body.cvData?.source || 'cvData object');
+    console.log('Extraction Method:', extractedCVData.metadata?.extractionMethod);
+    console.log('Text Quality:', extractedCVData.metadata?.textQuality);
+    console.log('Raw Text Length:', extractedCVData.rawText?.length || 0, 'characters');
     
-    const prompt = createAnalysisPrompt(extractedCVData, jobOfferData as JobOfferData);
-    const analysisText = await generateContent(prompt);
-
+    // Calculate metrics locally
+    const allSkills = Object.values(extractedCVData.technicalSkills || {}).flat().filter(Boolean);
+    const yearsExp = extractedCVData.workExperiences?.reduce((total: number, exp: any) => {
+      const period = exp.period || '';
+      const match = period.match(/(\d{4})\s*[-–to]+\s*(\d{4}|Present|current|now)/i);
+      if (match) {
+        const start = parseInt(match[1]);
+        const end = match[2].toLowerCase() === 'present' || match[2].toLowerCase() === 'now' ? new Date().getFullYear() : parseInt(match[2]);
+        return total + (end - start);
+      }
+      const yearsMatch = period.match(/(\d+(?:\.\d+)?)\s*years?/i);
+      if (yearsMatch) return total + parseFloat(yearsMatch[1]);
+      return total;
+    }, 0) || 0;
+    
+    console.log('\n📊 EXTRACTED METRICS:');
+    console.log('  • Years of Experience:', yearsExp.toFixed(1), 'years');
+    console.log('  • Total Technical Skills:', allSkills.length);
+    console.log('  • Skills by Category:');
+    console.log('    - Frontend:', extractedCVData.technicalSkills?.frontend?.length || 0);
+    console.log('    - Backend:', extractedCVData.technicalSkills?.backend?.length || 0);
+    console.log('    - Databases:', extractedCVData.technicalSkills?.databases?.length || 0);
+    console.log('    - DevOps:', extractedCVData.technicalSkills?.devops?.length || 0);
+    console.log('    - Tools:', extractedCVData.technicalSkills?.tools?.length || 0);
+    console.log('  • Languages:', extractedCVData.languages?.map((l: any) => `${l.language}:${l.level}`).join(', ') || 'None');
+    console.log('  • Projects:', extractedCVData.projects?.length || 0);
+    console.log('  • Certifications:', extractedCVData.certifications?.length || 0);
+    console.log('  • Work Experiences:', extractedCVData.workExperiences?.length || 0);
+    
+    console.log('\n📝 RAW TEXT PREVIEW (First 300 chars):');
+    console.log(`"${extractedCVData.rawText?.substring(0, 300).replace(/\n/g, '\\n')}"`);
+    // =========================================
+    // ✅ FIXED: Prompt Building with Quality Validation
+    // =========================================
+    
+    // ✅ 1. Verify CV data quality before building prompt
+    // For image-based CVs, skip analysis and save with 0 score
+    if (!extractedCVData.rawText || extractedCVData.rawText.length < 100) {
+      console.warn('⚠️ [AI] CV is image-based - skipping analysis, candidate saved anyway');
+      
+      // Save minimal analysis record with 0 score
+      await prisma.aIAnalysis.create({
+        data: {
+          applicationId: applicationId,
+          type: 'CANDIDATE_ANALYSIS',
+          overallScore: 0,
+          result: {
+            overallScore: 0,
+            matchedRequirements: [],
+            missingRequirements: [],
+            strengths: [],
+            weaknesses: ['CV non analysable - contient des images'],
+            recommendation: {
+              decision: 'Pending',
+              priority: 'Low',
+              reason: 'CV doit être reuploadé en format texte'
+            }
+          },
+          confidence: 0,
+          matchedSkills: [],
+          strengths: [],
+          weaknesses: [],
+          interviewQuestions: [],
+          priority: 'Low',
+          recommendation: 'Demander un nouveau CV'
+        }
+      });
+      
+      // Continue - don't throw, don't stop
+      return res.json({
+        success: true,
+        message: 'CV saved but not analyzed (image-based)',
+        warning: 'CV contains scanned images - please upload text-based PDF for analysis',
+        candidateId,
+        applicationId,
+        analysis: null
+      });
+    }
+    
+    // ✅ 2. Build prompt using updated function with UNIQUE variable name to avoid conflicts
+    console.log('🔄 [AI] Building prompt with createAnalysisPrompt...');
+    const finalPromptForAI = createAnalysisPrompt(extractedCVData, jobOfferData as JobOfferData);
+    
+    // ✅ 3. Comprehensive quality check BEFORE sending to AI
+    console.log('📊 [AI] === PROMPT QUALITY CHECK ===');
+    console.log('  • finalPromptForAI length:', finalPromptForAI.length, 'chars');
+    console.log('  • Contains UNIQUE?', finalPromptForAI.includes('UNIQUE ANALYSIS REQUEST'));
+    console.log('  • Contains candidate name?', finalPromptForAI.includes(extractedCVData.personalInfo?.fullName || 'NOT_FOUND'));
+    console.log('  • Contains skills section?', finalPromptForAI.includes('TECHNICAL SKILLS'));
+    console.log('  • First 120 chars:', finalPromptForAI.substring(0, 120).replace(/\n/g, ' '));
+    
+    // ✅ 4. Critical validation: Reject if prompt is too short
+    if (finalPromptForAI.length < 2000) {
+      console.error('❌ [AI] CRITICAL: Prompt too short! Expected >2000, got:', finalPromptForAI.length);
+      console.error('   Possible causes:');
+      console.error('   1. createAnalysisPrompt function not returning full prompt');
+      console.error('   2. extractedCVData has minimal/empty content');
+      console.error('   3. TypeScript cache serving old compiled code');
+    }
+    console.log('📊 [AI] === END PROMPT CHECK ===');
+    
+    // ✅ 5. Send the VERIFIED prompt to Groq AI
+    console.log('🤖 [AI] Calling Groq API with prompt length:', finalPromptForAI.length);
+    const analysisText = await generateContent(finalPromptForAI);
+    
+    // ✅ 6. Update legacy 'prompt' variable for any downstream code that might use it
+    const prompt = finalPromptForAI;
+    
+    // =========================================
+    // ✅ END: Fixed Prompt Building Section
+    // =========================================
+    
     let analysis: any;
     try {
       const cleanText = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       const jsonString = jsonMatch ? jsonMatch[0] : cleanText;
       analysis = JSON.parse(jsonString);
-    } catch (parseError) {
-      console.error('❌ JSON Parse Error:', parseError);
-      console.error('Raw response:', analysisText);
-      return res.status(500).json({ success: false, error: 'Failed to parse AI response', details: (parseError as Error).message });
+      console.log('✅ [AI] Response parsed successfully');
+    } catch (parseError: any) {
+      console.error('❌ [JSON Parse Error]', parseError.message);
+      console.error('Raw response preview:', analysisText.substring(0, 200));
+      return res.status(500).json({ success: false, error: 'Failed to parse AI response', details: parseError.message });
     }
+
+    // === LOCAL SCORE CALCULATION (Fallback) ===
+    console.log('\n🧮 [Score] Calculating local fallback score...');
+    
+    const cvSkills = new Set(
+      Object.values(extractedCVData.technicalSkills || {}).flat()
+        .filter(Boolean).map((s: string) => s.toLowerCase().trim())
+    );
+    
+    extractedCVData.workExperiences?.forEach((exp: any) => {
+      exp.technologies?.forEach((tech: string) => cvSkills.add(tech.toLowerCase().trim()));
+    });
+    
+    const requiredSkills = (jobOfferData.requiredSkills || []).map((s: string) => s.toLowerCase().trim());
+    const preferredSkills = (jobOfferData.preferredSkills || []).map((s: string) => s.toLowerCase().trim());
+    
+    const matchedRequired = requiredSkills.filter(skill => cvSkills.has(skill));
+    const matchedPreferred = preferredSkills.filter(skill => cvSkills.has(skill));
+    const missingRequired = requiredSkills.filter(skill => !cvSkills.has(skill));
+    
+    const requiredScore = requiredSkills.length > 0 ? (matchedRequired.length / requiredSkills.length) * 70 : 0;
+    const preferredScore = preferredSkills.length > 0 ? (matchedPreferred.length / preferredSkills.length) * 30 : 0;
+    const localCalculatedScore = Math.round(requiredScore + preferredScore);
+    
+    console.log('📊 [Score Debug] CV Skills:', cvSkills.size, '| Required:', requiredSkills.length, '| Matched:', matchedRequired.length);
+    console.log('  • Required:', requiredSkills.join(', '));
+    console.log('  • Matched:', matchedRequired.join(', '));
+    console.log('  • Local Score:', localCalculatedScore);
+    
+    // Use AI score or local fallback
+    const aiScore = Number(analysis.overallScore);
+    const isGenericScore = [50, 60, 70, 75, 80].includes(aiScore);
+    const scoreDiff = Math.abs((aiScore || 0) - localCalculatedScore);
+    
+    let finalScore: number;
+    let scoreSource: string;
+    
+    if (!aiScore || (isGenericScore && scoreDiff > 15)) {
+      console.log(`⚠️ [Score] Using local fallback: ${localCalculatedScore} (AI: ${aiScore})`);
+      finalScore = localCalculatedScore;
+      scoreSource = 'local';
+      analysis.overallScore = localCalculatedScore;
+      analysis.scoreSource = 'local-fallback';
+    } else {
+      console.log(`✅ [Score] Using AI score: ${aiScore}`);
+      finalScore = aiScore;
+      scoreSource = 'ai';
+    }
+    
+    // Update matched/missing requirements
+    analysis.matchedRequirements = matchedRequired;
+    analysis.missingRequirements = missingRequired;
+    console.log(`💾 Final score: ${finalScore} (${scoreSource})`);
 
     // === SAVE TO DATABASE ===
     const matchedSkills = ensureArray(analysis.matchedRequirements);

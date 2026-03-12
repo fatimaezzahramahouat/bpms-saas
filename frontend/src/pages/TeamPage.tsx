@@ -17,34 +17,33 @@ interface TeamMember {
 const teamMembers: TeamMember[] = [
   {
     id: 1,
-    name: "Sarah Johnson",
-    position: "CEO & Co-Founder",
-    image: "https://i.pravatar.cc/400?img=1",
-    department: "Leadership"
+    name: "Dounia Ouafi", // Ktb smiya w lkniya dyalk
+    position: "Développeuse Full-Stack", // Bdliha b l'mouhima dyalk f projet
+    image: "/assets/Dounia.png",
+    department: "Développement"
   },
   {
     id: 2,
-    name: "Michael Chen",
-    position: "CTO & Co-Founder",
-    image: "https://i.pravatar.cc/400?img=11",
-    department: "Engineering"
+    name: "MAHOUAT FATI", // Ktb smiya w lkniya dyal Fati
+    position: "Développeuse Full-Stack", // Bdliha
+    image: "/assets/Fati.jpeg", // Rdi lbal hna dert .jpeg kifma f tsawira
+    department: "Développement"
   },
   {
     id: 3,
-    name: "Emily Rodriguez",
-    position: "Head of Product",
-    image: "https://i.pravatar.cc/400?img=5",
-    department: "Product"
+    name: "TOUFI MALAK", // Ktb smiya w lkniya dyal Malak
+    position: "Développeuse Full-Stack", // Bdliha
+    image: "/assets/Malak.png",
+    department: "Développement"
   },
   {
     id: 4,
-    name: "David Kim",
-    position: "Lead Engineer",
-    image: "https://i.pravatar.cc/400?img=13",
-    department: "Engineering"
+    name: "ELHARIRI MANAL", // Ktb smiya w lkniya dyal Manal
+    position: "Développeuse Full-Stack", // Bdliha
+    image: "/assets/Manal.png",
+    department: "Développement"
   }
 ];
-
 export default function TeamPage() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [showSubMenu, setShowSubMenu] = useState(false);
@@ -206,6 +205,37 @@ export default function TeamPage() {
           </div>
         </div>
       </section>
+            {/* ================= SECTION NOTION (PROFESSIONNELLE) ================= */}
+      <section className="py-16 px-4 flex justify-center border-t border-gray-200 dark:border-white/10">
+        <div className="text-center max-w-2xl mx-auto">
+          {/* Titre Professionnel */}
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Plongez au cœur de notre organisation
+          </h2>
+          
+          {/* Sous-titre (Description) */}
+          <p className="text-gray-600 dark:text-gray-400 mb-8 text-md md:text-lg">
+            La transparence et la collaboration sont les piliers de notre équipe. Découvrez comment nous travaillons au quotidien pour concevoir et développer Nexflow.
+          </p>
+
+          {/* Bouton */}
+          <a
+            href="HNA_7ETI_LIEN_DYAL_NOTION_DYALK" 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 bg-[#4b4dff] hover:bg-[#3b3de0] text-white px-8 py-3.5 rounded-full text-[15px] font-bold transition-all hover:scale-105 shadow-lg shadow-[#4b4dff]/30"
+          >
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" 
+              alt="Logo Notion" 
+              className="w-5 h-5 filter brightness-0 invert" 
+            />
+            Explorer notre espace Notion
+            <ChevronRight className="w-5 h-5" />
+          </a>
+        </div>
+      </section>
+      {/* ==================================================================== */}
 
       <Footer />
 

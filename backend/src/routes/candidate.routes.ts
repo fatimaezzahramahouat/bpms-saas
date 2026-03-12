@@ -34,6 +34,7 @@ candidateRouter.get("/statistics", candidateStatisticsController.getStatistics);
 candidateRouter.get("/", candidateController.getAllCandidates);
 candidateRouter.get("/:id", candidateController.getCandidateById);
 candidateRouter.put("/:id", upload.single("cv"), candidateController.updateCandidate);
+candidateRouter.patch("/:id/status", candidateController.updateCandidateStatus);
 candidateRouter.delete("/:id", candidateController.deleteCandidate);
 
 export default candidateRouter;

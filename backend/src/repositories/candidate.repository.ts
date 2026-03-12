@@ -94,9 +94,53 @@ export const candidateRepository = {
   },
 
   async delete(id: string) {
-    return prisma.candidate.delete({
-      where: { id },
-    });
+    console.log('🗑️ [Repository] Deleting candidate:', id);
+    
+    try {
+      // Get applications for this candidate first
+      const applications = await prisma.application.findMany({
+        where: { candidateId: id },
+        select: { id: true }
+      });
+      
+      const applicationIds = applications.map(app => app.id);
+      
+      if (applicationIds.length > 0) {
+        // Delete Documents for these applications first
+        await prisma.document.deleteMany({
+          where: { applicationId: { in: applicationIds } }
+        });
+        console.log('✅ Deleted Documents for candidate:', id);
+        
+        // Delete AI Analyses through Application relation
+        // Use the application relation to delete aiAnalyses
+        for (const appId of applicationIds) {
+          await prisma.application.update({
+            where: { id: appId },
+            data: { aiAnalyses: { deleteMany: {} } }
+          });
+        }
+        console.log('✅ Deleted AI Analyses for candidate:', id);
+        
+        // Delete Applications
+        await prisma.application.deleteMany({
+          where: { candidateId: id }
+        });
+        console.log('✅ Deleted Applications for candidate:', id);
+      }
+      
+      // Finally: Delete the candidate
+      const result = await prisma.candidate.delete({
+        where: { id }
+      });
+      
+      console.log('✅ Candidate deleted successfully:', id);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Error deleting candidate:', error);
+      throw new Error(`Failed to delete candidate: ${error}`);
+    }
   },
 
   async findByJobOffer(jobOfferId: string, organisationId: string) {
