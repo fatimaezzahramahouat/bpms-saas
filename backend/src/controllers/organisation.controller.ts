@@ -71,15 +71,21 @@ export const organisationController = {
             // If a file was uploaded, upload it to Supabase and get the public URL
             if (req.file) {
                 console.log('File detected in request:', req.file.originalname);
-                // Use a safe ID for folder name if organisationId is missing
-                const uploadFolderId = organisationId || id;
-                logoUrl = await storageService.uploadLogo(req.file, uploadFolderId);
-                console.log('Logo uploaded successfully, URL:', logoUrl);
+                try {
+                    const uploadFolderId = organisationId || id;
+                    logoUrl = await storageService.uploadLogo(req.file, uploadFolderId);
+                    console.log('Logo uploaded successfully, URL:', logoUrl);
+                } catch (uploadErr: any) {
+                    console.error('❌ Logo upload failed:', uploadErr?.message || uploadErr);
+                    // Don't block onboarding if logo upload fails — proceed without logo
+                    logoUrl = "";
+                }
             } else {
                 console.log('No file detected in request');
             }
 
             const result = await authService.completeOnboarding({
+
                 organisationId: organisationId as string | null,
                 userId: id,
                 email: userEmail,

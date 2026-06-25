@@ -148,9 +148,10 @@ export const authRepository = {
         throw new Error("Organisation ID is required but was not provided or created.");
       }
 
-      // 2. Create OrgInfo
-      const orgInfo = await tx.orgInfo.create({
-        data: {
+      // 2. Upsert OrgInfo (handles re-submission without crashing on unique constraint)
+      const orgInfo = await tx.orgInfo.upsert({
+        where: { organisationId: finalOrganisationId },
+        create: {
           logo: data.orgInfo.logo,
           website: data.orgInfo.website,
           city: data.orgInfo.city,
@@ -159,6 +160,15 @@ export const authRepository = {
           emailorg: data.orgInfo.emailorg,
           phoneorg: data.orgInfo.phoneorg,
           organisationId: finalOrganisationId,
+        },
+        update: {
+          logo: data.orgInfo.logo,
+          website: data.orgInfo.website,
+          city: data.orgInfo.city,
+          domaine: data.orgInfo.domaine,
+          address: data.orgInfo.address,
+          emailorg: data.orgInfo.emailorg,
+          phoneorg: data.orgInfo.phoneorg,
         },
       });
 

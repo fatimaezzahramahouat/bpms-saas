@@ -1,19 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Clock, User, Briefcase, GitBranch, Sparkles, BrainCircuit, Check } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, User, GitBranch } from 'lucide-react';
 import { taskService } from '../services/task.service';
 import { toast } from 'react-toastify';
-import { motion } from 'motion/react';
-
-interface AIAnalysis {
-    id: string;
-    type: string;
-    result: {
-        matchingScore: number;
-        summary: string[];
-        weaknesses?: string[];
-    };
-    confidence: number;
-}
+import { motion, AnimatePresence } from 'motion/react';
 
 interface Task {
     id: string;
@@ -65,7 +54,7 @@ export const MyApprovals: React.FC = () => {
                 isLoading: false,
                 autoClose: 3000
             });
-            fetchTasks(); // Refresh list to remove the task
+            fetchTasks();
         } catch (error: any) {
             console.error('Approve error:', error);
             toast.update(loadingToast, {
@@ -87,7 +76,7 @@ export const MyApprovals: React.FC = () => {
                 isLoading: false,
                 autoClose: 3000
             });
-            fetchTasks(); // Refresh list to remove the task
+            fetchTasks();
         } catch (error: any) {
             console.error('Reject error:', error);
             toast.update(loadingToast, {
@@ -157,7 +146,6 @@ export const MyApprovals: React.FC = () => {
                         {tasks.map((task, index) => {
                             const initiator = task.processInstance.user;
                             const initiatorName = initiator ? `${initiator.firstName} ${initiator.lastName}` : "Employé Inconnu";
-                            const context = task.processInstance.context || {};
 
                             return (
                                 <motion.div
@@ -166,10 +154,9 @@ export const MyApprovals: React.FC = () => {
                                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)", transition: { duration: 0.2 } }}
-                                    transition={{ duration: 0.3 }}
+                                    transition={{ duration: 0.3, delay: index * 0.05 }}
                                     className="group relative bg-slate-50 dark:bg-slate-900/50 backdrop-blur-2xl rounded-[2.5rem] border border-slate-200 dark:border-white/10 p-8 shadow-sm dark:shadow-none transition-all hover:bg-white dark:hover:bg-slate-900/60 hover:border-purple-300 dark:hover:border-purple-500/30 hover:shadow-xl hover:shadow-purple-500/10"
                                 >
-                                    {getSmartBadge(context)}
                                     <div className="flex justify-between items-start mb-8">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
@@ -185,15 +172,9 @@ export const MyApprovals: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <h3 className="text-xl font-black text-white tracking-tight group-hover:text-purple-400 transition-colors">
-                                                {task.processInstance.workflow.name}
-                                            </h3>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className="flex h-2 w-2 rounded-full bg-purple-500 animate-pulse"></span>
-                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{task.step.name}</p>
-                                            </div>
-                                        </div>
+                                        <span className="text-xs text-slate-400 font-medium mt-1">
+                                            {formatDate(task.createdAt)}
+                                        </span>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 p-6 bg-slate-100/50 dark:bg-white/[0.02] rounded-3xl border border-slate-200 dark:border-white/5">
@@ -208,14 +189,19 @@ export const MyApprovals: React.FC = () => {
                                                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{initiator?.email || "Email non renseigné"}</p>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-white leading-tight">{initiatorName}</p>
-                                                <p className="text-xs text-slate-500 font-medium">{initiator?.email || "Email non renseigné"}</p>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] uppercase font-black text-slate-500 tracking-widest">Étape actuelle</p>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-purple-500/10 dark:bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-500 border border-purple-300/50 dark:border-purple-500/20">
+                                                    <CheckCircle2 size={18} />
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{task.step.name}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex gap-4 pl-2">
+                                    <div className="pt-8 border-t border-slate-200 dark:border-white/5 flex gap-4">
                                         <button
                                             onClick={() => handleApprove(task.id)}
                                             className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95"
@@ -231,29 +217,12 @@ export const MyApprovals: React.FC = () => {
                                             <span>Refuser</span>
                                         </button>
                                     </div>
-                                </div>
-
-                                <div className="pt-8 border-t border-white/5 flex gap-4 pl-2">
-                                    <button
-                                        onClick={() => handleApprove(task.id)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95"
-                                    >
-                                        <CheckCircle2 size={18} strokeWidth={3} />
-                                        <span>Approuver</span>
-                                    </button>
-                                    <button
-                                        onClick={() => handleReject(task.id)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 font-black text-sm uppercase tracking-widest rounded-2xl border border-slate-700 hover:border-red-500/50 transition-all hover:-translate-y-1 active:scale-95"
-                                    >
-                                        <XCircle size={18} strokeWidth={3} />
-                                        <span>Refuser</span>
-                                    </button>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
-                </div >
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
+                </motion.div>
             )}
-        </div >
+        </div>
     );
 };
