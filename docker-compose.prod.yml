@@ -1,0 +1,48 @@
+# docker-compose.prod.yml
+# Used ONLY on Azure VM (production deployment)
+
+services:
+  backend:
+    # ✅ Pull image from Docker Hub (not build!)
+    image: fatimaezzahramahouat/bpms-backend:latest
+    
+    container_name: bpms-backend
+    ports:
+      - "5000:5000"
+    
+    # ✅ Production env file (on the VM)
+    env_file:
+      - .env
+    
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      FRONTEND_URL: ${FRONTEND_URL:-https://bpms-saas.mahert268.workers.dev}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://bpms-saas.mahert268.workers.dev}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-https://bpms-backend.eastus.cloudapp.azure.com/api/auth/google/callback}
+    
+    # ✅ Persistent volumes for uploads
+    volumes:
+      - uploads_data:/app/uploads
+      - tmp_data:/app/tmp
+    
+    restart: unless-stopped
+    
+    # ✅ Health check (optional but PRO)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # ✅ Logging limits (avoid disk full)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  uploads_data:
+  tmp_data:
