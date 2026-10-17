@@ -24,7 +24,7 @@ const teamMembers: TeamMember[] = [
   },
   {
     id: 2,
-    name: "MAHOUAT FATI", // Ktb smiya w lkniya dyal Fati
+    name: "FATIMA EZZAHRA MAHOUAT", // Ktb smiya w lkniya dyal Fati
     position: "Développeuse Full-Stack", // Bdliha
     image: "/assets/Fati.jpeg", // Rdi lbal hna dert .jpeg kifma f tsawira
     department: "Développement"

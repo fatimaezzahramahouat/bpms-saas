@@ -1,7 +1,29 @@
-node_modules
-# Keep environment variables out of version control
-.env
-/src/generated/prisma
 node_modules/
 dist/
+.env
+/src/generated/prisma
 .prisma/
+
+# Local build / error logs
+*.txt
+*.log
+*_errors*.txt
+
+# Runtime uploads (CVs, certificates) — user data, keep out of version control
+uploads/
+
+# Coverage directory used by Jest
+coverage/
+
+# Scripts & temporary testing tools
+*.sh
+test-*.ts
+test_*.ts
+debug_*.ts
+debug_*.js
+verify_*.js
+list_*.js
+research_*.ts
+create-test-*.ts
+diagnose-*.sh
+fix-*.sh

@@ -51,7 +51,7 @@ IMPORTANT : Ne réponds avec aucun texte avant ou après le JSON. Retourne uniqu
 
         const userPrompt = `Génère le workflow pour : ${name} dans le secteur ${sector}. Règles : ${rules}`;
 
-        const aiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || process.env.AI_KEY || "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";
+        const aiKey = process.env.GROQ_API_KEY || '';
         if (!aiKey) {
             throw new Error("AI API Key is missing from environment variables.");
         }

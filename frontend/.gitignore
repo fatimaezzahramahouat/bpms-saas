@@ -24,3 +24,7 @@ dist-ssr
 *.sln
 *.sw?
 node_modules/
+
+# Temp / lint output
+lint_output.txt
+metadata.json

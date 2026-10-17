@@ -3,6 +3,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { workflowEngineService } from "../services/workflowEngine.service";
 import { prisma } from "../lib/prisma";
 import { catchAsync } from "../utils/catchAsync";
+import { AppError } from "../utils/AppError";
 
 export const processController = {
     /**
@@ -17,58 +18,49 @@ export const processController = {
         const organisationId = authReq.user?.organisationId;
 
         if (!id || !organisationId) {
-            return res.status(401).json({ error: "User not authenticated or missing organisation" });
+            throw new AppError("User not authenticated or missing organisation", 401);
         }
 
         if (!workflowId) {
-            return res.status(400).json({ error: "workflowId is required" });
+            throw new AppError("workflowId is required", 400);
         }
 
-        try {
-            // Check Context/Metadata: Ensure it is a valid object and not null
-            let finalMetadata = metadata;
+        // Check Context/Metadata: Ensure it is a valid object and not null
+        let finalMetadata = metadata;
 
-            // Parse metadata if sent as JSON string in FormData
-            if (typeof metadata === 'string') {
-                try {
-                    finalMetadata = JSON.parse(metadata);
-                } catch (e) {
-                    finalMetadata = {};
-                }
-            }
-
-            // Ensure finalMetadata is an object and not null
-            if (!finalMetadata || typeof finalMetadata !== 'object' || Array.isArray(finalMetadata)) {
+        // Parse metadata if sent as JSON string in FormData
+        if (typeof metadata === 'string') {
+            try {
+                finalMetadata = JSON.parse(metadata);
+            } catch (e) {
                 finalMetadata = {};
             }
-
-            // Backwards compatibility for legacy LeaveRequestForm
-            if (startDate || endDate || reason) {
-                finalMetadata = { ...finalMetadata, startDate, endDate, reason };
-            }
-            if (file) {
-                finalMetadata.file = file;
-            }
-
-            const result = await workflowEngineService.startProcessInstance(
-                workflowId,
-                id,
-                organisationId,
-                finalMetadata
-            );
-
-            res.status(201).json({
-                message: "Process started successfully",
-                data: result
-            });
-        } catch (error: any) {
-            // Global Catch-All Logging: Capture Prisma and other internal errors
-            console.error("SERVER_500_ERROR:", error);
-            res.status(500).json({
-                error: "Internal Server Error",
-                message: error.message
-            });
         }
+
+        // Ensure finalMetadata is an object and not null
+        if (!finalMetadata || typeof finalMetadata !== 'object' || Array.isArray(finalMetadata)) {
+            finalMetadata = {};
+        }
+
+        // Backwards compatibility for legacy LeaveRequestForm
+        if (startDate || endDate || reason) {
+            finalMetadata = { ...finalMetadata, startDate, endDate, reason };
+        }
+        if (file) {
+            finalMetadata.file = file;
+        }
+
+        const result = await workflowEngineService.startProcessInstance(
+            workflowId,
+            id,
+            organisationId,
+            finalMetadata
+        );
+
+        res.status(201).json({
+            message: "Process started successfully",
+            data: result
+        });
     }),
     /**
      * GET /api/process/my-requests
@@ -79,7 +71,7 @@ export const processController = {
         const id = authReq.user?.id;
 
         if (!id) {
-            return res.status(401).json({ error: "User not authenticated" });
+            throw new AppError("User not authenticated", 401);
         }
 
         const requests = await prisma.processInstance.findMany({

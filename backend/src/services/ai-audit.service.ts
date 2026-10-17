@@ -1,7 +1,7 @@
 import Groq from "groq-sdk";
 import prisma from "../lib/prisma";
 
-const AI_KEY = process.env.GROQ_API_KEY || "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";
+const AI_KEY = process.env.GROQ_API_KEY || '';
 
 export const aiAuditService = {
     /**

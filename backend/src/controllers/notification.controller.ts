@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { notificationService } from "../services/notification.service";
 import { catchAsync } from "../utils/catchAsync";
+import { AppError } from "../utils/AppError";
 
 export const notificationController = {
     /**
@@ -13,7 +14,7 @@ export const notificationController = {
         const id = authReq.user?.id;
 
         if (!id) {
-            return res.status(401).json({ error: "User not authenticated" });
+            throw new AppError("User not authenticated", 401);
         }
 
         const notifications = await notificationService.getUnreadNotifications(id);
@@ -29,7 +30,7 @@ export const notificationController = {
         const id = authReq.user?.id;
 
         if (!id) {
-            return res.status(401).json({ error: "User not authenticated" });
+            throw new AppError("User not authenticated", 401);
         }
 
         await notificationService.markAllAsRead(id);

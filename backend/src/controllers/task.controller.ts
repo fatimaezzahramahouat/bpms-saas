@@ -3,6 +3,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import prisma from "../lib/prisma";
 import { workflowEngineService } from "../services/workflowEngine.service";
 import { catchAsync } from "../utils/catchAsync";
+import { AppError } from "../utils/AppError";
 
 export const taskController = {
     /**
@@ -13,7 +14,7 @@ export const taskController = {
         const currentUserId = authReq.user?.id;
 
         if (!currentUserId) {
-            return res.status(401).json({ error: "User not authenticated" });
+            throw new AppError("User not authenticated", 401);
         }
 
         const tasks = await prisma.task.findMany({
@@ -65,7 +66,7 @@ export const taskController = {
         const currentUserId = authReq.user?.id as string;
 
         if (!['APPROVE', 'REJECT'].includes(action)) {
-            return res.status(400).json({ error: "Invalid action. Must be 'APPROVE' or 'REJECT'." });
+            throw new AppError("Invalid action. Must be 'APPROVE' or 'REJECT'.", 400);
         }
 
         const result = await workflowEngineService.completeTaskAndMoveToNext(id, action, currentUserId);
@@ -85,7 +86,9 @@ export const taskController = {
         const id = req.params.id as string;
         const currentUserId = authReq.user?.id;
 
-        if (!id || !currentUserId) return res.status(401).json({ error: "Unauthorized or missing ID" });
+        if (!id || !currentUserId) {
+            throw new AppError("Unauthorized or missing ID", 401);
+        }
 
         const result = await workflowEngineService.approveTask(id, currentUserId);
 
@@ -104,7 +107,9 @@ export const taskController = {
         const id = req.params.id as string;
         const currentUserId = authReq.user?.id;
 
-        if (!id || !currentUserId) return res.status(401).json({ error: "Unauthorized or missing ID" });
+        if (!id || !currentUserId) {
+            throw new AppError("Unauthorized or missing ID", 401);
+        }
 
         const result = await workflowEngineService.completeTaskAndMoveToNext(id, 'REJECT', currentUserId);
 
@@ -124,9 +129,8 @@ export const taskController = {
         const organisationId = authReq.user?.organisationId;
 
         if (!currentUserId || !organisationId) {
-            return res.status(401).json({ error: "Unauthorized" });
+            throw new AppError("Unauthorized", 401);
         }
-
 
         const tasks = await prisma.task.findMany({
             where: {
@@ -134,7 +138,6 @@ export const taskController = {
                 status: "PENDING"
             },
             include: {
-
                 user: {
                     select: {
                         firstName: true,

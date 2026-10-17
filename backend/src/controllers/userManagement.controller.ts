@@ -3,6 +3,8 @@ import { z } from "zod";
 import { userManagementService } from "../services/userManagement.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import prisma from "../lib/prisma";
+import { catchAsync } from "../utils/catchAsync";
+import { AppError } from "../utils/AppError";
 
 const createUserSchema = z.object({
     firstName: z.string().min(1, "First name is required"),
@@ -22,195 +24,165 @@ const updateUserSchema = z.object({
 });
 
 export const userManagementController = {
-    async getUsers(req: Request, res: Response): Promise<void> {
-        try {
-            const authReq = req as AuthRequest;
-            const organisationId = authReq.user?.organisationId;
-            if (!organisationId) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-
-            const users = await userManagementService.listUsers(organisationId);
-            res.status(200).json({ data: users });
-        } catch (error: any) {
-            console.error("Error in getUsers:", error);
-            res.status(500).json({ error: "Internal server error" });
+    getUsers: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const organisationId = authReq.user?.organisationId;
+        if (!organisationId) {
+            throw new AppError("Unauthorized", 401);
         }
-    },
 
-    async createUser(req: Request, res: Response): Promise<void> {
+        const users = await userManagementService.listUsers(organisationId);
+        res.status(200).json({ data: users });
+    }),
+
+    createUser: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const organisationId = authReq.user?.organisationId;
+        const id = authReq.user?.id;
+
+        if (!organisationId || !id) {
+            throw new AppError("Unauthorized", 401);
+        }
+
+        // Real-time access check (Heritage Pattern)
+        const [admin, rh] = await Promise.all([
+            prisma.admin.findUnique({ where: { userId: id } }),
+            prisma.rH.findUnique({ where: { userId: id } })
+        ]);
+
+        if (!admin && !rh) {
+            throw new AppError("Forbidden: Admin or RH access required", 403);
+        }
+
+        const parsed = createUserSchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
+            return;
+        }
+
         try {
-            const authReq = req as AuthRequest;
-            const organisationId = authReq.user?.organisationId;
-            const id = authReq.user?.id;
-
-            if (!organisationId || !id) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-
-            // Real-time access check (Heritage Pattern)
-            const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId: id } }),
-                prisma.rH.findUnique({ where: { userId: id } })
-            ]);
-
-            if (!admin && !rh) {
-                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
-                return;
-            }
-
-            const parsed = createUserSchema.safeParse(req.body);
-            if (!parsed.success) {
-                res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
-                return;
-            }
-
             const newUser = await userManagementService.createUser(parsed.data, organisationId);
-
             res.status(201).json({
                 message: "User created successfully",
                 data: newUser,
             });
         } catch (error: any) {
             if (error.message === "Email already exists") {
-                res.status(409).json({ error: error.message });
-                return;
+                throw new AppError(error.message, 409);
             }
-            console.error("Error in createUser:", error);
-            res.status(500).json({ error: "Internal server error" });
+            throw error;
         }
-    },
+    }),
 
-    async updateUser(req: Request, res: Response): Promise<void> {
+    updateUser: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const id = req.params.id as string;
+        const organisationId = authReq.user?.organisationId;
+        const currentUserId = authReq.user?.id;
+
+        if (!organisationId || !currentUserId) {
+            throw new AppError("Unauthorized", 401);
+        }
+
+        // Real-time access check (Heritage Pattern)
+        const [admin, rh] = await Promise.all([
+            prisma.admin.findUnique({ where: { userId: currentUserId } }),
+            prisma.rH.findUnique({ where: { userId: currentUserId } })
+        ]);
+
+        if (!admin && !rh) {
+            throw new AppError("Forbidden: Admin or RH access required", 403);
+        }
+
+        const parsed = updateUserSchema.safeParse(req.body);
+        if (!parsed.success) {
+            res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
+            return;
+        }
+
+        const updateData = Object.fromEntries(
+            Object.entries(parsed.data).filter(([_, v]) => v !== undefined)
+        ) as { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string };
+
         try {
-            const authReq = req as AuthRequest;
-            const id = req.params.id as string;
-            const organisationId = authReq.user?.organisationId;
-            const currentUserId = authReq.user?.id;
-
-            if (!organisationId || !currentUserId) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-
-            // Real-time access check (Heritage Pattern)
-            const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId: currentUserId } }),
-                prisma.rH.findUnique({ where: { userId: currentUserId } })
-            ]);
-
-            if (!admin && !rh) {
-                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
-                return;
-            }
-
-            const parsed = updateUserSchema.safeParse(req.body);
-            if (!parsed.success) {
-                res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
-                return;
-            }
-
-            const updateData = Object.fromEntries(
-                Object.entries(parsed.data).filter(([_, v]) => v !== undefined)
-            ) as { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string };
-
             const updatedUser = await userManagementService.updateUser(id, updateData, organisationId);
-
             res.status(200).json({
                 message: "User updated successfully",
                 data: updatedUser,
             });
         } catch (error: any) {
             if (error.message === "User not found or access denied") {
-                res.status(404).json({ error: error.message });
-                return;
+                throw new AppError(error.message, 404);
             }
             if (error.message === "Email already exists") {
-                res.status(409).json({ error: error.message });
-                return;
+                throw new AppError(error.message, 409);
             }
-            console.error("Error in updateUser:", error);
-            res.status(500).json({ error: "Internal server error" });
+            throw error;
         }
-    },
+    }),
 
-    async deleteUser(req: Request, res: Response): Promise<void> {
+    deleteUser: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const id = req.params.id as string;
+        const organisationId = authReq.user?.organisationId;
+        const currentUserId = authReq.user?.id;
+
+        if (!organisationId || !currentUserId) {
+            throw new AppError("Unauthorized", 401);
+        }
+
+        // Real-time access check (Heritage Pattern)
+        const [admin, rh] = await Promise.all([
+            prisma.admin.findUnique({ where: { userId: currentUserId } }),
+            prisma.rH.findUnique({ where: { userId: currentUserId } })
+        ]);
+
+        if (!admin && !rh) {
+            throw new AppError("Forbidden: Admin or RH access required", 403);
+        }
+
         try {
-            const authReq = req as AuthRequest;
-            const id = req.params.id as string;
-            const organisationId = authReq.user?.organisationId;
-            const currentUserId = authReq.user?.id;
-
-            if (!organisationId || !currentUserId) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-
-            // Real-time access check (Heritage Pattern)
-            const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId: currentUserId } }),
-                prisma.rH.findUnique({ where: { userId: currentUserId } })
-            ]);
-
-            if (!admin && !rh) {
-                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
-                return;
-            }
-
             await userManagementService.deleteUser(id, organisationId);
-
             res.status(200).json({
                 message: "User deleted successfully",
             });
         } catch (error: any) {
             if (error.message === "User not found or access denied") {
-                res.status(404).json({ error: error.message });
-                return;
+                throw new AppError(error.message, 404);
             }
-            console.error("Error in deleteUser:", error);
-            res.status(500).json({ error: "Internal server error" });
+            throw error;
         }
-    },
+    }),
 
-    async bulkImport(req: Request, res: Response): Promise<void> {
-        try {
-            const authReq = req as AuthRequest;
-            const organisationId = authReq.user?.organisationId;
-            const currentUserId = authReq.user?.id;
+    bulkImport: catchAsync(async (req: Request, res: Response) => {
+        const authReq = req as AuthRequest;
+        const organisationId = authReq.user?.organisationId;
+        const currentUserId = authReq.user?.id;
 
-            if (!organisationId || !currentUserId) {
-                res.status(401).json({ error: "Unauthorized" });
-                return;
-            }
-
-            // Real-time access check
-            const [admin, rh] = await Promise.all([
-                prisma.admin.findUnique({ where: { userId: currentUserId } }),
-                prisma.rH.findUnique({ where: { userId: currentUserId } })
-            ]);
-
-            if (!admin && !rh) {
-                res.status(403).json({ error: "Forbidden: Admin or RH access required" });
-                return;
-            }
-
-            const { users } = req.body;
-            if (!users || !Array.isArray(users)) {
-                res.status(400).json({ error: "Invalid data format: 'users' array expected" });
-                return;
-            }
-
-            const result = await userManagementService.bulkImport(users, organisationId);
-
-            res.status(201).json({
-                message: `${result.length} utilisateurs ont été importés avec succès.`,
-                data: result,
-            });
-        } catch (error: any) {
-            console.error("Error in bulkImport:", error);
-            res.status(500).json({ error: error.message || "Internal server error" });
+        if (!organisationId || !currentUserId) {
+            throw new AppError("Unauthorized", 401);
         }
-    },
+
+        // Real-time access check
+        const [admin, rh] = await Promise.all([
+            prisma.admin.findUnique({ where: { userId: currentUserId } }),
+            prisma.rH.findUnique({ where: { userId: currentUserId } })
+        ]);
+
+        if (!admin && !rh) {
+            throw new AppError("Forbidden: Admin or RH access required", 403);
+        }
+
+        const { users } = req.body;
+        if (!users || !Array.isArray(users)) {
+            throw new AppError("Invalid data format: 'users' array expected", 400);
+        }
+
+        const result = await userManagementService.bulkImport(users, organisationId);
+
+        res.status(201).json({
+            message: `${result.length} utilisateurs ont été importés avec succès.`,
+            data: result,
+        });
+    }),
 };

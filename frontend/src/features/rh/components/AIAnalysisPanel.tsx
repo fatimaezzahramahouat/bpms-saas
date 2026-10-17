@@ -95,21 +95,22 @@ export function AIAnalysisPanel({
       
       if (result.success && result.data) {
         const backendData = result.data;
+        const analysisObj = backendData.analysis || backendData;
         
         const formattedAnalysis: AnalysisState = {
-          overallScore: backendData.overallScore || 0,
+          overallScore: analysisObj.overallScore || 0,
           categoryScores: {
-            skills: backendData.categoryScores?.skills || 0,
-            experience: backendData.categoryScores?.experience || 0,
-            education: backendData.categoryScores?.education || 0,
-            technicalFit: backendData.categoryScores?.technicalFit || 0,
+            skills: analysisObj.categoryScores?.skills || 0,
+            experience: analysisObj.categoryScores?.experience || 0,
+            education: analysisObj.categoryScores?.education || 0,
+            technicalFit: analysisObj.categoryScores?.technicalFit || 0,
           },
-          matchedRequirements: backendData.matchedRequirements || [],
-          missingRequirements: backendData.missingRequirements || [],
-          strengths: backendData.strengths || [],
-          weaknesses: backendData.weaknesses || [],
-          recommendation: backendData.recommendation,
-          priority: backendData.priority,
+          matchedRequirements: analysisObj.matchedRequirements || [],
+          missingRequirements: analysisObj.missingRequirements || [],
+          strengths: analysisObj.strengths || [],
+          weaknesses: analysisObj.weaknesses || [],
+          recommendation: analysisObj.recommendation?.decision || analysisObj.recommendation,
+          priority: analysisObj.recommendation?.priority || analysisObj.priority,
         };
 
         console.log('📊 Formatted analysis:', formattedAnalysis);

@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider } from '../shared/components/Toast';
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
 import { GlobalModalProvider } from '../shared/components/GlobalModal';
+import { ScrollToTop } from '../shared/components';
 
 /**
  * Application Providers
@@ -27,6 +28,7 @@ export function Providers({ children }: ProvidersProps) {
       <GlobalModalProvider>
         <ToastProvider>
           <BrowserRouter>
+            <ScrollToTop />
             {children}
           </BrowserRouter>
         </ToastProvider>

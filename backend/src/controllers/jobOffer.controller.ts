@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
+import { AppError } from "../utils/AppError";
 import { jobOfferService } from "../services/jobOffer.service";
 import {
   createJobOfferSchema,
@@ -14,7 +15,6 @@ export const jobOfferController = {
    * Public: search job offers with pagination and filters.
    */
   getPublicOffers: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const parsed = jobOfferQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       res.status(400).json({ errors: parsed.error.flatten().fieldErrors });
@@ -31,7 +31,7 @@ export const jobOfferController = {
   getRHOffers: catchAsync(async (req: Request, res: Response) => {
     const authReq = req as AuthRequest;
     const organisationId = authReq.user?.organisationId;
-    if (!organisationId) throw new Error("Missing organisationId");
+    if (!organisationId) throw new AppError("Missing organisationId", 401);
 
     const parsed = jobOfferQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -85,8 +85,7 @@ export const jobOfferController = {
 
     const offer = await jobOfferService.updateOffer(id as string, organisationId, parsed.data);
     if (!offer) {
-      res.status(404).json({ error: "Job offer not found or unauthorized" });
-      return;
+      throw new AppError("Job offer not found or unauthorized", 404);
     }
 
     res.status(200).json({ message: "Job offer updated", data: offer });
@@ -106,16 +105,11 @@ export const jobOfferController = {
     const result = await jobOfferService.deleteOffer(id as string, organisationId);
 
     if (result.reason === "not_found") {
-      res.status(404).json({ error: "Job offer not found or unauthorized" });
-      return;
+      throw new AppError("Job offer not found or unauthorized", 404);
     }
 
     if (result.reason === "forbidden") {
-      res.status(403).json({
-        error:
-          "This job offer was automatically closed or filled by the system and cannot be deleted. Archive it instead.",
-      });
-      return;
+      throw new AppError("This job offer was automatically closed or filled by the system and cannot be deleted. Archive it instead.", 403);
     }
 
     res.status(204).send();
@@ -126,12 +120,10 @@ export const jobOfferController = {
    * Public: get a single job offer by ID.
    */
   getOfferById: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const { id } = req.params;
     const offer = await jobOfferService.getOfferById(id as string);
     if (!offer) {
-      res.status(404).json({ error: "Job offer not found" });
-      return;
+      throw new AppError("Job offer not found", 404);
     }
     res.status(200).json({ data: offer });
   }),
@@ -158,7 +150,6 @@ export const jobOfferController = {
    * statusSource = AUTOMATIC → cannot be deleted by RH.
    */
   markAsFilled: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const { id } = req.params;
     const offer = await jobOfferService.markAsFilled(id as string);
     res.status(200).json({ message: "Job offer marked as FILLED (automatic)", data: offer });
@@ -171,7 +162,6 @@ export const jobOfferController = {
    * statusSource = AUTOMATIC → cannot be deleted by RH.
    */
   markAsClosed: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const { id } = req.params;
     const offer = await jobOfferService.markAsClosed(id as string);
     res.status(200).json({ message: "Job offer marked as CLOSED (automatic)", data: offer });

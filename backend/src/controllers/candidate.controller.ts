@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { catchAsync } from "../utils/catchAsync";
+import { AppError } from "../utils/AppError";
 import { candidateService } from "../services/candidate.service";
 import { z } from "zod";
 
@@ -15,7 +16,6 @@ export const candidateController = {
    * POST /api/candidates
    */
   createCandidate: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     // 1. Validate body
     const parsed = createCandidateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -41,7 +41,6 @@ export const candidateController = {
    * GET /api/candidates
    */
   getAllCandidates: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const { page, limit, search } = req.query;
     
     const result = await candidateService.getAllCandidates({
@@ -57,10 +56,12 @@ export const candidateController = {
    * GET /api/candidates/:id
    */
   getCandidateById: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const { id } = req.params;
-    if (typeof id !== 'string') throw new Error("Invalid ID type");
+    if (typeof id !== 'string') throw new AppError("Invalid ID type", 400);
     const candidate = await candidateService.getCandidateById(id);
+    if (!candidate) {
+      throw new AppError("Candidate not found", 404);
+    }
     res.status(200).json(candidate);
   }),
 
@@ -68,9 +69,8 @@ export const candidateController = {
    * PUT /api/candidates/:id
    */
   updateCandidate: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const { id } = req.params;
-    if (typeof id !== 'string') throw new Error("Invalid ID type");
+    if (typeof id !== 'string') throw new AppError("Invalid ID type", 400);
     
     // Partial validation for update
     const updateSchema = createCandidateSchema.partial();
@@ -87,6 +87,10 @@ export const candidateController = {
       ...(req.file && { cvFile: req.file }),
     });
 
+    if (!candidate) {
+      throw new AppError("Candidate not found", 404);
+    }
+
     res.status(200).json({
       message: "Candidate updated successfully",
       data: candidate,
@@ -97,9 +101,8 @@ export const candidateController = {
    * DELETE /api/candidates/:id
    */
   deleteCandidate: catchAsync(async (req: Request, res: Response) => {
-    const authReq = req as AuthRequest;
     const { id } = req.params;
-    if (typeof id !== 'string') throw new Error("Invalid ID type");
+    if (typeof id !== 'string') throw new AppError("Invalid ID type", 400);
     await candidateService.deleteCandidate(id);
     res.status(204).send();
   }),
@@ -111,46 +114,30 @@ export const candidateController = {
     const { id } = req.params;
     const { status } = req.body;
 
-    console.log('🔄 [Status Update] Attempting to update status');
-    console.log('🔄 [Status Update] Candidate ID:', id);
-    console.log('🔄 [Status Update] New status:', status);
-
     if (typeof id !== 'string') {
-      console.error('❌ [Status Update] Invalid ID type');
-      throw new Error("Invalid ID type");
+      throw new AppError("Invalid ID type", 400);
     }
 
     // Validate status
     const validStatuses = ['CANDIDATE', 'CONTACTED', 'INTERVIEW', 'ACCEPTED', 'REJECTED'];
     if (!status || !validStatuses.includes(status)) {
-      console.error('❌ [Status Update] Invalid status:', status);
-      res.status(400).json({ 
-        error: 'Invalid status. Must be one of: CANDIDATE, CONTACTED, INTERVIEW, ACCEPTED, REJECTED',
-        received: status
-      });
-      return;
+      throw new AppError('Invalid status. Must be one of: CANDIDATE, CONTACTED, INTERVIEW, ACCEPTED, REJECTED', 400);
     }
 
     // Check if candidate exists first
     const existingCandidate = await candidateService.getCandidateById(id);
     if (!existingCandidate) {
-      console.error('❌ [Status Update] Candidate not found:', id);
-      res.status(404).json({ error: 'Candidate not found' });
-      return;
+      throw new AppError('Candidate not found', 404);
     }
-
-    console.log('📝 [Status Update] Current status:', existingCandidate.status);
 
     // UPDATE THE DATABASE
     const candidate = await candidateService.updateCandidate(id, {
       status: status as any,
     });
 
-    console.log('✅ [Status Update] Successfully updated to:', candidate.status);
-
-    // Verify the update
-    const verification = await candidateService.getCandidateById(id);
-    console.log('🔍 [Status Update] Verification - Current status in DB:', verification.status);
+    if (!candidate) {
+      throw new AppError('Candidate status update failed', 400);
+    }
 
     // Map Prisma enum to display format
     const statusDisplayMap: Record<string, string> = {

@@ -122,16 +122,20 @@ const formatted: AIAnalysis = {
   
   // ✅ تحويل categoryScores (مع دعم المفاتيح الفرنسية)
   categoryScores: {
-    skills: analysisData.result?.categoryScores?.['compétences'] || 
+    skills: analysisData.categoryScores?.skills || 
+            analysisData.result?.categoryScores?.['compétences'] || 
             analysisData.result?.categoryScores?.skills || 
             analysisData.skillsScore || null,
-    experience: analysisData.result?.categoryScores?.['expérience'] || 
+    experience: analysisData.categoryScores?.experience || 
+                analysisData.result?.categoryScores?.['expérience'] || 
                 analysisData.result?.categoryScores?.experience || 
                 analysisData.experienceScore || null,
-    education: analysisData.result?.categoryScores?.['éducation'] || 
+    education: analysisData.categoryScores?.education || 
+               analysisData.result?.categoryScores?.['éducation'] || 
                analysisData.result?.categoryScores?.education || 
                analysisData.educationScore || null,
-    technicalFit: analysisData.result?.categoryScores?.['adéquation technique'] || 
+    technicalFit: analysisData.categoryScores?.technicalFit || 
+                  analysisData.result?.categoryScores?.['adéquation technique'] || 
                   analysisData.result?.categoryScores?.technicalFit || 
                   analysisData.technicalFitScore || null
   },

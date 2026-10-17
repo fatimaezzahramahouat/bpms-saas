@@ -1,17 +1,21 @@
 import { PrismaClient } from "@prisma/client";
 
-const prismaClientSingleton = () => {
-    return new PrismaClient();
-};
-
 declare global {
-    var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
+    var prisma: PrismaClient | undefined;
 }
 
-const prisma = global.prisma ?? prismaClientSingleton();
+const prisma =
+    global.prisma ??
+    new PrismaClient({
+        datasourceUrl: process.env.DATABASE_URL,
+        log: [
+            { emit: "stdout", level: "error" },
+            { emit: "stdout", level: "warn" },
+        ],
+    });
+
+// Always reuse the singleton to avoid multiple connection pools
+global.prisma = prisma;
 
 export { prisma };
 export default prisma;
-
-if (process.env.NODE_ENV !== "production") global.prisma = prisma;
-

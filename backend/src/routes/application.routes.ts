@@ -15,8 +15,8 @@ const prisma = new PrismaClient();
 // ✅ Environment-Aware Path Resolution Helpers
 // ============================================================================
 const getBackendRoot = () => {
-  // Use env var if set, otherwise default to known path
-  return process.env.BACKEND_ROOT || '/home/manal/projet_final_BPMS/backend';
+  // Use env var if set, otherwise resolve path dynamically
+  return process.env.BACKEND_ROOT || path.resolve(__dirname, '..', '..');
 };
 
 const resolveUploadPath = (relativePath: string): string => {
@@ -196,8 +196,8 @@ router.post('/:jobOfferId/apply', upload.single('cv'), async (req: Request, res:
             console.log('🔄 [AI] Original CV path from DB:', cvPath);
             
             // ✅ 2. Resolve to absolute path with proper backend prefix
-            const projectRoot = '/home/manal/projet_final_BPMS';
-            const backendRoot = `${projectRoot}/backend`;
+            const backendRoot = process.env.BACKEND_ROOT || path.resolve(__dirname, '..', '..');
+            const projectRoot = path.dirname(backendRoot);
             
             let resolvedCvPath: string;
             
