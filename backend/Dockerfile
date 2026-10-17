@@ -26,6 +26,7 @@ RUN apt-get update \
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV PORT=5000
 
 # Production dependencies only (prisma CLI is a regular dependency)
 COPY package.json package-lock.json ./
@@ -41,10 +42,7 @@ COPY --from=build /app/dist ./dist
 # Folders used by multer at runtime
 RUN mkdir -p uploads tmp
 
-COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x docker-entrypoint.sh
-
 EXPOSE 5000
 
-# Diagnose env, apply migrations (with timeout), then start the server
-CMD ["sh", "docker-entrypoint.sh"]
+# Start the server directly; migrations are applied manually (see README/ops notes)
+CMD ["node", "dist/server.js"]

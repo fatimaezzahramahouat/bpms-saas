@@ -17,7 +17,6 @@ coverage/
 
 # Scripts & temporary testing tools
 *.sh
-!docker-entrypoint.sh
 test-*.ts
 test_*.ts
 debug_*.ts
