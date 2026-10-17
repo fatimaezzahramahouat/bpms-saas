@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings — CRLF breaks /bin/sh in Linux containers
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf

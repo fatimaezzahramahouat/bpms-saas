@@ -41,7 +41,10 @@ COPY --from=build /app/dist ./dist
 # Folders used by multer at runtime
 RUN mkdir -p uploads tmp
 
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 5000
 
-# Apply migrations, then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+# Diagnose env, apply migrations (with timeout), then start the server
+CMD ["sh", "docker-entrypoint.sh"]
