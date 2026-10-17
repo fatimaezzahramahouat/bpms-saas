@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { CookieOptions, Request, Response } from "express";
 import { z } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -10,6 +10,17 @@ import { catchAsync } from "../utils/catchAsync";
 import { AppError } from "../utils/AppError";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+// Cross-site cookies (frontend and backend on different domains) require
+// SameSite=None + Secure; local http development cannot use those.
+const authCookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 24 * 60 * 60 * 1000,
+};
 
 // ─── Zod Schemas ─────────────────────────────────────────
 
@@ -61,12 +72,7 @@ export const authController = {
 
     const result = await authService.registerOrganisation(parsed.data);
 
-    res.cookie("token", result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    });
+    res.cookie("token", result.token, authCookieOptions);
 
     res.status(201).json({
       message: "Organisation registered successfully",
@@ -149,12 +155,7 @@ export const authController = {
       req.ip
     );
    
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    });
+    res.cookie("token", token, authCookieOptions);
 
     res.status(200).json({
       message: "Login successful",
@@ -269,12 +270,7 @@ export const authController = {
     );
 
     // Set cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
+    res.cookie("token", token, authCookieOptions);
 
     // Redirect WITHOUT token in URL
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
